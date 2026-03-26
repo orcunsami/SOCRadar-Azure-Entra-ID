@@ -37,30 +37,30 @@ def fetch(conf: dict, checkpoint: dict) -> list:
     logger.info(f"[IDENTITY] Starting fetch. domains={domains}")
 
     all_records = []
-    # Checkpoint is shared: last processed date carried forward across all domains
+    # checkpoint_date is shared across all domains (time-based filter).
+    # offset is NOT used in multi-domain mode — it would apply to the wrong domain
+    # on the next run. Always start each domain from offset=0.
     shared_checkpoint_date = checkpoint.get("checkpoint_date", "")
     final_checkpoint_date = shared_checkpoint_date
-    final_offset = 0
 
     for domain in domains:
-        domain_records, last_checkpoint_date, last_offset = _fetch_domain(
+        domain_records, last_checkpoint_date, _ = _fetch_domain(
             api_key=api_key,
             domain=domain,
             checkpoint_date=shared_checkpoint_date,
-            offset=int(checkpoint.get("offset", 0)) if domain == domains[0] else 0,
+            offset=0,
             enable_log_plaintext=enable_log_plaintext,
         )
         all_records.extend(domain_records)
         if last_checkpoint_date:
             final_checkpoint_date = last_checkpoint_date
-        final_offset = last_offset
 
     logger.info(f"[IDENTITY] Fetch complete. domains={len(domains)}, total={len(all_records)}")
 
     if all_records:
         all_records[-1]["_checkpoint_update"] = {
             "checkpoint_date": final_checkpoint_date,
-            "offset": final_offset,
+            "offset": 0,
         }
     elif final_checkpoint_date:
         all_records.append({

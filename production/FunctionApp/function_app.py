@@ -64,7 +64,10 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
 
     sources_to_run = []
     if conf["enable_identity_source"] and conf["socradar_identity_api_key"]:
-        sources_to_run.append("identity")
+        if conf["monitored_domains"]:
+            sources_to_run.append("identity")
+        else:
+            logger.warning("[IDENTITY] Source enabled but MONITORED_DOMAINS not set — skipping")
     elif conf["enable_identity_source"] and not conf["socradar_identity_api_key"]:
         logger.warning("[IDENTITY] Source enabled but SOCRADAR_IDENTITY_API_KEY not set — skipping")
 
@@ -134,6 +137,10 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
     found = not_found = actions = errors = 0
     records = []
 
+    # Extract checkpoint before the loop — it sits on the last record and
+    # will be popped from emp before appending to LAW records below.
+    new_checkpoint = employees[-1].get("_checkpoint_update", {}) if employees else {}
+
     for emp in employees:
         try:
             email = emp.get("email") or emp.get("user", "")
@@ -144,6 +151,7 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
             if graph_headers is None:
                 emp["entra_status"] = "skipped_no_token"
                 emp["actions_taken"] = []
+                emp.pop("_checkpoint_update", None)
                 records.append(emp)
                 continue
 
@@ -152,6 +160,7 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
                 not_found += 1
                 emp["entra_status"] = "not_found"
                 emp["actions_taken"] = []
+                emp.pop("_checkpoint_update", None)
                 records.append(emp)
                 continue
 
@@ -214,6 +223,7 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
                 sent.create_incident(conf, email, source_name, emp.get("severity", "MEDIUM"))
 
             emp["actions_taken"] = taken
+            emp.pop("_checkpoint_update", None)  # internal key — must not reach LAW
             records.append(emp)
 
         except Exception as e:
@@ -224,8 +234,7 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
     if records:
         law.write_records(conf, source_name, records)
 
-    # Update checkpoint
-    new_checkpoint = emp.get("_checkpoint_update", {}) if employees else {}
+    # Update checkpoint (extracted before the loop above)
     if new_checkpoint:
         cp.save(conf["storage_account_name"], credential, source_name, new_checkpoint)
 
