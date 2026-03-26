@@ -1,0 +1,242 @@
+"""
+SOCRadar Entra ID Integration — Azure Function App
+Timer-triggered function that pulls leaked employee credentials from SOCRadar
+and takes automated remediation actions in Microsoft Entra ID.
+
+Sources:
+  - Identity Intelligence (pay-per-use, separate key)
+  - Botnet Data v2
+  - PII Exposure v2
+  - VIP Protection v2 (UNVERIFIED — no official API docs)
+"""
+
+import time
+import logging
+import azure.functions as func
+from azure.identity import DefaultAzureCredential
+
+from utils import config as cfg
+from utils import checkpoint as cp
+from utils.logger import audit_summary
+
+from sources import identity as src_identity
+from sources import botnet as src_botnet
+from sources import pii as src_pii
+from sources import vip as src_vip
+
+from actions import entra_id as entra
+from actions import law_writer as law
+from actions import sentinel as sent
+
+logger = logging.getLogger(__name__)
+app = func.FunctionApp()
+
+
+@app.timer_trigger(
+    schedule="%POLLING_SCHEDULE%",
+    arg_name="timer",
+    run_on_startup=True
+)
+def socradar_entra_id_import(timer: func.TimerRequest) -> None:
+    start_time = time.time()
+    logger.info("=== SOCRadar Entra ID Integration started ===")
+
+    if timer.past_due:
+        logger.warning("Timer is past due, running anyway")
+
+    conf = cfg.load()
+    credential = DefaultAzureCredential()
+
+    # Get Entra ID token once — shared across all sources
+    graph_headers = None
+    try:
+        graph_token = entra.get_graph_token(
+            tenant_id=conf["tenant_id"],
+            client_id=conf["client_id"],
+            client_secret=conf["client_secret"]
+        )
+        graph_headers = {
+            "Authorization": f"Bearer {graph_token}",
+            "Content-Type": "application/json"
+        }
+    except Exception as e:
+        logger.error("[ENTRA] Failed to acquire Graph token — Entra ID actions will be skipped: %s", e)
+
+    sources_to_run = []
+    if conf["enable_identity_source"] and conf["socradar_identity_api_key"]:
+        sources_to_run.append("identity")
+    elif conf["enable_identity_source"] and not conf["socradar_identity_api_key"]:
+        logger.warning("[IDENTITY] Source enabled but SOCRADAR_IDENTITY_API_KEY not set — skipping")
+
+    if conf["enable_botnet_source"]:
+        sources_to_run.append("botnet")
+    if conf["enable_pii_source"]:
+        sources_to_run.append("pii")
+    if conf["enable_vip_source"]:
+        logger.warning("[VIP] Source enabled — endpoint is UNVERIFIED (not in official API docs)")
+        sources_to_run.append("vip")
+
+    logger.info("Active sources: %s", sources_to_run)
+
+    audit_results = []
+
+    for source_name in sources_to_run:
+        src_start = time.time()
+        try:
+            result = _process_source(
+                source_name=source_name,
+                conf=conf,
+                credential=credential,
+                graph_headers=graph_headers
+            )
+            audit_results.append(result)
+        except Exception as e:
+            logger.error("[%s] Unhandled error: %s", source_name.upper(), e, exc_info=True)
+            audit_results.append({
+                "source": source_name, "total": 0, "employees": 0,
+                "found": 0, "not_found": 0, "actions": 0, "errors": 1,
+                "duration": round(time.time() - src_start, 1)
+            })
+
+    # Write audit log
+    for r in audit_results:
+        audit_summary(
+            source=r["source"], total=r["total"], employees=r["employees"],
+            found=r["found"], not_found=r["not_found"], actions=r["actions"],
+            errors=r["errors"], duration_sec=r.get("duration", 0)
+        )
+
+    if conf["workspace_id"] and conf["workspace_key"]:
+        law.write_audit(conf, audit_results)
+
+    total_duration = round(time.time() - start_time, 1)
+    logger.info("=== SOCRadar Entra ID Integration finished in %.1fs ===", total_duration)
+
+
+def _process_source(source_name: str, conf: dict, credential, graph_headers: dict) -> dict:
+    """Fetch one source, process each employee credential, return audit dict."""
+
+    chk = cp.load(conf["storage_account_name"], credential, source_name)
+
+    # Fetch employees from source
+    if source_name == "identity":
+        employees = src_identity.fetch(conf, chk)
+    elif source_name == "botnet":
+        employees = src_botnet.fetch(conf, chk)
+    elif source_name == "pii":
+        employees = src_pii.fetch(conf, chk)
+    elif source_name == "vip":
+        employees = src_vip.fetch(conf, chk)
+    else:
+        return {"source": source_name, "total": 0, "employees": 0,
+                "found": 0, "not_found": 0, "actions": 0, "errors": 0, "duration": 0}
+
+    found = not_found = actions = errors = 0
+    records = []
+
+    for emp in employees:
+        try:
+            email = emp.get("email") or emp.get("user", "")
+            if not email:
+                continue
+
+            # User lookup in Entra ID (skipped if Graph token unavailable)
+            if graph_headers is None:
+                emp["entra_status"] = "skipped_no_token"
+                emp["actions_taken"] = []
+                records.append(emp)
+                continue
+
+            user_info = entra.lookup_user(email, graph_headers)
+            if user_info is None:
+                not_found += 1
+                emp["entra_status"] = "not_found"
+                emp["actions_taken"] = []
+                records.append(emp)
+                continue
+
+            found += 1
+            emp["entra_status"] = "found"
+            emp["entra_account_enabled"] = user_info.get("accountEnabled", True)
+            emp["entra_user_id"] = user_info.get("id", "")
+
+            # ROPC validation (only if plaintext password available)
+            ropc_result = None
+            if conf["enable_ropc"] and emp.get("sanitized", {}).get("is_plaintext"):
+                raw_pw = emp.get("sanitized", {}).get("_raw")
+                if raw_pw:
+                    ropc_result = entra.validate_password_ropc(
+                        email=email,
+                        password=raw_pw,
+                        tenant_id=conf["tenant_id"],
+                        client_id=conf["client_id"]
+                    )
+                    del raw_pw  # remove from local scope immediately
+
+            if ropc_result == "valid":
+                emp["entra_status"] = "compromised"
+                emp["severity"] = "CRITICAL"
+            elif ropc_result in ("invalid", "mfa_blocked"):
+                emp["severity"] = "MEDIUM"
+            else:
+                emp["severity"] = "MEDIUM"  # default
+
+            # Take actions
+            taken = []
+            user_id = emp["entra_user_id"]
+
+            if conf["enable_revoke_session"]:
+                ok = entra.revoke_sessions(user_id, graph_headers)
+                taken.append("revoke_session" if ok else "revoke_session_failed")
+                actions += 1
+
+            if conf["enable_add_to_group"] and conf["security_group_id"]:
+                ok = entra.add_to_group(user_id, conf["security_group_id"], graph_headers)
+                taken.append("add_to_group" if ok else "add_to_group_failed")
+                actions += 1
+
+            if conf["enable_disable_account"]:
+                ok = entra.disable_account(user_id, graph_headers)
+                taken.append("disable_account" if ok else "disable_account_failed")
+                actions += 1
+
+            if conf["enable_password_change"]:
+                ok = entra.force_password_change(user_id, graph_headers)
+                taken.append("force_password_change" if ok else "force_password_change_failed")
+                actions += 1
+
+            if conf["enable_confirm_risky"]:
+                ok = entra.confirm_compromised(user_id, graph_headers)
+                taken.append("confirm_risky" if ok else "confirm_risky_failed")
+                actions += 1
+
+            if conf["enable_create_incident"]:
+                sent.create_incident(conf, email, source_name, emp.get("severity", "MEDIUM"))
+
+            emp["actions_taken"] = taken
+            records.append(emp)
+
+        except Exception as e:
+            logger.error("[%s] Error processing %s: %s", source_name.upper(), emp.get("email", "?"), e)
+            errors += 1
+
+    # Write source records to LAW
+    if records:
+        law.write_records(conf, source_name, records)
+
+    # Update checkpoint
+    new_checkpoint = emp.get("_checkpoint_update", {}) if employees else {}
+    if new_checkpoint:
+        cp.save(conf["storage_account_name"], credential, source_name, new_checkpoint)
+
+    duration = 0  # caller sets this
+    return {
+        "source":     source_name,
+        "total":      len(employees),
+        "employees":  len([e for e in employees if e.get("is_employee", True)]),
+        "found":      found,
+        "not_found":  not_found,
+        "actions":    actions,
+        "errors":     errors,
+        "duration":   duration,
+    }
