@@ -1,6 +1,6 @@
 """
 Identity Intelligence fetcher.
-Uses checkpoint (date string) + offset pagination.
+Uses log_start_date/log_end_date + offset pagination.
 Returns masked passwords — ROPC NOT possible with this source.
 Requires separate Identity API key (pay-per-use).
 """
@@ -8,6 +8,7 @@ Requires separate Identity API key (pay-per-use).
 import time
 import logging
 import requests
+from datetime import datetime, timedelta, timezone
 
 from utils.logger import get_logger
 from utils.sanitize import sanitize_password, build_law_password_fields
@@ -23,12 +24,17 @@ def fetch(conf: dict, checkpoint: dict) -> list:
     Fetch Identity Intelligence records for all monitored domains since last checkpoint.
 
     Checkpoint fields used:
-        checkpoint_date : str  — date string passed to API (shared across domains)
-        offset          : int  — offset within the checkpoint window (last domain's position)
+        checkpoint_date : str  — log_start_date for next run (YYYY-MM-DD)
+        offset          : int  — not used in multi-domain mode (always 0)
+
+    API params: query=<domain>&query_type=domain&log_start_date=YYYY-MM-DD&log_end_date=YYYY-MM-DD&limit=25&offset=N
+    Response:   body["data"]["result"] list, body["data"]["checkpoint"] (latest record date),
+                body["data"]["offset"] (next offset, None when no more pages)
     """
     api_key = conf["socradar_identity_api_key"]
     domains = conf.get("monitored_domains", [])
     enable_log_plaintext = conf.get("enable_log_plaintext_password", False)
+    initial_lookback_minutes = conf.get("initial_lookback_minutes", 600)
 
     if not domains:
         logger.warning("[IDENTITY] No domains configured in MONITORED_DOMAINS — skipping")
@@ -36,18 +42,24 @@ def fetch(conf: dict, checkpoint: dict) -> list:
 
     logger.info(f"[IDENTITY] Starting fetch. domains={domains}")
 
-    all_records = []
-    # checkpoint_date is shared across all domains (time-based filter).
-    # offset is NOT used in multi-domain mode — it would apply to the wrong domain
-    # on the next run. Always start each domain from offset=0.
+    # Determine log_start_date: checkpoint or initial lookback
     shared_checkpoint_date = checkpoint.get("checkpoint_date", "")
+    if not shared_checkpoint_date:
+        lookback_dt = datetime.now(timezone.utc) - timedelta(minutes=initial_lookback_minutes)
+        shared_checkpoint_date = lookback_dt.strftime("%Y-%m-%d")
+        logger.info(f"[IDENTITY] No checkpoint, using initial lookback: {shared_checkpoint_date}")
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     final_checkpoint_date = shared_checkpoint_date
+
+    all_records = []
 
     for domain in domains:
         domain_records, last_checkpoint_date, _ = _fetch_domain(
             api_key=api_key,
             domain=domain,
-            checkpoint_date=shared_checkpoint_date,
+            log_start_date=shared_checkpoint_date,
+            log_end_date=today,
             offset=0,
             enable_log_plaintext=enable_log_plaintext,
         )
@@ -73,20 +85,25 @@ def fetch(conf: dict, checkpoint: dict) -> list:
     return all_records
 
 
-def _fetch_domain(api_key: str, domain: str, checkpoint_date: str, offset: int, enable_log_plaintext: bool) -> tuple:
+def _fetch_domain(api_key: str, domain: str, log_start_date: str, log_end_date: str, offset: int, enable_log_plaintext: bool) -> tuple:
     """Fetch all pages for a single domain. Returns (records, last_checkpoint_date, last_offset)."""
     headers = {"Api-Key": api_key, "Content-Type": "application/json"}
-    new_checkpoint_date = checkpoint_date
+    new_checkpoint_date = log_start_date
     new_offset = offset
     domain_records = []
     page = 0
 
-    logger.info(f"[IDENTITY] domain={domain} checkpoint_date={checkpoint_date!r} offset={offset}")
+    logger.info(f"[IDENTITY] domain={domain} log_start_date={log_start_date!r} log_end_date={log_end_date!r} offset={offset}")
 
     while True:
-        params = {"domain": domain, "limit": PAGE_SIZE, "offset": new_offset}
-        if new_checkpoint_date:
-            params["checkpoint"] = new_checkpoint_date
+        params = {
+            "query":          domain,
+            "query_type":     "domain",
+            "log_start_date": log_start_date,
+            "log_end_date":   log_end_date,
+            "limit":          PAGE_SIZE,
+            "offset":         new_offset,
+        }
 
         try:
             resp = requests.get(BASE_URL, headers=headers, params=params, timeout=30)
@@ -98,15 +115,15 @@ def _fetch_domain(api_key: str, domain: str, checkpoint_date: str, offset: int, 
             logger.error(f"[IDENTITY] domain={domain} API error {resp.status_code}: {resp.text[:200]}")
             break
 
-        data = resp.json()
-        if not data.get("is_success"):
-            logger.error(f"[IDENTITY] domain={domain} is_success=false: {data.get('message', 'unknown')}")
+        body = resp.json()
+        if not body.get("is_success"):
+            logger.error(f"[IDENTITY] domain={domain} is_success=false: {body.get('message', 'unknown')}")
             break
 
-        payload = data.get("data", {})
-        records = payload.get("data", [])
-        next_checkpoint = payload.get("checkpoint", new_checkpoint_date)
-        next_offset = payload.get("next_offset", None)
+        payload = body.get("data", {})
+        records = payload.get("result", [])
+        next_checkpoint = payload.get("checkpoint")  # date of latest record in this page
+        next_offset = payload.get("offset")          # None when no more pages
 
         if not records:
             logger.info(f"[IDENTITY] domain={domain} no more records")
@@ -120,14 +137,14 @@ def _fetch_domain(api_key: str, domain: str, checkpoint_date: str, offset: int, 
             del sanitized["_raw"]
 
             entry = {
-                "email":       rec.get("email", ""),
-                "url":         rec.get("url", ""),
-                "country":     rec.get("country", ""),
-                "log_date":    rec.get("logDate") or rec.get("log_date", ""),
-                "source_type": rec.get("sourceType", ""),
+                "email":            rec.get("username", ""),  # API field is "username" (email address)
+                "url":              rec.get("url", ""),
+                "country":          rec.get("country", ""),
+                "log_date":         rec.get("log_date", ""),
+                "insert_date":      rec.get("insert_date", ""),
                 "monitored_domain": domain,
-                "source":      "identity",
-                "is_employee": True,
+                "source":           "identity",
+                "is_employee":      True,
                 **pw_fields,
             }
             domain_records.append(entry)
@@ -139,7 +156,6 @@ def _fetch_domain(api_key: str, domain: str, checkpoint_date: str, offset: int, 
         if next_offset is not None:
             new_offset = next_offset
         else:
-            new_offset = 0
             break
 
         time.sleep(1)
