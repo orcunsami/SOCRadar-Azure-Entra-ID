@@ -36,7 +36,7 @@ def load() -> dict:
         "socradar_api_key":          _get("SOCRADAR_API_KEY", required=True),
         "socradar_identity_api_key": _get("SOCRADAR_IDENTITY_API_KEY", default=""),
         "socradar_company_id":       _get("SOCRADAR_COMPANY_ID", required=True),
-        "monitored_domain":          _get("MONITORED_DOMAIN", default=""),
+        "monitored_domains":         [d.strip() for d in _get("MONITORED_DOMAINS", default="").split(",") if d.strip()],
 
         # Source toggles
         "enable_identity_source": _bool("ENABLE_IDENTITY_SOURCE", True),

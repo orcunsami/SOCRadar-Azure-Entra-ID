@@ -20,55 +20,87 @@ PAGE_SIZE = 25
 
 def fetch(conf: dict, checkpoint: dict) -> list:
     """
-    Fetch all Identity Intelligence records since last checkpoint.
+    Fetch Identity Intelligence records for all monitored domains since last checkpoint.
 
     Checkpoint fields used:
-        checkpoint_date : str  — date string passed to API
-        offset          : int  — offset within the checkpoint window
+        checkpoint_date : str  — date string passed to API (shared across domains)
+        offset          : int  — offset within the checkpoint window (last domain's position)
     """
     api_key = conf["socradar_identity_api_key"]
-    domain = conf.get("monitored_domain", "")
+    domains = conf.get("monitored_domains", [])
     enable_log_plaintext = conf.get("enable_log_plaintext_password", False)
 
-    checkpoint_date = checkpoint.get("checkpoint_date", "")
-    current_offset = int(checkpoint.get("offset", 0))
+    if not domains:
+        logger.warning("[IDENTITY] No domains configured in MONITORED_DOMAINS — skipping")
+        return []
+
+    logger.info(f"[IDENTITY] Starting fetch. domains={domains}")
 
     all_records = []
-    new_checkpoint_date = checkpoint_date
-    new_offset = current_offset
+    # Checkpoint is shared: last processed date carried forward across all domains
+    shared_checkpoint_date = checkpoint.get("checkpoint_date", "")
+    final_checkpoint_date = shared_checkpoint_date
+    final_offset = 0
 
-    logger.info(
-        f"Starting fetch. domain={domain} checkpoint_date={checkpoint_date!r} offset={current_offset}"
-    )
+    for domain in domains:
+        domain_records, last_checkpoint_date, last_offset = _fetch_domain(
+            api_key=api_key,
+            domain=domain,
+            checkpoint_date=shared_checkpoint_date,
+            offset=int(checkpoint.get("offset", 0)) if domain == domains[0] else 0,
+            enable_log_plaintext=enable_log_plaintext,
+        )
+        all_records.extend(domain_records)
+        if last_checkpoint_date:
+            final_checkpoint_date = last_checkpoint_date
+        final_offset = last_offset
 
-    page = 0
-    while True:
-        params = {
-            "domain": domain,
-            "limit": PAGE_SIZE,
-            "offset": new_offset,
+    logger.info(f"[IDENTITY] Fetch complete. domains={len(domains)}, total={len(all_records)}")
+
+    if all_records:
+        all_records[-1]["_checkpoint_update"] = {
+            "checkpoint_date": final_checkpoint_date,
+            "offset": final_offset,
         }
+    elif final_checkpoint_date:
+        all_records.append({
+            "_checkpoint_update": {
+                "checkpoint_date": final_checkpoint_date,
+                "offset": 0,
+            }
+        })
+
+    return all_records
+
+
+def _fetch_domain(api_key: str, domain: str, checkpoint_date: str, offset: int, enable_log_plaintext: bool) -> tuple:
+    """Fetch all pages for a single domain. Returns (records, last_checkpoint_date, last_offset)."""
+    headers = {"Api-Key": api_key, "Content-Type": "application/json"}
+    new_checkpoint_date = checkpoint_date
+    new_offset = offset
+    domain_records = []
+    page = 0
+
+    logger.info(f"[IDENTITY] domain={domain} checkpoint_date={checkpoint_date!r} offset={offset}")
+
+    while True:
+        params = {"domain": domain, "limit": PAGE_SIZE, "offset": new_offset}
         if new_checkpoint_date:
             params["checkpoint"] = new_checkpoint_date
-
-        headers = {
-            "Api-Key": api_key,
-            "Content-Type": "application/json",
-        }
 
         try:
             resp = requests.get(BASE_URL, headers=headers, params=params, timeout=30)
         except requests.RequestException as e:
-            logger.error(f"Request failed: {e}")
+            logger.error(f"[IDENTITY] domain={domain} request failed: {e}")
             break
 
         if resp.status_code != 200:
-            logger.error(f"API error {resp.status_code}: {resp.text[:200]}")
+            logger.error(f"[IDENTITY] domain={domain} API error {resp.status_code}: {resp.text[:200]}")
             break
 
         data = resp.json()
         if not data.get("is_success"):
-            logger.error(f"API returned is_success=false: {data.get('message', 'unknown')}")
+            logger.error(f"[IDENTITY] domain={domain} is_success=false: {data.get('message', 'unknown')}")
             break
 
         payload = data.get("data", {})
@@ -77,7 +109,7 @@ def fetch(conf: dict, checkpoint: dict) -> list:
         next_offset = payload.get("next_offset", None)
 
         if not records:
-            logger.info("No more records.")
+            logger.info(f"[IDENTITY] domain={domain} no more records")
             break
 
         page += 1
@@ -85,7 +117,6 @@ def fetch(conf: dict, checkpoint: dict) -> list:
             pw_raw = rec.get("password")
             sanitized = sanitize_password(pw_raw)
             pw_fields = build_law_password_fields(sanitized, enable_log_plaintext)
-            # sanitized["_raw"] stays available only briefly; not stored in rec
             del sanitized["_raw"]
 
             entry = {
@@ -94,41 +125,23 @@ def fetch(conf: dict, checkpoint: dict) -> list:
                 "country":     rec.get("country", ""),
                 "log_date":    rec.get("logDate") or rec.get("log_date", ""),
                 "source_type": rec.get("sourceType", ""),
+                "monitored_domain": domain,
                 "source":      "identity",
-                "is_employee": True,   # Identity is domain-scoped, all are employees
+                "is_employee": True,
                 **pw_fields,
             }
-            all_records.append(entry)
+            domain_records.append(entry)
 
-        logger.info(f"Page {page}: {len(records)} records fetched")
+        logger.info(f"[IDENTITY] domain={domain} page={page}: {len(records)} records")
 
-        # Update checkpoint for next iteration
         if next_checkpoint:
             new_checkpoint_date = next_checkpoint
         if next_offset is not None:
             new_offset = next_offset
         else:
-            # No more pages in this checkpoint window
             new_offset = 0
             break
 
-        time.sleep(1)  # rate limit
+        time.sleep(1)
 
-    logger.info(f"Fetch complete. total={len(all_records)}")
-
-    # Attach checkpoint update to last record so function_app.py can save it
-    if all_records:
-        all_records[-1]["_checkpoint_update"] = {
-            "checkpoint_date": new_checkpoint_date,
-            "offset": new_offset,
-        }
-    elif new_checkpoint_date:
-        # No records but checkpoint changed — save with sentinel record
-        all_records.append({
-            "_checkpoint_update": {
-                "checkpoint_date": new_checkpoint_date,
-                "offset": 0,
-            }
-        })
-
-    return all_records
+    return domain_records, new_checkpoint_date, new_offset

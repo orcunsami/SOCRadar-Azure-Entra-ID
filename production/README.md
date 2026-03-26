@@ -24,7 +24,7 @@ az deployment group create \
   --parameters \
     SocradarApiKey="your-platform-key" \
     SocradarCompanyId="your-company-id" \
-    MonitoredDomain="yourdomain.com" \
+    MonitoredDomains="yourdomain.com,olddomain.com" \
     EntraIdTenantId="your-tenant-id" \
     EntraIdClientId="your-app-client-id" \
     EntraIdClientSecret="your-app-secret" \
@@ -53,7 +53,7 @@ For ROPC password validation (`EnableROPC=true`): enable **Allow public client f
 |-----------|-------------|
 | `SocradarApiKey` | SOCRadar platform API key |
 | `SocradarCompanyId` | SOCRadar company ID |
-| `MonitoredDomain` | Domain to monitor (used by Identity Intelligence) |
+| `MonitoredDomains` | Comma-separated domains for Identity Intelligence (e.g., `contoso.com,fabrikam.com`) |
 | `EntraIdTenantId` | Azure AD tenant ID |
 | `EntraIdClientId` | App Registration client ID |
 | `EntraIdClientSecret` | App Registration client secret |
@@ -64,7 +64,7 @@ For ROPC password validation (`EnableROPC=true`): enable **Allow public client f
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `EnableIdentitySource` | `true` | Identity Intelligence (requires `SocradarIdentityApiKey`) |
+| `EnableIdentitySource` | `true` | Identity Intelligence (requires `SocradarIdentityApiKey` and `MonitoredDomains`) |
 | `SocradarIdentityApiKey` | `""` | Identity Intelligence API key (separate, pay-per-use) |
 | `EnableBotnetSource` | `true` | Botnet Data v2 |
 | `EnablePiiSource` | `true` | PII Exposure v2 |

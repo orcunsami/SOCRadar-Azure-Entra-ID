@@ -41,11 +41,11 @@
                 "description": "SOCRadar Company ID"
             }
         },
-        "MonitoredDomain": {
+        "MonitoredDomains": {
             "type": "string",
             "defaultValue": "",
             "metadata": {
-                "description": "Domain to monitor in Identity Intelligence (e.g., contoso.com). Required if Identity Intelligence source is enabled."
+                "description": "Comma-separated list of domains to monitor in Identity Intelligence (e.g., contoso.com,fabrikam.com). Required if Identity Intelligence source is enabled."
             }
         },
         "EntraIdTenantId": {
@@ -331,8 +331,8 @@
                             "value": "[parameters('SocradarCompanyId')]"
                         },
                         {
-                            "name": "MONITORED_DOMAIN",
-                            "value": "[parameters('MonitoredDomain')]"
+                            "name": "MONITORED_DOMAINS",
+                            "value": "[parameters('MonitoredDomains')]"
                         },
                         {
                             "name": "ENTRA_TENANT_ID",
