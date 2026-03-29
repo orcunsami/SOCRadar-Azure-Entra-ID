@@ -25,6 +25,7 @@ from sources import vip as src_vip
 from actions import entra_id as entra
 from actions import law_writer as law
 from actions import sentinel as sent
+from actions import socradar as socradar_api
 
 logger = logging.getLogger(__name__)
 app = func.FunctionApp()
@@ -209,6 +210,18 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
 
             if conf["enable_create_incident"]:
                 sent.create_incident(conf, email, source_name, emp.get("severity", "MEDIUM"))
+
+            # Resolve SOCRadar alarm if user found in Entra ID
+            alarm_id = emp.get("alarm_id")
+            if conf.get("enable_resolve_alarm") and alarm_id:
+                ok = socradar_api.resolve_alarm(
+                    api_key=conf["socradar_api_key"],
+                    company_id=conf["socradar_company_id"],
+                    alarm_id=alarm_id,
+                    comment=f"User {email} found in Entra ID — auto-resolved by SOCRadar Entra ID Integration"
+                )
+                taken.append("resolve_alarm" if ok else "resolve_alarm_failed")
+                actions += 1
 
             emp["actions_taken"] = taken
             emp.pop("_checkpoint_update", None)  # internal key — must not reach LAW

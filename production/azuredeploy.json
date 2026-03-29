@@ -129,6 +129,13 @@
                 "description": "Create Microsoft Sentinel incidents for compromised accounts"
             }
         },
+        "EnableResolveAlarm": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Automatically resolve SOCRadar alarms when compromised user is found in Entra ID"
+            }
+        },
         "EnableLogPlaintextPassword": {
             "type": "bool",
             "defaultValue": false,
@@ -362,6 +369,10 @@
                             "value": "[string(parameters('EnableCreateIncident'))]"
                         },
                         {
+                            "name": "ENABLE_RESOLVE_ALARM",
+                            "value": "[string(parameters('EnableResolveAlarm'))]"
+                        },
+                        {
                             "name": "ENABLE_LOG_PLAINTEXT_PASSWORD",
                             "value": "[string(parameters('EnableLogPlaintextPassword'))]"
                         },
@@ -382,8 +393,16 @@
                             "value": "[parameters('WorkspaceName')]"
                         },
                         {
+                            "name": "WORKSPACE_LOCATION",
+                            "value": "[parameters('WorkspaceLocation')]"
+                        },
+                        {
                             "name": "WORKSPACE_RESOURCE_GROUP",
                             "value": "[if(empty(parameters('WorkspaceResourceGroup')), resourceGroup().name, parameters('WorkspaceResourceGroup'))]"
+                        },
+                        {
+                            "name": "SUBSCRIPTION_ID",
+                            "value": "[subscription().subscriptionId]"
                         },
                         {
                             "name": "STORAGE_ACCOUNT_NAME",

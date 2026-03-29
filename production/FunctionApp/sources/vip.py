@@ -75,6 +75,7 @@ def fetch(conf: dict, checkpoint: dict) -> list:
             logger.info(f"Total records={total_data_count}, pages={total_pages}")
 
         for rec in records_raw:
+            related = rec.get("relatedAlarm", {}) or {}
             entry = {
                 "email":          rec.get("vipName", rec.get("email", "")),
                 "keyword":        rec.get("keyword", ""),
@@ -84,6 +85,7 @@ def fetch(conf: dict, checkpoint: dict) -> list:
                 "source_name":    rec.get("source", ""),
                 "is_employee":    True,
                 "source":         "vip",
+                "alarm_id":       rec.get("alarmId") or related.get("alarmId"),
                 # No password field in VIP responses
                 "password_present": False,
                 "password_masked":  None,

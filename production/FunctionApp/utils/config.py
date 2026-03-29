@@ -54,6 +54,7 @@ def load() -> dict:
         "enable_disable_account":   _bool("ENABLE_DISABLE_ACCOUNT", False),
         "enable_confirm_risky":     _bool("ENABLE_CONFIRM_RISKY", False),
         "enable_create_incident":   _bool("ENABLE_CREATE_INCIDENT", False),
+        "enable_resolve_alarm":     _bool("ENABLE_RESOLVE_ALARM", False),
         "security_group_id":        _get("SECURITY_GROUP_ID", default=""),
 
         # Password policy
@@ -64,6 +65,7 @@ def load() -> dict:
         "workspace_key": _get("WORKSPACE_KEY", required=True),
 
         # Sentinel (optional, only if create_incident=true)
+        "subscription_id":          _get("SUBSCRIPTION_ID", default=""),
         "workspace_name":           _get("WORKSPACE_NAME", default=""),
         "workspace_location":       _get("WORKSPACE_LOCATION", default=""),
         "workspace_resource_group": _get("WORKSPACE_RESOURCE_GROUP", default=""),

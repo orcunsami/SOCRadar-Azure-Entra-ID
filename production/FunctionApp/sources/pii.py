@@ -88,6 +88,7 @@ def fetch(conf: dict, checkpoint: dict) -> list:
             if isinstance(source_val, list):
                 source_val = ", ".join(source_val)
 
+            related = rec.get("relatedAlarm", {}) or {}
             entry = {
                 "email":          rec.get("email", ""),
                 "source_name":    source_val,
@@ -95,6 +96,7 @@ def fetch(conf: dict, checkpoint: dict) -> list:
                 "discovery_date": rec.get("discoveryDate", ""),
                 "is_employee":    rec.get("isEmployee", True),
                 "source":         "pii",
+                "alarm_id":       rec.get("alarmId") or related.get("alarmId"),
                 **pw_fields,
             }
 

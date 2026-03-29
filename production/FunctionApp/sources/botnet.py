@@ -86,6 +86,7 @@ def fetch(conf: dict, checkpoint: dict) -> list:
             pw_fields = build_law_password_fields(sanitized, enable_log_plaintext)
             _raw = sanitized.pop("_raw", None)  # keep for ROPC only
 
+            related = rec.get("relatedAlarm", {}) or {}
             entry = {
                 "email":       rec.get("user", rec.get("email", "")),
                 "url":         rec.get("url", ""),
@@ -95,6 +96,7 @@ def fetch(conf: dict, checkpoint: dict) -> list:
                 "log_date":    rec.get("logDate", ""),
                 "is_employee": True,
                 "source":      "botnet",
+                "alarm_id":    rec.get("alarmId") or related.get("alarmId"),
                 **pw_fields,
             }
 
