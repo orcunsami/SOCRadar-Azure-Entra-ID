@@ -4,7 +4,6 @@ Timer-triggered function that pulls leaked employee credentials from SOCRadar
 and takes automated remediation actions in Microsoft Entra ID.
 
 Sources:
-  - Identity Intelligence (pay-per-use, separate key)
   - Botnet Data v2
   - PII Exposure v2
   - VIP Protection v2 (UNVERIFIED — no official API docs)
@@ -19,7 +18,6 @@ from utils import config as cfg
 from utils import checkpoint as cp
 from utils.logger import audit_summary
 
-from sources import identity as src_identity
 from sources import botnet as src_botnet
 from sources import pii as src_pii
 from sources import vip as src_vip
@@ -63,14 +61,6 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
         logger.error("[ENTRA] Failed to acquire Graph token — Entra ID actions will be skipped: %s", e)
 
     sources_to_run = []
-    if conf["enable_identity_source"] and conf["socradar_identity_api_key"]:
-        if conf["monitored_domains"]:
-            sources_to_run.append("identity")
-        else:
-            logger.warning("[IDENTITY] Source enabled but MONITORED_DOMAINS not set — skipping")
-    elif conf["enable_identity_source"] and not conf["socradar_identity_api_key"]:
-        logger.warning("[IDENTITY] Source enabled but SOCRADAR_IDENTITY_API_KEY not set — skipping")
-
     if conf["enable_botnet_source"]:
         sources_to_run.append("botnet")
     if conf["enable_pii_source"]:
@@ -122,9 +112,7 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
     chk = cp.load(conf["storage_account_name"], credential, source_name)
 
     # Fetch employees from source
-    if source_name == "identity":
-        employees = src_identity.fetch(conf, chk)
-    elif source_name == "botnet":
+    if source_name == "botnet":
         employees = src_botnet.fetch(conf, chk)
     elif source_name == "pii":
         employees = src_pii.fetch(conf, chk)

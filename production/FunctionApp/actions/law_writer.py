@@ -18,10 +18,9 @@ logger = logging.getLogger("socradar.entra.law")
 LAW_URL = "https://{workspace_id}.ods.opinsights.azure.com/api/logs?api-version=2016-04-01"
 
 TABLE_MAP = {
-    "identity": "SOCRadar_Identity_CL",
-    "botnet":   "SOCRadar_Botnet_CL",
-    "pii":      "SOCRadar_PII_CL",
-    "vip":      "SOCRadar_VIP_CL",
+    "botnet": "SOCRadar_Botnet_CL",
+    "pii":    "SOCRadar_PII_CL",
+    "vip":    "SOCRadar_VIP_CL",
 }
 AUDIT_TABLE = "SOCRadar_EntraID_Audit_CL"
 

@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## SOCRadar Entra ID — Combined Dashboard\nAll employee credential exposures across all SOCRadar sources (Identity Intelligence, Botnet Data, PII Exposure, VIP Protection), enriched with Microsoft Entra ID status and remediation actions."
+        "json": "## SOCRadar Entra ID \u2014 Combined Dashboard\nAll employee credential exposures across SOCRadar sources (Botnet Data, PII Exposure, VIP Protection), enriched with Microsoft Entra ID status and remediation actions."
       },
       "name": "header"
     },
@@ -19,14 +19,20 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_Identity_CL, SOCRadar_VIP_CL\n| count\n| project Count",
+        "query": "union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| count\n| project Count",
         "size": 4,
         "title": "Total Records (All Sources)",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
         "visualization": "tiles",
         "tileSettings": {
-          "titleContent": { "columnMatch": "Count", "formatter": 12, "formatOptions": { "palette": "auto" } },
+          "titleContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "auto"
+            }
+          },
           "showBorder": false
         }
       },
@@ -37,14 +43,20 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_Identity_CL, SOCRadar_VIP_CL\n| where entra_status_s == \"found\"\n| count\n| project Count",
+        "query": "union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where entra_status_s == \"found\"\n| count\n| project Count",
         "size": 4,
         "title": "Employees Found in Entra ID",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
         "visualization": "tiles",
         "tileSettings": {
-          "titleContent": { "columnMatch": "Count", "formatter": 12, "formatOptions": { "palette": "redBright" } },
+          "titleContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "redBright"
+            }
+          },
           "showBorder": false
         }
       },
@@ -55,14 +67,20 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_Identity_CL, SOCRadar_VIP_CL\n| where entra_status_s == \"compromised\"\n| count\n| project Count",
+        "query": "union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where entra_status_s == \"compromised\"\n| count\n| project Count",
         "size": 4,
         "title": "Confirmed Compromised",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
         "visualization": "tiles",
         "tileSettings": {
-          "titleContent": { "columnMatch": "Count", "formatter": 12, "formatOptions": { "palette": "red" } },
+          "titleContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "red"
+            }
+          },
           "showBorder": false
         }
       },
@@ -80,7 +98,13 @@
         "resourceType": "microsoft.operationalinsights/workspaces",
         "visualization": "tiles",
         "tileSettings": {
-          "titleContent": { "columnMatch": "Actions", "formatter": 12, "formatOptions": { "palette": "green" } },
+          "titleContent": {
+            "columnMatch": "Actions",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "green"
+            }
+          },
           "showBorder": false
         }
       },
@@ -98,7 +122,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n(SOCRadar_Identity_CL | extend Source=\"Identity\"),\n(SOCRadar_VIP_CL | extend Source=\"VIP\")\n| summarize Count=count() by Source\n| order by Count desc",
+        "query": "union\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n(SOCRadar_VIP_CL | extend Source=\"VIP\")\n| summarize Count=count() by Source\n| order by Count desc",
         "size": 2,
         "title": "Records by Source",
         "queryType": 0,
@@ -112,7 +136,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n(SOCRadar_Identity_CL | extend Source=\"Identity\"),\n(SOCRadar_VIP_CL | extend Source=\"VIP\")\n| summarize Count=count() by entra_status_s, Source\n| order by Count desc",
+        "query": "union\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n(SOCRadar_VIP_CL | extend Source=\"VIP\")\n| summarize Count=count() by entra_status_s, Source\n| order by Count desc",
         "size": 2,
         "title": "Entra ID Status by Source",
         "queryType": 0,
@@ -126,7 +150,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n(SOCRadar_Identity_CL | extend Source=\"Identity\"),\n(SOCRadar_VIP_CL | extend Source=\"VIP\")\n| summarize Count=count() by bin(TimeGenerated, 1d), Source\n| order by TimeGenerated asc",
+        "query": "union\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n(SOCRadar_VIP_CL | extend Source=\"VIP\")\n| summarize Count=count() by bin(TimeGenerated, 1d), Source\n| order by TimeGenerated asc",
         "size": 0,
         "title": "Records Over Time by Source",
         "queryType": 0,
@@ -194,7 +218,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n(SOCRadar_Identity_CL | extend Source=\"Identity\")\n| where entra_status_s in (\"found\", \"compromised\")\n| where password_present_b == true\n| project TimeGenerated, Source, email_s, entra_status_s, is_plaintext_b, actions_taken_s\n| order by TimeGenerated desc\n| take 50",
+        "query": "union\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n| where entra_status_s in (\"found\", \"compromised\")\n| where password_present_b == true\n| project TimeGenerated, Source, email_s, entra_status_s, is_plaintext_b, actions_taken_s\n| order by TimeGenerated desc\n| take 50",
         "size": 0,
         "title": "Employees Found in Entra ID with Password",
         "queryType": 0,

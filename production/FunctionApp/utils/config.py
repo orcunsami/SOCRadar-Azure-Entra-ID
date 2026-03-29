@@ -33,14 +33,11 @@ def load() -> dict:
     """Load and validate all configuration. Raises EnvironmentError on missing required settings."""
     return {
         # SOCRadar API
-        "socradar_api_key":          _get("SOCRADAR_API_KEY", required=True),
-        "socradar_identity_api_key": _get("SOCRADAR_IDENTITY_API_KEY", default=""),
-        "socradar_company_id":       _get("SOCRADAR_COMPANY_ID", required=True),
-        "monitored_domains":         [d.strip() for d in _get("MONITORED_DOMAINS", default="").split(",") if d.strip()],
+        "socradar_api_key":    _get("SOCRADAR_API_KEY", required=True),
+        "socradar_company_id": _get("SOCRADAR_COMPANY_ID", required=True),
 
         # Source toggles
-        "enable_identity_source": _bool("ENABLE_IDENTITY_SOURCE", True),
-        "enable_botnet_source":   _bool("ENABLE_BOTNET_SOURCE", True),
+        "enable_botnet_source": _bool("ENABLE_BOTNET_SOURCE", True),
         "enable_pii_source":      _bool("ENABLE_PII_SOURCE", True),
         "enable_vip_source":      _bool("ENABLE_VIP_SOURCE", False),
 

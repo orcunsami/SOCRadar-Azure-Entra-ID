@@ -3,7 +3,7 @@
     "contentVersion": "1.0.0.0",
     "metadata": {
         "title": "SOCRadar Entra ID Integration for Microsoft Sentinel",
-        "description": "Pulls leaked employee credentials from SOCRadar (Identity Intelligence, Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
+        "description": "Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
         "version": "1.0.0",
         "author": "SOCRadar",
         "lastUpdateTime": "2026-03-26T00:00:00.000Z"
@@ -28,24 +28,10 @@
                 "description": "SOCRadar Platform API Key (used for Botnet, PII Exposure, VIP Protection sources)"
             }
         },
-        "SocradarIdentityApiKey": {
-            "type": "securestring",
-            "defaultValue": "",
-            "metadata": {
-                "description": "SOCRadar Identity Intelligence API Key (pay-per-use, separate from Platform key). Leave empty to disable Identity Intelligence source."
-            }
-        },
         "SocradarCompanyId": {
             "type": "string",
             "metadata": {
                 "description": "SOCRadar Company ID"
-            }
-        },
-        "MonitoredDomains": {
-            "type": "string",
-            "defaultValue": "",
-            "metadata": {
-                "description": "Comma-separated list of domains to monitor in Identity Intelligence (e.g., contoso.com,fabrikam.com). Required if Identity Intelligence source is enabled."
             }
         },
         "EntraIdTenantId": {
@@ -71,13 +57,6 @@
             "defaultValue": "",
             "metadata": {
                 "description": "Entra ID Security Group ID for compromised users (required if EnableAddToGroup=true)"
-            }
-        },
-        "EnableIdentitySource": {
-            "type": "bool",
-            "defaultValue": true,
-            "metadata": {
-                "description": "Enable Identity Intelligence source (requires SocradarIdentityApiKey)"
             }
         },
         "EnableBotnetSource": {
@@ -323,16 +302,8 @@
                             "value": "[parameters('SocradarApiKey')]"
                         },
                         {
-                            "name": "SOCRADAR_IDENTITY_API_KEY",
-                            "value": "[parameters('SocradarIdentityApiKey')]"
-                        },
-                        {
                             "name": "SOCRADAR_COMPANY_ID",
                             "value": "[parameters('SocradarCompanyId')]"
-                        },
-                        {
-                            "name": "MONITORED_DOMAINS",
-                            "value": "[parameters('MonitoredDomains')]"
                         },
                         {
                             "name": "ENTRA_TENANT_ID",
@@ -349,10 +320,6 @@
                         {
                             "name": "SECURITY_GROUP_ID",
                             "value": "[parameters('SecurityGroupId')]"
-                        },
-                        {
-                            "name": "ENABLE_IDENTITY_SOURCE",
-                            "value": "[string(parameters('EnableIdentitySource'))]"
                         },
                         {
                             "name": "ENABLE_BOTNET_SOURCE",

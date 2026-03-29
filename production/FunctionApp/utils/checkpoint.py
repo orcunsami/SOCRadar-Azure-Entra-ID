@@ -1,6 +1,6 @@
 """
 Table Storage checkpoint management.
-Supports Identity (checkpoint_date + offset) and standard sources (date string + page).
+Supports checkpoint_date and standard sources (date string + page).
 
 startDate format: YYYY-MM-DD (date string as expected by SOCRadar API).
 """
