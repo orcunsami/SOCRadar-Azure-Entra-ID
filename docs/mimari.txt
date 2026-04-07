@@ -1,0 +1,510 @@
+================================================================================
+  SOCRadar Entra ID Integration — Sistem Mimarisi
+  Tarih: 2026-04-01
+================================================================================
+
+
+1. GENEL BAKIS
+================================================================================
+
+SOCRadar platformunda tespit edilen sizdirilmis calisanin kimlik bilgilerini
+Microsoft Entra ID uzerinden dogruluyor ve otomatik aksiyonlar aliyor.
+
+  SOCRadar API ──► Azure Function ──► Microsoft Graph API (Entra ID)
+       │                  │                      │
+       │                  ▼                      ▼
+       │          Log Analytics            Aksiyonlar:
+       │          (Custom Tables)          - Session iptal
+       │                │                  - Gruba ekle
+       │                ▼                  - Hesap kapat
+       │          Sentinel Workbooks       - Sifre degistir
+       │                                   - Risky isaretle
+       ▼
+  Alarm Resolve (geri bildirim)
+
+
+2. VERI AKISI (DATA FLOW)
+================================================================================
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  TIMER TRIGGER (her 6 saatte bir, cron: 0 0 */6 * * *)         │
+  │  function_app.py → socradar_entra_id_import()                   │
+  └──────────┬───────────────────────────────────────────────────────┘
+             │
+             ▼
+  ┌──────────────────────────────────────────────┐
+  │  1. CONFIG YUKLE (utils/config.py)           │
+  │     Environment variables → dict             │
+  │     36 app setting okunur                    │
+  └──────────┬───────────────────────────────────┘
+             │
+             ▼
+  ┌──────────────────────────────────────────────┐
+  │  2. GRAPH TOKEN AL (actions/entra_id.py)     │
+  │     MSAL ConfidentialClientApplication       │
+  │     Client Credentials Flow                  │
+  │     Scope: https://graph.microsoft.com       │
+  │     /.default                                │
+  │     Token 1 kez alinir, tum source'larda     │
+  │     paylastirilir                            │
+  └──────────┬───────────────────────────────────┘
+             │
+             ▼
+  ┌──────────────────────────────────────────────┐
+  │  3. CHECKPOINT YUKLE (utils/checkpoint.py)   │
+  │     Azure Table Storage: EntraIDState        │
+  │     PartitionKey=source, RowKey=checkpoint   │
+  │     → last_start_date (YYYY-MM-DD)           │
+  │     Yoksa: now() - INITIAL_LOOKBACK_MINUTES  │
+  └──────────┬───────────────────────────────────┘
+             │
+             ├──────────────────┬──────────────────┐
+             ▼                  ▼                  ▼
+  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐
+  │ BOTNET FETCH   │ │  PII FETCH     │ │  VIP FETCH     │
+  │ sources/       │ │  sources/      │ │  sources/      │
+  │ botnet.py      │ │  pii.py        │ │  vip.py        │
+  │                │ │                │ │                │
+  │ Sirali calisir │ │ Sirali calisir │ │ Default: OFF   │
+  │ (paralel degil)│ │                │ │ (UNVERIFIED)   │
+  └───────┬────────┘ └───────┬────────┘ └───────┬────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+  ┌──────────────────────────────────────────────┐
+  │  4. SAYFA SAYFA VERi CEK (pagination)        │
+  │     page=1, limit=100, startDate=YYYY-MM-DD  │
+  │     Her sayfada:                              │
+  │     - isEmployee filtresi (client-side)       │
+  │     - Password sanitize (utils/sanitize.py)   │
+  │       plaintext → masked (ilk+***+son)       │
+  │       _raw gecici tutulur (ROPC icin)         │
+  │     - 1 sn bekleme (rate limit)              │
+  └──────────┬───────────────────────────────────┘
+             │
+             ▼
+  ┌──────────────────────────────────────────────┐
+  │  5. HER CALISAN ICIN:                        │
+  │                                              │
+  │  a) Entra ID Lookup                          │
+  │     GET /users/{email}                       │
+  │     → found / not_found / skipped            │
+  │                                              │
+  │  b) ROPC Validation (opsiyonel)              │
+  │     POST /oauth2/v2.0/token                  │
+  │     grant_type=password                      │
+  │     → valid / invalid / mfa_blocked          │
+  │                                              │
+  │  c) Remediation Actions (config'e gore)      │
+  │     - revoke_session                         │
+  │     - add_to_group                           │
+  │     - disable_account                        │
+  │     - force_password_change                  │
+  │     - confirm_compromised                    │
+  │                                              │
+  │  d) Sentinel Incident (opsiyonel)            │
+  │     PUT /incidents/{uuid}                    │
+  │     Credential bilgisi ASLA incident'a       │
+  │     yazilmaz                                 │
+  │                                              │
+  │  e) SOCRadar Alarm Resolve (opsiyonel)       │
+  │     POST /alarms/status/change               │
+  │     status=2 (RESOLVED)                      │
+  └──────────┬───────────────────────────────────┘
+             │
+             ▼
+  ┌──────────────────────────────────────────────┐
+  │  6. LAW'A YAZ (actions/law_writer.py)        │
+  │     HTTP Data Collector API                  │
+  │     HMAC-SHA256 imza                         │
+  │     Batch: 100 kayit/istek                   │
+  │     Source records + Audit summary           │
+  └──────────┬───────────────────────────────────┘
+             │
+             ▼
+  ┌──────────────────────────────────────────────┐
+  │  7. CHECKPOINT KAYDET                        │
+  │     last_start_date = bugun                  │
+  │     Sonraki calistirmada buradan devam eder  │
+  └──────────────────────────────────────────────┘
+
+
+3. ENDPOINT HARITASI
+================================================================================
+
+SOCRADAR PLATFORMU (Veri Kaynaklari)
+─────────────────────────────────────
+  Botnet Data v2:
+    GET https://platform.socradar.com/api/company/{id}/dark-web-monitoring/botnet-data/v2
+    Auth: Header "API-Key: {key}"
+    Params: ?page=1&limit=100&startDate=YYYY-MM-DD
+    Response: { data: { data: [...], total_data_count }, is_success }
+    Kullanim: sources/botnet.py
+
+  PII Exposure v2:
+    GET https://platform.socradar.com/api/company/{id}/dark-web-monitoring/pii-exposure/v2
+    Auth: Header "API-Key: {key}"
+    Params: ?page=1&limit=100&startDate=YYYY-MM-DD
+    Response: { data: { data: [...], total_data_count }, is_success }
+    Kullanim: sources/pii.py
+
+  VIP Protection v2:
+    GET https://platform.socradar.com/api/company/{id}/vip-protection/v2
+    Auth: Header "API-Key: {key}"
+    NOT: Endpoint UNVERIFIED, dokumantasyonda yok
+    Kullanim: sources/vip.py
+
+  Alarm Resolve:
+    POST https://platform.socradar.com/api/company/{id}/alarms/status/change
+    Auth: Header "API-Key: {key}"
+    Body: { alarm_ids: [int], status: 2 }
+    Kullanim: actions/socradar.py
+
+MICROSOFT GRAPH API (Entra ID Islemleri)
+─────────────────────────────────────────
+  Token Al (Client Credentials):
+    POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
+    Body: grant_type=client_credentials, scope=https://graph.microsoft.com/.default
+    Kullanim: actions/entra_id.py → get_graph_token()
+
+  Kullanici Ara:
+    GET https://graph.microsoft.com/v1.0/users/{email}
+    Permission: User.Read.All (Application)
+    Kullanim: actions/entra_id.py → lookup_user()
+
+  Session Iptal:
+    POST https://graph.microsoft.com/v1.0/users/{id}/revokeSignInSessions
+    Permission: User.Read.All (Application)
+    Kullanim: actions/entra_id.py → revoke_sessions()
+
+  Gruba Ekle:
+    POST https://graph.microsoft.com/v1.0/groups/{gid}/members/$ref
+    Permission: GroupMember.ReadWrite.All (Application)
+    Kullanim: actions/entra_id.py → add_to_group()
+
+  Hesap Kapat:
+    PATCH https://graph.microsoft.com/v1.0/users/{id}
+    Body: { accountEnabled: false }
+    Permission: User.ReadWrite.All (Application)
+    Kullanim: actions/entra_id.py → disable_account()
+
+  Sifre Degistir:
+    PATCH https://graph.microsoft.com/v1.0/users/{id}
+    Body: { passwordProfile: { forceChangePasswordNextSignIn: true } }
+    Permission: User.ReadWrite.All (Application)
+    Kullanim: actions/entra_id.py → force_password_change()
+
+  Risky Isaretle:
+    POST https://graph.microsoft.com/beta/riskyUsers/confirmCompromised
+    Body: { userIds: [id] }
+    Permission: IdentityRiskyUser.ReadWrite.All (Application)
+    NOT: Beta API, P1/P2 lisans gerekli
+    Kullanim: actions/entra_id.py → confirm_compromised()
+
+  ROPC Validation:
+    POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
+    Body: grant_type=password, username={email}, password={pw}
+    NOT: MFA'li hesaplarda calismaz, Microsoft onerilmiyor
+    Kullanim: actions/entra_id.py → validate_password_ropc()
+
+MICROSOFT SENTINEL (Incident Olusturma)
+────────────────────────────────────────
+  Management Token:
+    POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
+    scope=https://management.azure.com/.default
+    Kullanim: actions/sentinel.py → _get_mgmt_token()
+
+  Incident Olustur:
+    PUT https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}
+        /providers/Microsoft.OperationalInsights/workspaces/{ws}
+        /providers/Microsoft.SecurityInsights/incidents/{uuid}
+        ?api-version=2024-03-01
+    NOT: Credential bilgisi ASLA incident icinde yer almaz
+    Kullanim: actions/sentinel.py → create_incident()
+
+LOG ANALYTICS WORKSPACE (Veri Yazma)
+─────────────────────────────────────
+  HTTP Data Collector API:
+    POST https://{workspace_id}.ods.opinsights.azure.com/api/logs
+         ?api-version=2016-04-01
+    Auth: HMAC-SHA256 imza (SharedKey {id}:{hash})
+    Headers: Log-Type={table_name}, x-ms-date={rfc1123}
+    Batch: max 100 kayit/istek
+    Kullanim: actions/law_writer.py
+
+AZURE TABLE STORAGE (Checkpoint)
+─────────────────────────────────
+  Endpoint: https://{account}.table.core.windows.net
+  Table: EntraIDState
+  Auth: Managed Identity (DefaultAzureCredential)
+  Entity: PartitionKey=source, RowKey=checkpoint
+  Kullanim: utils/checkpoint.py
+
+
+4. AZURE KAYNAKLARI (ARM Template)
+================================================================================
+
+  azuredeploy.json 7 kaynak olusturur:
+
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Resource Group: test-socradar-deployments                  │
+  │                                                             │
+  │  ┌─────────────────────┐  ┌──────────────────────────────┐ │
+  │  │ Storage Account     │  │ Managed Identity             │ │
+  │  │ srentraidyyqon...   │  │ (Table Storage auth icin)    │ │
+  │  │ - EntraIDState tbl  │  │                              │ │
+  │  └─────────────────────┘  └──────────────────────────────┘ │
+  │                                                             │
+  │  ┌─────────────────────┐  ┌──────────────────────────────┐ │
+  │  │ App Service Plan    │  │ Application Insights         │ │
+  │  │ (Consumption/Y1)    │  │ socradar-entraid-ai-...      │ │
+  │  │ Linux, Python 3.11  │  │ Telemetri + loglar           │ │
+  │  └─────────────────────┘  └──────────────────────────────┘ │
+  │                                                             │
+  │  ┌────────────────────────────────────────────────────────┐ │
+  │  │ Function App: socradar-entraid-yyqon2cmnnf5w          │ │
+  │  │ Runtime: Python 3.11 | Timer: 0 0 */6 * * *          │ │
+  │  │ 36 App Settings (API keys, toggles, schedule)         │ │
+  │  │ WEBSITE_RUN_FROM_PACKAGE → GitHub release zip         │ │
+  │  └────────────────────────────────────────────────────────┘ │
+  │                                                             │
+  │  ┌─────────────────────┐  ┌──────────────────────────────┐ │
+  │  │ Role Assignment 1   │  │ Role Assignment 2            │ │
+  │  │ Storage Table Data  │  │ Website Contributor          │ │
+  │  │ Contributor         │  │ (deploymentScript icin)      │ │
+  │  └─────────────────────┘  └──────────────────────────────┘ │
+  └─────────────────────────────────────────────────────────────┘
+
+  Ayri kaynak (olusturulmaz, mevcut olmali):
+  ┌─────────────────────────────────────────────────────────────┐
+  │ Log Analytics Workspace: entraid-test-ws                    │
+  │ Custom Tables:                                              │
+  │   SOCRadar_Botnet_CL    — Botnet verileri                  │
+  │   SOCRadar_PII_CL       — PII verileri                     │
+  │   SOCRadar_VIP_CL       — VIP verileri                     │
+  │   SOCRadar_EntraID_Audit_CL — Calistirma ozeti             │
+  │                                                             │
+  │ Sentinel Workbooks (4 adet):                                │
+  │   - Botnet Dashboard                                        │
+  │   - PII Exposure Dashboard                                  │
+  │   - VIP Protection Dashboard                                │
+  │   - Combined Dashboard                                      │
+  └─────────────────────────────────────────────────────────────┘
+
+
+5. DOSYA YAPISI
+================================================================================
+
+  entra-id/
+  ├── production/
+  │   ├── azuredeploy.json              ARM template (7 kaynak)
+  │   ├── README.md                     Deployment dokumantasyonu
+  │   ├── .env.example                  56 environment variable
+  │   ├── FunctionApp/
+  │   │   ├── function_app.py           Ana orkestrator (253 satir)
+  │   │   │                             Timer trigger, source loop, audit
+  │   │   ├── host.json                 Runtime config (10dk timeout)
+  │   │   ├── requirements.txt          Python bagimliliklari
+  │   │   ├── sources/
+  │   │   │   ├── botnet.py             Botnet v2 fetcher (135 satir)
+  │   │   │   ├── pii.py                PII v2 fetcher (132 satir)
+  │   │   │   └── vip.py                VIP v2 fetcher (119 satir)
+  │   │   ├── actions/
+  │   │   │   ├── entra_id.py           Graph API islemleri (186 satir)
+  │   │   │   │                         Token, lookup, revoke, group,
+  │   │   │   │                         disable, password, risky, ROPC
+  │   │   │   ├── law_writer.py         LAW HTTP Data Collector (120 satir)
+  │   │   │   │                         HMAC imza, batch write, audit
+  │   │   │   ├── sentinel.py           Sentinel incident (106 satir)
+  │   │   │   └── socradar.py           Alarm resolve (50 satir)
+  │   │   └── utils/
+  │   │       ├── config.py             Env var loader (79 satir)
+  │   │       ├── checkpoint.py         Table Storage state (72 satir)
+  │   │       ├── sanitize.py           Password masking (63 satir)
+  │   │       └── logger.py             Structured log + redaction (80 satir)
+  │   └── Workbooks/
+  │       ├── SOCRadar-EntraID-Botnet-Workbook.json
+  │       ├── SOCRadar-EntraID-PII-Workbook.json
+  │       ├── SOCRadar-EntraID-VIP-Workbook.json
+  │       └── SOCRadar-EntraID-Combined-Workbook.json
+  ├── scripts/
+  │   ├── deploy.sh                     Full deployment (ARM + workbooks)
+  │   ├── deploy.config.example         Config template
+  │   ├── deploy_workbooks.sh           Workbook deployment
+  │   ├── validate.sh                   8-adim dogrulama
+  │   ├── e2e_test.py                   9 kategori E2E test (900+ satir)
+  │   ├── e2e_test.sh                   Test runner wrapper
+  │   └── reset.sh                      Kaynak temizleme
+  ├── tests/                            Birim API testleri
+  └── docs/                             Dokumantasyon
+
+
+6. AUTH YONTEMLERI OZETI
+================================================================================
+
+  ┌─────────────────┬──────────────────────┬──────────────────────────┐
+  │ Hedef            │ Yontem               │ Credential               │
+  ├─────────────────┼──────────────────────┼──────────────────────────┤
+  │ SOCRadar API    │ Header API-Key       │ SOCRADAR_API_KEY          │
+  │ Graph API       │ MSAL Client Creds    │ Tenant+Client+Secret      │
+  │ Table Storage   │ Managed Identity     │ DefaultAzureCredential    │
+  │ LAW Write       │ HMAC-SHA256 SharedKey│ WORKSPACE_ID + KEY        │
+  │ Sentinel Mgmt   │ MSAL Client Creds    │ Tenant+Client+Secret      │
+  │ ROPC (opsiyonel)│ Password Grant       │ Username + Password       │
+  └─────────────────┴──────────────────────┴──────────────────────────┘
+
+
+7. PASSWORD MASKELEME DETAYI
+================================================================================
+
+  SOCRadar API'den gelen veri:
+  ┌──────────────┬─────────────────────────────────────────────────┐
+  │ Kaynak       │ Sifre Durumu                                    │
+  ├──────────────┼─────────────────────────────────────────────────┤
+  │ Botnet v2    │ %99.7 plaintext, %0.3 onceden masked            │
+  │ PII v2       │ %98 plaintext, %2 masked (breach'e gore degisir)│
+  │ VIP v2       │ Veri yok (0 kayit)                              │
+  └──────────────┴─────────────────────────────────────────────────┘
+
+  sanitize_password() islem sirasi (utils/sanitize.py):
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ 1. API'den "MySecret123!" gelir                                │
+  │ 2. is_masked kontrol: regex /\*{2,}/ ile masked mi?            │
+  │    → "MySecret123!" icinde ** yok → is_plaintext=true           │
+  │ 3. Maskeleme: ilk + *** + son → "M***!"                        │
+  │ 4. _raw gecici saklanir (sadece ROPC icin)                     │
+  │ 5. Return: {present:true, masked:"M***!", is_plaintext:true,    │
+  │             _raw:"MySecret123!"}                                │
+  └─────────────────────────────────────────────────────────────────┘
+
+  LAW'a yazilan alanlar (law_writer.py → _clean_record):
+  ┌──────────────────────┬────────────────────────────────────────┐
+  │ Alan                 │ Deger                                   │
+  ├──────────────────────┼────────────────────────────────────────┤
+  │ password_present_b   │ true                                    │
+  │ password_masked_s    │ "M***!"                                 │
+  │ is_plaintext_b       │ true                                    │
+  │ password_s           │ YAZILMAZ (EnableLogPlaintext=false)     │
+  └──────────────────────┴────────────────────────────────────────┘
+
+  EnableLogPlaintextPassword=true ise (musteri karari):
+  ┌──────────────────────┬────────────────────────────────────────┐
+  │ password_s           │ "MySecret123!" (plaintext)              │
+  └──────────────────────┴────────────────────────────────────────┘
+
+  DOGRULAMA (canli veriden, 2026-04-02):
+  - 1,468 botnet kaydinin tamami: password_present=true
+  - 1,464 plaintext, 4 masked
+  - password_s alani LAW'da MEVCUT DEGIL → plaintext yazilmiyor
+  - password_masked_s ornekleri: "K***!", "F***5", "M***?"
+
+
+8. GUVENLIK KURALLARI
+================================================================================
+
+  - Plaintext sifre ASLA loglanmaz (default)
+    → sanitize_password() her kayitta cagirilir
+    → _raw sadece ROPC icin gecici tutulur, hemen silinir
+    → LAW'a password_masked ve password_present yazilir
+    → EnableLogPlaintextPassword=true ise musteri karari
+
+  - Sentinel incident'a credential bilgisi ASLA yazilmaz
+    → sentinel.py sadece email + source + severity yazar
+
+  - Logger her log satirinda password/token/credential redact eder
+    → regex: (password|token|credential)\s*[=:]\s*\S+ → ***REDACTED***
+
+  - .env dosyalari ASLA commit edilmez (.gitignore)
+
+  - Graph API permission'lari minimum yetki prensibi:
+    → Sadece aktif toggle'lara karsilik gelen permission gerekli
+    → User.Read.All her zaman zorunlu (lookup icin)
+
+
+9. CODE DEPLOYMENT (GLIBC SORUNU VE COZUMU)
+================================================================================
+
+  SORUN:
+    Azure Functions Python 3.11 → Debian 11 Bullseye → glibc 2.31
+    cryptography >=44.0.0 → manylinux_2_34 wheel → glibc 2.33 gerektirir
+    Oryx remote build veya lokal build yanlis wheel secerse:
+    ImportError: GLIBC_2.33 not found → 0 functions loaded → 503
+
+  COZUM (uygulandi):
+    pip install --platform manylinux2014_x86_64 \
+                --only-binary=:all: \
+                --implementation cp \
+                --python-version 3.11 \
+                -r requirements.txt
+    → manylinux_2_17 wheel indirilir (glibc 2.17 — her yerde calisir)
+    → Zip'e .python_packages/lib/site-packages/ ile paketlenir
+    → Blob storage'a yuklenir
+    → WEBSITE_RUN_FROM_PACKAGE=<blob_sas_url> set edilir
+    → Build atlanir, direkt mount edilir
+
+  ALTERNATIF COZUMLER:
+    1. cryptography>=43.0.0,<44.0.0 pin (kisa vadeli)
+    2. Python 3.12'ye upgrade (Bookworm, glibc 2.36 — kalici cozum)
+    3. azure-identity yerine lightweight REST MI shim (0 native dep)
+
+
+10. MEVCUT DEPLOYMENT DURUMU (2026-04-02)
+================================================================================
+
+  Tenant:         SOCRadarCyberIntelligenceIn.onmicrosoft.com
+  Subscription:   d0ecc63f-6d3a-4c3e-9f76-729831df6c4f
+  Resource Group: test-socradar-deployments
+  Location:       North Europe
+
+  Function App:   socradar-entraid-yyqon2cmnnf5w
+    State:        Running
+    Runtime:      Python 3.11
+    Functions:    1 (socradar_entra_id_import)
+    Schedule:     0 0 */6 * * * (her 6 saatte)
+    Lookback:     216000 min (~5 ay)
+    Deploy:       Blob storage zip (manylinux2014 wheels)
+
+  Storage:        srentraidyyqon2cmnnf5w
+  App Insights:   socradar-entraid-ai-yyqon2cmnnf5w
+  LAW:            entraid-test-ws (63e44043-7306-4044-9867-73095ef93cba)
+
+  App Registration: SOCRadar-EntraID-Integration-Test
+    Client ID:    b0afca82-a991-4fea-ad87-94ec348b2e68
+    Permissions:  User.Read.All, User.ReadWrite.All,
+                  GroupMember.ReadWrite.All, IdentityRiskyUser.ReadWrite.All
+    Admin Consent: VERILMEDI
+                   orcun hesabi Subscription Owner ama Entra ID admin degil
+                   Sadece burak goger Global Admin — consent verebilir
+
+  Workbooks:      4/4 deployed
+    - SOCRadar Entra ID — Botnet Data
+    - SOCRadar Entra ID — PII Exposure
+    - SOCRadar Entra ID — VIP Protection
+    - SOCRadar Entra ID — Combined Dashboard
+
+  LAW Veri Durumu (ilk calistirma sonrasi):
+    SOCRadar_Botnet_CL:        1,468 kayit (employee'ler)
+    SOCRadar_PII_CL:           henuz olusturulmadi (botnet 2099 sayfa,
+                               10dk timeout'a takilmis olabilir,
+                               sonraki run'da checkpoint'ten devam edecek)
+    SOCRadar_VIP_CL:           0 (veri yok)
+    SOCRadar_EntraID_Audit_CL: 17 kayit
+    SOCRadar_E2ETest_CL:       1 kayit (e2e_test.py'den)
+
+  Tum kayitlarda entra_status = "skipped_no_token"
+  → Admin consent verilince "found" veya "not_found" olacak
+
+  Action Toggle'lar (hepsi OFF — guvenli mod):
+    EnableRevokeSession     = false
+    EnableAddToGroup        = false
+    EnablePasswordChange    = false
+    EnableDisableAccount    = false
+    EnableConfirmRisky      = false
+    EnableROPC              = false
+    EnableCreateIncident    = false
+    EnableResolveAlarm      = false
+    EnableLogPlaintext      = false
+
+
+================================================================================
+  EOF
+================================================================================

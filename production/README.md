@@ -76,8 +76,10 @@ For ROPC password validation (`EnableROPC=true`): enable **Allow public client f
 |-----------|---------|-------------|
 | `EnableRevokeSession` | `true` | Revoke all sign-in sessions |
 | `EnableAddToGroup` | `true` | Add user to a security group |
-| `SecurityGroupId` | `""` | Security group object ID (required if `EnableAddToGroup=true`) |
+| `EnableRemoveFromGroup` | `false` | Remove user from security group (reverse of AddToGroup) |
+| `SecurityGroupId` | `""` | Security group object ID (required if `EnableAddToGroup` or `EnableRemoveFromGroup`) |
 | `EnableDisableAccount` | `false` | Disable the account |
+| `EnableEnableAccount` | `false` | Re-enable a previously disabled account |
 | `EnablePasswordChange` | `false` | Force password change on next sign-in |
 | `EnableConfirmRisky` | `false` | Mark user as confirmed compromised in Identity Protection |
 | `EnableCreateIncident` | `false` | Create Microsoft Sentinel incident |
@@ -106,15 +108,56 @@ For ROPC password validation (`EnableROPC=true`): enable **Allow public client f
 
 ## Workbooks
 
-Five workbooks are included in `Workbooks/`:
+Four workbooks are included in `Workbooks/`:
 
 - `SOCRadar-EntraID-Botnet-Workbook.json`
 - `SOCRadar-EntraID-PII-Workbook.json`
-- `SOCRadar-EntraID-Identity-Workbook.json`
 - `SOCRadar-EntraID-VIP-Workbook.json` ⚠️ UNVERIFIED
 - `SOCRadar-EntraID-Combined-Workbook.json`
 
 Import via Azure Portal → Microsoft Sentinel → Workbooks → Add workbook → Edit → Advanced editor.
+
+Or deploy all at once via CLI:
+
+```bash
+cd scripts
+bash deploy_workbooks.sh
+```
+
+## Scripts
+
+Deployment and testing scripts are in `scripts/`:
+
+| Script | Description |
+|--------|-------------|
+| `deploy.sh` | Full ARM deployment + workbooks + role propagation wait |
+| `deploy.config.example` | Configuration template (copy to `deploy.config` and fill in) |
+| `deploy_workbooks.sh` | Deploy/update Sentinel workbooks only |
+| `validate.sh` | Post-deployment health check (8-point validation) |
+| `e2e_test.py` | Comprehensive E2E test suite (9 test categories) |
+| `e2e_test.sh` | Test runner wrapper (full/dry-run/unit/quick modes) |
+| `reset.sh` | Delete all deployed resources (with confirmation) |
+
+### Quick Start
+
+```bash
+cd scripts
+
+# 1. Configure
+cp deploy.config.example deploy.config
+# Edit deploy.config with your credentials
+
+# 2. Deploy (5-month lookback by default)
+bash deploy.sh
+
+# 3. Validate
+bash validate.sh
+
+# 4. Test
+python3 e2e_test.py --dry-run          # connectivity only
+python3 e2e_test.py                     # full E2E with writes
+python3 e2e_test.py --source botnet     # single source
+```
 
 ## Notes
 

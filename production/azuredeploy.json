@@ -94,6 +94,13 @@
                 "description": "Add compromised users to security group (requires SecurityGroupId)"
             }
         },
+        "EnableRemoveFromGroup": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Remove users from security group when credential is no longer valid (reverse of AddToGroup)"
+            }
+        },
         "EnablePasswordChange": {
             "type": "bool",
             "defaultValue": false,
@@ -106,6 +113,13 @@
             "defaultValue": false,
             "metadata": {
                 "description": "Disable compromised user accounts (use with caution)"
+            }
+        },
+        "EnableEnableAccount": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Re-enable previously disabled accounts when credential is confirmed changed"
             }
         },
         "EnableConfirmRisky": {
@@ -154,11 +168,18 @@
         },
         "InitialLookbackMinutes": {
             "type": "int",
-            "defaultValue": 600,
+            "defaultValue": 43200,
             "minValue": 0,
-            "maxValue": 43200,
+            "maxValue": 525600,
             "metadata": {
-                "description": "Minutes of history to fetch on first run (600 = 10 hours). Uses epoch time internally."
+                "description": "Fallback: minutes of history to fetch on first run if InitialStartDate is empty. Default 43200 = 30 days."
+            }
+        },
+        "InitialStartDate": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Start date for first run (YYYY-MM-DD, e.g. 2025-06-15). Takes priority over InitialLookbackMinutes. Leave empty to use lookback."
             }
         },
         "WorkspaceResourceGroup": {
@@ -349,12 +370,20 @@
                             "value": "[string(parameters('EnableAddToGroup'))]"
                         },
                         {
+                            "name": "ENABLE_REMOVE_FROM_GROUP",
+                            "value": "[string(parameters('EnableRemoveFromGroup'))]"
+                        },
+                        {
                             "name": "ENABLE_PASSWORD_CHANGE",
                             "value": "[string(parameters('EnablePasswordChange'))]"
                         },
                         {
                             "name": "ENABLE_DISABLE_ACCOUNT",
                             "value": "[string(parameters('EnableDisableAccount'))]"
+                        },
+                        {
+                            "name": "ENABLE_ENABLE_ACCOUNT",
+                            "value": "[string(parameters('EnableEnableAccount'))]"
                         },
                         {
                             "name": "ENABLE_CONFIRM_RISKY",
@@ -379,6 +408,10 @@
                         {
                             "name": "INITIAL_LOOKBACK_MINUTES",
                             "value": "[string(parameters('InitialLookbackMinutes'))]"
+                        },
+                        {
+                            "name": "INITIAL_START_DATE",
+                            "value": "[parameters('InitialStartDate')]"
                         },
                         {
                             "name": "WORKSPACE_ID",

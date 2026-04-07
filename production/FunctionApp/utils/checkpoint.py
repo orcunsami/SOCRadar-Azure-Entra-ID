@@ -56,16 +56,20 @@ def save(storage_account_name: str, credential, source: str, data: dict):
     logger.info("[CHECKPOINT] Saved for source=%s: %s", source, data)
 
 
-def get_start_date(checkpoint: dict, initial_lookback_minutes: int) -> str:
+def get_start_date(checkpoint: dict, initial_lookback_minutes: int, initial_start_date: str = "") -> str:
     """
     Return the startDate string (YYYY-MM-DD) for a fetch cycle.
 
     SOCRadar API expects date string format, not epoch time.
 
-    If checkpoint has last_start_date, use that.
-    Otherwise calculate: today - initial_lookback_minutes (rounded to day boundary).
+    Priority:
+      1. Existing checkpoint last_start_date (resume from where we left off)
+      2. InitialStartDate parameter (customer-specified date, e.g. "2025-06-15")
+      3. Calculated from InitialLookbackMinutes (now - N minutes)
     """
     if checkpoint.get("last_start_date"):
         return str(checkpoint["last_start_date"])
+    if initial_start_date:
+        return str(initial_start_date)
     lookback_dt = datetime.now(timezone.utc) - timedelta(minutes=initial_lookback_minutes)
     return lookback_dt.strftime("%Y-%m-%d")

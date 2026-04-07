@@ -125,6 +125,8 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
 
     found = not_found = actions = errors = 0
     records = []
+    graph_disabled = graph_headers is None
+    consecutive_403 = 0
 
     # Extract checkpoint before the loop — it sits on the last record and
     # will be popped from emp before appending to LAW records below.
@@ -136,8 +138,8 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
             if not email:
                 continue
 
-            # User lookup in Entra ID (skipped if Graph token unavailable)
-            if graph_headers is None:
+            # User lookup in Entra ID (skipped if Graph token unavailable or permissions missing)
+            if graph_disabled:
                 emp["entra_status"] = "skipped_no_token"
                 emp["actions_taken"] = []
                 emp.pop("_checkpoint_update", None)
@@ -145,6 +147,22 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
                 continue
 
             user_info = entra.lookup_user(email, graph_headers)
+
+            # Detect permission denied — stop wasting API calls
+            if user_info is None and hasattr(entra, '_last_status') and entra._last_status == 403:
+                consecutive_403 += 1
+                if consecutive_403 >= 3:
+                    logger.warning("[%s] 3 consecutive 403s — disabling Graph lookups for this run (admin consent needed)",
+                                   source_name.upper())
+                    graph_disabled = True
+                    emp["entra_status"] = "skipped_no_permission"
+                    emp["actions_taken"] = []
+                    emp.pop("_checkpoint_update", None)
+                    records.append(emp)
+                    continue
+            else:
+                consecutive_403 = 0
+
             if user_info is None:
                 not_found += 1
                 emp["entra_status"] = "not_found"
@@ -193,9 +211,19 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
                 taken.append("add_to_group" if ok else "add_to_group_failed")
                 actions += 1
 
+            if conf["enable_remove_from_group"] and conf["security_group_id"]:
+                ok = entra.remove_from_group(user_id, conf["security_group_id"], graph_headers)
+                taken.append("remove_from_group" if ok else "remove_from_group_failed")
+                actions += 1
+
             if conf["enable_disable_account"]:
                 ok = entra.disable_account(user_id, graph_headers)
                 taken.append("disable_account" if ok else "disable_account_failed")
+                actions += 1
+
+            if conf["enable_enable_account"]:
+                ok = entra.enable_account(user_id, graph_headers)
+                taken.append("enable_account" if ok else "enable_account_failed")
                 actions += 1
 
             if conf["enable_password_change"]:
@@ -231,9 +259,10 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
             logger.error("[%s] Error processing %s: %s", source_name.upper(), emp.get("email", "?"), e)
             errors += 1
 
-    # Write source records to LAW
-    if records:
-        law.write_records(conf, source_name, records)
+    # Write source records to LAW (skip empty marker records)
+    real_records = [r for r in records if not r.get("_empty_marker")]
+    if real_records:
+        law.write_records(conf, source_name, real_records)
 
     # Update checkpoint (extracted before the loop above)
     if new_checkpoint:

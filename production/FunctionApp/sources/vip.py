@@ -16,6 +16,7 @@ logger = get_logger("vip")
 
 BASE_URL = "https://platform.socradar.com/api/company/{company_id}/vip-protection/v2"
 PAGE_SIZE = 100
+MAX_PAGES_PER_RUN = 50
 
 
 def fetch(conf: dict, checkpoint: dict) -> list:
@@ -23,24 +24,28 @@ def fetch(conf: dict, checkpoint: dict) -> list:
     Fetch VIP Protection v2 records.
     WARNING: This endpoint is UNVERIFIED — not in official API docs.
     Verified working in live tests (2026-03-26) but may change without notice.
+    Respects MAX_PAGES_PER_RUN to avoid function timeout.
     """
     api_key = conf["socradar_api_key"]
     company_id = conf["socradar_company_id"]
     initial_lookback = conf.get("initial_lookback_minutes", 600)
+    initial_start_date = conf.get("initial_start_date", "")
 
     url = BASE_URL.format(company_id=company_id)
     headers = {"API-Key": api_key, "Content-Type": "application/json"}
 
-    start_date = get_start_date(checkpoint, initial_lookback)
-    logger.info("[VIP] Starting fetch. start_date=%s, page=1", start_date)
+    start_date = get_start_date(checkpoint, initial_lookback, initial_start_date)
+    resume_page = checkpoint.get("last_page", 0)
+    logger.info("[VIP] Starting fetch. start_date=%s, page=%d", start_date, resume_page + 1)
     logger.warning("VIP endpoint is UNVERIFIED — not in official API documentation")
 
     all_records = []
-    page = 1
+    page = resume_page + 1 if resume_page else 1
     total_pages = 1
     total_data_count = None
+    pages_this_run = 0
 
-    while page <= total_pages:
+    while page <= total_pages and pages_this_run < MAX_PAGES_PER_RUN:
         params = {
             "page": page,
             "limit": PAGE_SIZE,
@@ -103,16 +108,27 @@ def fetch(conf: dict, checkpoint: dict) -> list:
         if not records_raw:
             break
 
+        pages_this_run += 1
         page += 1
         time.sleep(1)
 
     logger.fetch_done(total=total_data_count or 0, employees=len(all_records))
 
+    finished_all = page > total_pages
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    checkpoint_update = {
+        "last_start_date": today_str if finished_all else start_date,
+        "last_page": 0 if finished_all else page - 1,
+    }
+
+    if not finished_all:
+        logger.info("[VIP] Paused at page %d/%d (limit %d/run). Will resume next run.",
+                     page - 1, total_pages, MAX_PAGES_PER_RUN)
+
     if all_records:
-        all_records[-1]["_checkpoint_update"] = {
-            "last_start_date": today_str,
-            "last_page": 0,
-        }
+        all_records[-1]["_checkpoint_update"] = checkpoint_update
+    else:
+        all_records.append({"_checkpoint_update": checkpoint_update, "_empty_marker": True})
 
     return all_records

@@ -1,0 +1,51 @@
+# =============================================================================
+# SOCRadar Entra ID Integration — Deployment Configuration
+# Copy to deploy.config and fill in values
+# =============================================================================
+
+# Azure Resource Group & Location
+RESOURCE_GROUP=rg-socradar-entraid
+LOCATION=northeurope
+
+# Log Analytics / Sentinel Workspace
+WORKSPACE_NAME=your-sentinel-workspace
+WORKSPACE_LOCATION=northeurope
+WORKSPACE_RESOURCE_GROUP=          # leave empty if same RG as deployment
+
+# SOCRadar Platform API
+SOCRADAR_API_KEY=your-platform-api-key
+SOCRADAR_COMPANY_ID=330
+
+# Entra ID App Registration
+# Required permissions: User.Read.All, GroupMember.ReadWrite.All
+# Optional: IdentityRiskyUser.ReadWrite.All (for ENABLE_CONFIRM_RISKY)
+ENTRA_TENANT_ID=your-tenant-id
+ENTRA_CLIENT_ID=your-client-id
+ENTRA_CLIENT_SECRET=your-client-secret
+
+# Entra ID Security Group (quarantine group for compromised users)
+SECURITY_GROUP_ID=
+
+# Source toggles
+ENABLE_BOTNET=true
+ENABLE_PII=true
+ENABLE_VIP=false                   # UNVERIFIED endpoint
+
+# Action toggles
+ENABLE_REVOKE_SESSION=true
+ENABLE_ADD_TO_GROUP=true
+ENABLE_PASSWORD_CHANGE=false
+ENABLE_DISABLE_ACCOUNT=false
+ENABLE_CONFIRM_RISKY=false         # requires P1/P2
+ENABLE_ROPC=false                  # Microsoft discourages this
+ENABLE_CREATE_INCIDENT=false
+ENABLE_RESOLVE_ALARM=false
+
+# Password logging (false = only masked/present fields stored)
+ENABLE_LOG_PLAINTEXT=false
+
+# Schedule
+POLLING_INTERVAL_HOURS=6
+
+# Lookback: 216000 min = ~150 days = ~5 months
+INITIAL_LOOKBACK_MINUTES=216000

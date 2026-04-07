@@ -30,14 +30,20 @@ def get_graph_token(tenant_id: str, client_id: str, client_secret: str) -> str:
     return result["access_token"]
 
 
+_last_status = 0  # Track last HTTP status for permission detection
+
+
 def lookup_user(email: str, graph_headers: dict) -> dict | None:
     """
     Look up a user in Entra ID by email (UPN).
     Returns user dict or None if not found.
+    Sets _last_status for caller to detect 403 (permission denied).
     """
+    global _last_status
     url = f"{GRAPH_BASE}/users/{email}"
     try:
         resp = requests.get(url, headers=graph_headers, timeout=15)
+        _last_status = resp.status_code
         if resp.status_code == 200:
             logger.debug("[ENTRA] lookup %s → found", email)
             return resp.json()
@@ -48,6 +54,7 @@ def lookup_user(email: str, graph_headers: dict) -> dict | None:
         return None
     except requests.RequestException as e:
         logger.error("[ENTRA] lookup %s → error: %s", email, e)
+        _last_status = 0
         return None
 
 
@@ -84,6 +91,24 @@ def add_to_group(user_id: str, group_id: str, graph_headers: dict) -> bool:
         return False
 
 
+def remove_from_group(user_id: str, group_id: str, graph_headers: dict) -> bool:
+    """Remove user from a security group."""
+    url = f"{GRAPH_BASE}/groups/{group_id}/members/{user_id}/$ref"
+    try:
+        resp = requests.delete(url, headers=graph_headers, timeout=15)
+        if resp.status_code == 204:
+            logger.info("[ENTRA] removeFromGroup %s → ok", user_id[:8])
+            return True
+        if resp.status_code == 404:
+            logger.info("[ENTRA] removeFromGroup %s → not a member", user_id[:8])
+            return True
+        logger.warning("[ENTRA] removeFromGroup %s → HTTP %d: %s", user_id[:8], resp.status_code, resp.text[:100])
+        return False
+    except requests.RequestException as e:
+        logger.error("[ENTRA] removeFromGroup %s → error: %s", user_id[:8], e)
+        return False
+
+
 def disable_account(user_id: str, graph_headers: dict) -> bool:
     """Disable user account (accountEnabled=false)."""
     url = f"{GRAPH_BASE}/users/{user_id}"
@@ -95,6 +120,20 @@ def disable_account(user_id: str, graph_headers: dict) -> bool:
         return ok
     except requests.RequestException as e:
         logger.error("[ENTRA] disableAccount %s → error: %s", user_id[:8], e)
+        return False
+
+
+def enable_account(user_id: str, graph_headers: dict) -> bool:
+    """Re-enable a previously disabled user account."""
+    url = f"{GRAPH_BASE}/users/{user_id}"
+    body = {"accountEnabled": True}
+    try:
+        resp = requests.patch(url, headers=graph_headers, json=body, timeout=15)
+        ok = resp.status_code == 204
+        logger.info("[ENTRA] enableAccount %s → %s", user_id[:8], "ok" if ok else f"HTTP {resp.status_code}")
+        return ok
+    except requests.RequestException as e:
+        logger.error("[ENTRA] enableAccount %s → error: %s", user_id[:8], e)
         return False
 
 

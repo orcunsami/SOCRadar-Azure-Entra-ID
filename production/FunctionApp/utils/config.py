@@ -50,8 +50,10 @@ def load() -> dict:
         "enable_ropc":              _bool("ENABLE_ROPC", False),
         "enable_revoke_session":    _bool("ENABLE_REVOKE_SESSION", True),
         "enable_add_to_group":      _bool("ENABLE_ADD_TO_GROUP", True),
+        "enable_remove_from_group": _bool("ENABLE_REMOVE_FROM_GROUP", False),
         "enable_password_change":   _bool("ENABLE_PASSWORD_CHANGE", False),
         "enable_disable_account":   _bool("ENABLE_DISABLE_ACCOUNT", False),
+        "enable_enable_account":    _bool("ENABLE_ENABLE_ACCOUNT", False),
         "enable_confirm_risky":     _bool("ENABLE_CONFIRM_RISKY", False),
         "enable_create_incident":   _bool("ENABLE_CREATE_INCIDENT", False),
         "enable_resolve_alarm":     _bool("ENABLE_RESOLVE_ALARM", False),
@@ -74,5 +76,6 @@ def load() -> dict:
         "storage_account_name": _get("STORAGE_ACCOUNT_NAME", required=True),
 
         # Schedule
-        "initial_lookback_minutes": _int("INITIAL_LOOKBACK_MINUTES", 600),
+        "initial_lookback_minutes": _int("INITIAL_LOOKBACK_MINUTES", 43200),
+        "initial_start_date": _get("INITIAL_START_DATE", default=""),
     }

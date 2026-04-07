@@ -6,6 +6,10 @@
 # Test results — may contain real credentials
 tests/results/
 tests/.env
+scripts/results/
+scripts/deploy.config
+scripts/test.env
+scripts/test_env.config
 
 # Python
 __pycache__/
