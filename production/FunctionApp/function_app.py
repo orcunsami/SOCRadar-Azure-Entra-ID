@@ -246,7 +246,8 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
                     api_key=conf["socradar_api_key"],
                     company_id=conf["socradar_company_id"],
                     alarm_id=alarm_id,
-                    comment=f"User {email} found in Entra ID — auto-resolved by SOCRadar Entra ID Integration"
+                    comment=f"User {email} found in Entra ID — auto-resolved by SOCRadar Entra ID Integration",
+                    base_url=conf.get("socradar_base_url", "https://platform.socradar.com")
                 )
                 taken.append("resolve_alarm" if ok else "resolve_alarm_failed")
                 actions += 1

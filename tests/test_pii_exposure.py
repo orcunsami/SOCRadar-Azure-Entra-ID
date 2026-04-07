@@ -23,7 +23,7 @@ if env_path.exists():
 
 API_KEY = os.environ.get("SOCRADAR_API_KEY", "")
 COMPANY_ID = os.environ.get("SOCRADAR_COMPANY_ID", "330")
-BASE_URL = "https://platform.socradar.com/api"
+BASE_URL = os.environ.get("SOCRADAR_BASE_URL", "https://platform.socradar.com") + "/api"
 
 if not API_KEY:
     print("ERROR: SOCRADAR_API_KEY not set")

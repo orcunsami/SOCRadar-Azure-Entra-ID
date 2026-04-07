@@ -11,7 +11,7 @@ echo "========================================"
 PASS=0
 FAIL=0
 
-for test in test_botnet_data.py test_pii_exposure.py test_vip_protection.py test_identity_intelligence.py; do
+for test in test_botnet_data.py test_pii_exposure.py test_vip_protection.py test_alarm_resolve.py test_identity_intelligence.py; do
     echo ""
     echo "--- Running $test ---"
     if python3 "$test"; then

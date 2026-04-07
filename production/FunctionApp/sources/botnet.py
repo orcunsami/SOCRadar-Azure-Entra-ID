@@ -16,7 +16,7 @@ from utils.checkpoint import get_start_date
 
 logger = get_logger("botnet")
 
-BASE_URL = "https://platform.socradar.com/api/company/{company_id}/dark-web-monitoring/botnet-data/v2"
+ENDPOINT = "/api/company/{company_id}/dark-web-monitoring/botnet-data/v2"
 PAGE_SIZE = 100
 
 
@@ -36,7 +36,8 @@ def fetch(conf: dict, checkpoint: dict) -> list:
     initial_lookback = conf.get("initial_lookback_minutes", 600)
     initial_start_date = conf.get("initial_start_date", "")
 
-    url = BASE_URL.format(company_id=company_id)
+    base = conf.get("socradar_base_url", "https://platform.socradar.com")
+    url = base + ENDPOINT.format(company_id=company_id)
     headers = {"API-Key": api_key, "Content-Type": "application/json"}
 
     start_date = get_start_date(checkpoint, initial_lookback, initial_start_date)

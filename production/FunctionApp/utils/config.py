@@ -33,6 +33,7 @@ def load() -> dict:
     """Load and validate all configuration. Raises EnvironmentError on missing required settings."""
     return {
         # SOCRadar API
+        "socradar_base_url":   _get("SOCRADAR_BASE_URL", default="https://platform.socradar.com"),
         "socradar_api_key":    _get("SOCRADAR_API_KEY", required=True),
         "socradar_company_id": _get("SOCRADAR_COMPANY_ID", required=True),
 

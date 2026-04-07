@@ -1,0 +1,112 @@
+SOCRadar Entra ID Integration — Soru-Cevap
+============================================
+Tarih: 29 Mart 2026
+
+---
+
+S: Bu app ne yapiyor?
+C: SOCRadar'dan sizinti verisi cekiyor (Botnet, PII, VIP kaynaklari), Microsoft Entra ID'de
+   kullaniciyi aratiyor, bulduysa aksiyonlar aliyor (session iptal, gruba ekleme, hesap kapatma vs.)
+   ve sonuclari Log Analytics'e yaziyor.
+
+---
+
+S: Grup ekleme (AddToGroup) ne demek?
+C: Entra ID'de bir "Security Group" olusturulur (ornegin "Compromised Users").
+   App sizmis credential'i olan kullaniciyi buldugunda otomatik bu gruba ekler.
+   Sonra:
+   - Bu gruba Conditional Access Policy baglanir: "Bu gruptakiler MFA olmadan giris yapamaz"
+   - IT ekibi grubu gorup manuel aksiyon alir
+   Hesap kapatmaktan daha yumusak bir onlem — kullanicinin erisimini kismadan karantinaya alir.
+
+---
+
+S: Birden fazla domain girerse ne olur?
+C: Domain kavrami sadece Identity app'inde var (bu app'te degil).
+   Bu app SOCRadar'dan company ID ile veri ceker. Entra ID aksiyonlari domain'den bagimsiz —
+   App Registration'in yetkisi varsa tenant'taki herhangi bir kullaniciyi guncelleyebilir.
+
+---
+
+S: Hangi aksiyonlar alinabilir?
+C: Deploy sirasinda secilen toggle'lara gore:
+   - EnableRevokeSession (default: ACIK) → Tum aktif oturumlari iptal eder
+   - EnableAddToGroup (default: ACIK) → Guvenlik grubuna ekler (SecurityGroupId gerekli)
+   - EnableDisableAccount (default: KAPALI) → Hesabi devre disi birakir
+   - EnablePasswordChange (default: KAPALI) → Sonraki giriste sifre degistirmeye zorlar
+   - EnableConfirmRisky (default: KAPALI) → Identity Protection'da "compromised" isaretle (P1/P2 gerekli)
+   - EnableROPC (default: KAPALI) → Sifre dogrulamasi (Microsoft onerilmiyor)
+   - EnableCreateIncident (default: KAPALI) → Sentinel'de incident olusturur
+   - EnableResolveAlarm (default: KAPALI) → SOCRadar'daki alarmi otomatik resolve eder
+
+---
+
+S: "placeholder" credential ne demek? Production'da ne olacak?
+C: Test sirasinda Entra ID credential olarak "placeholder" verdik. Bu durumda:
+   - Graph token alinamiyor → tum Entra ID aksiyonlari "skipped_no_token" ile atlaniyor
+   - SOCRadar'dan veri cekilip LAW'a yaziliyor ama kimsenin hesabina dokunulmuyor
+   Production'da musteri gercek App Registration credential'larini verecek. O zaman Graph token
+   alinacak, kullanici lookup calisacak, secili aksiyonlar uygulanacak.
+
+---
+
+S: Entra ID App Registration icin hangi yetkiler gerekli?
+C: Application tipi (admin consent gerekli):
+   - User.Read.All → Kullanici arama (her zaman gerekli)
+   - User.RevokeSessions.All → Session iptal (EnableRevokeSession icin)
+   - GroupMember.ReadWrite.All → Gruba ekleme (EnableAddToGroup icin)
+   - User.ReadWrite.All → Hesap kapatma veya sifre degistirme
+   - IdentityRiskyUser.ReadWrite.All → Confirm compromised (P1/P2 lisans gerekli)
+
+---
+
+S: Alarm resolve nasil calisiyor?
+C: Botnet/PII/VIP kaynaklarindaki her kayitta "relatedAlarm.alarmId" field'i var.
+   EnableResolveAlarm=true ise, Entra ID'de kullanici bulundugunda:
+   → POST /api/company/{id}/alarms/status/change → status=2 (RESOLVED)
+   SOCRadar'daki ilgili alarm otomatik kapatilir.
+   Default KAPALI — musteri acikca enable etmeli.
+
+---
+
+S: Hangi LAW tablolarina yazar?
+C:
+   - SOCRadar_Botnet_CL → Botnet verileri
+   - SOCRadar_PII_CL → PII verileri
+   - SOCRadar_VIP_CL → VIP verileri
+   - SOCRadar_EntraID_Audit_CL → Her calisma sonucu audit kaydi
+
+---
+
+S: Checkpoint nasil calisiyor?
+C: Azure Table Storage'da "EntraIDState" tablosu. Her kaynak (botnet, pii, vip) icin ayri
+   checkpoint satiri var. Son islenen tarihi saklar, sonraki calistirmada sadece yeni kayitlari ceker.
+
+---
+
+S: E2E test sonucu (29 Mart 2026):
+C: Deploy: ARM template → test-socradar-deployments RG
+   Function: socradar-entraid-yyqon2cmnnf5w
+   Sonuc:
+   - Botnet: 0 record (test company'de su an veri yok)
+   - PII: 0 record
+   - VIP: disabled (default)
+   - Audit: 2 kayit yazildi (botnet + pii)
+   - UAMI + DefaultAzureCredential → Table Storage erisimi calisiyor
+   - Duration: 8.1s
+   - Tum kaynaklar test sonrasi silindi
+
+---
+
+S: Azure Monitor Log Analytics beta API retirement (31 Mart 2026) bizi etkiler mi?
+C: Hayir. Bizim kodumuz:
+   - LAW yazma → HTTP Data Collector API (/api/logs?api-version=2016-04-01) — ingestion API'si
+   - Sentinel → management.azure.com incidents API (2024-03-01)
+   - Workbook'lar → Azure Portal uzerinden KQL query
+   Retire olan sey Query API'sinin beta versiyonu. Biz bunu kullanmiyoruz.
+
+---
+
+S: Test sonrasi kaynaklari kapattik mi?
+C: Evet. Function App stop + delete, Storage, MI, Plan, App Insights hepsi silindi.
+   Sadece LAW workspace kaldi (soft-delete 14 gun kurali).

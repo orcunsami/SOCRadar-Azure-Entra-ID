@@ -326,6 +326,10 @@
                             "value": "[variables('pollingSchedule')]"
                         },
                         {
+                            "name": "SOCRADAR_BASE_URL",
+                            "value": "https://platform.socradar.com"
+                        },
+                        {
                             "name": "SOCRADAR_API_KEY",
                             "value": "[parameters('SocradarApiKey')]"
                         },
