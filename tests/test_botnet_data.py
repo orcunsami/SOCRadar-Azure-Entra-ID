@@ -19,7 +19,9 @@ if env_path.exists():
             line = line.strip()
             if "=" in line and not line.startswith("#"):
                 key, value = line.split("=", 1)
-                os.environ[key.strip()] = value.strip().strip("'\"")
+                key = key.strip()
+                if key not in os.environ:
+                    os.environ[key] = value.strip().strip("'\"")
 
 API_KEY = os.environ.get("SOCRADAR_API_KEY", "")
 COMPANY_ID = os.environ.get("SOCRADAR_COMPANY_ID", "330")
@@ -37,7 +39,7 @@ def fetch_botnet(page=1, limit=10, start_date=None):
 
     start = time.time()
     try:
-        req = urllib.request.Request(url, headers={"API-Key": API_KEY})
+        req = urllib.request.Request(url, headers={"API-Key": API_KEY, "User-Agent": "SOCRadar-Test/1.0"})
         with urllib.request.urlopen(req, timeout=30) as resp:
             raw = resp.read()
             elapsed = time.time() - start

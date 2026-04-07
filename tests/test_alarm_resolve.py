@@ -20,7 +20,9 @@ if env_path.exists():
             line = line.strip()
             if "=" in line and not line.startswith("#"):
                 key, value = line.split("=", 1)
-                os.environ[key.strip()] = value.strip().strip("'\"")
+                key = key.strip()
+                if key not in os.environ:
+                    os.environ[key] = value.strip().strip("'\"")
 
 API_KEY = os.environ.get("SOCRADAR_API_KEY", "")
 COMPANY_ID = os.environ.get("SOCRADAR_COMPANY_ID", "132")
