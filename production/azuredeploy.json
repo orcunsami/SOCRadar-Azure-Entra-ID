@@ -43,7 +43,7 @@
         "EntraIdClientId": {
             "type": "string",
             "metadata": {
-                "description": "App Registration Client ID (must have required Graph API permissions)"
+                "description": "App Registration Client ID. Grant only the Microsoft Graph application permissions required by the features you enable below."
             }
         },
         "EntraIdClientSecret": {
@@ -80,60 +80,67 @@
                 "description": "Enable VIP Protection v2 source (UNVERIFIED: endpoint not in official API documentation)"
             }
         },
+        "EnableUserLookup": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Look up each leaked identity in Microsoft Entra ID before taking actions. Requires User.Read.All. If false, User.Read.All becomes optional and the app only fetches SOCRadar data and writes to Log Analytics."
+            }
+        },
         "EnableRevokeSession": {
             "type": "bool",
             "defaultValue": true,
             "metadata": {
-                "description": "Revoke all active sign-in sessions for compromised users"
+                "description": "Revoke all active sign-in sessions for matched users. Requires EnableUserLookup=true and User.RevokeSessions.All."
             }
         },
         "EnableAddToGroup": {
             "type": "bool",
             "defaultValue": true,
             "metadata": {
-                "description": "Add compromised users to security group (requires SecurityGroupId)"
+                "description": "Add matched users to a security/quarantine group. Requires EnableUserLookup=true, GroupMember.ReadWrite.All, and SecurityGroupId."
             }
         },
         "EnableRemoveFromGroup": {
             "type": "bool",
             "defaultValue": false,
             "metadata": {
-                "description": "Remove users from security group when credential is no longer valid (reverse of AddToGroup)"
+                "description": "Remove matched users from the security group. Requires EnableUserLookup=true, GroupMember.ReadWrite.All, and SecurityGroupId."
             }
         },
         "EnablePasswordChange": {
             "type": "bool",
             "defaultValue": false,
             "metadata": {
-                "description": "Force password change on next sign-in for compromised users"
+                "description": "Force password change at next sign-in for matched users. Requires EnableUserLookup=true and User-PasswordProfile.ReadWrite.All."
             }
         },
         "EnableDisableAccount": {
             "type": "bool",
             "defaultValue": false,
             "metadata": {
-                "description": "Disable compromised user accounts (use with caution)"
+                "description": "Disable matched user accounts. Requires EnableUserLookup=true and User.EnableDisableAccount.All. High impact; use with caution."
             }
         },
         "EnableEnableAccount": {
             "type": "bool",
             "defaultValue": false,
             "metadata": {
-                "description": "Re-enable previously disabled accounts when credential is confirmed changed"
+                "description": "Re-enable previously disabled accounts. Requires EnableUserLookup=true and User.EnableDisableAccount.All."
             }
         },
         "EnableConfirmRisky": {
             "type": "bool",
             "defaultValue": false,
             "metadata": {
-                "description": "Confirm compromised users in Identity Protection (requires Entra ID P1/P2 license)"
+                "description": "Confirm matched users as compromised in Identity Protection. Requires EnableUserLookup=true, IdentityRiskyUser.ReadWrite.All, and Entra ID P1/P2 licensing."
             }
         },
         "EnableROPC": {
             "type": "bool",
             "defaultValue": false,
             "metadata": {
-                "description": "Validate leaked credentials via ROPC (Resource Owner Password Credentials). Only possible with plaintext passwords. Requires Allow public client flows on App Registration. Microsoft discourages ROPC in production."
+                "description": "Validate leaked credentials via ROPC (Resource Owner Password Credentials). Only possible with plaintext passwords. Requires Allow public client flows on the App Registration. Microsoft discourages ROPC in production."
             }
         },
         "EnableCreateIncident": {
@@ -199,7 +206,7 @@
         "appInsightsName": "[concat('socradar-entraid-ai-', uniqueString(resourceGroup().id))]",
         "StorageTableDataContributorRoleId": "0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
         "WebsiteContributorRoleId": "de139f84-1756-47ae-9be6-808fbbe84772",
-        "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]",
+        "workspaceResourceId": "[if(empty(parameters('WorkspaceResourceGroup')), resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')), resourceId(parameters('WorkspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')))]",
         "pollingSchedule": "[concat('0 0 */', string(parameters('PollingIntervalHours')), ' * * *')]"
     },
     "resources": [
@@ -364,6 +371,10 @@
                         {
                             "name": "ENABLE_VIP_SOURCE",
                             "value": "[string(parameters('EnableVipSource'))]"
+                        },
+                        {
+                            "name": "ENABLE_USER_LOOKUP",
+                            "value": "[string(parameters('EnableUserLookup'))]"
                         },
                         {
                             "name": "ENABLE_REVOKE_SESSION",

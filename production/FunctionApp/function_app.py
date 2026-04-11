@@ -31,6 +31,26 @@ logger = logging.getLogger(__name__)
 app = func.FunctionApp()
 
 
+def _required_graph_permissions(conf: dict) -> list[tuple[str, str]]:
+    """Return the Graph application permissions implied by the current config."""
+    permissions = []
+
+    if conf["enable_user_lookup"]:
+        permissions.append(("User.Read.All", "look up leaked identities in Entra ID"))
+    if conf["enable_revoke_session"]:
+        permissions.append(("User.RevokeSessions.All", "revoke active user sessions"))
+    if conf["enable_add_to_group"] or conf["enable_remove_from_group"]:
+        permissions.append(("GroupMember.ReadWrite.All", "add or remove users from a security group"))
+    if conf["enable_password_change"]:
+        permissions.append(("User-PasswordProfile.ReadWrite.All", "force password change at next sign-in"))
+    if conf["enable_disable_account"] or conf["enable_enable_account"]:
+        permissions.append(("User.EnableDisableAccount.All", "disable or re-enable user accounts"))
+    if conf["enable_confirm_risky"]:
+        permissions.append(("IdentityRiskyUser.ReadWrite.All", "confirm compromised users in Identity Protection"))
+
+    return permissions
+
+
 @app.timer_trigger(
     schedule="%POLLING_SCHEDULE%",
     arg_name="timer",
@@ -48,18 +68,38 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
 
     # Get Entra ID token once — shared across all sources
     graph_headers = None
-    try:
-        graph_token = entra.get_graph_token(
-            tenant_id=conf["tenant_id"],
-            client_id=conf["client_id"],
-            client_secret=conf["client_secret"]
-        )
-        graph_headers = {
-            "Authorization": f"Bearer {graph_token}",
-            "Content-Type": "application/json"
-        }
-    except Exception as e:
-        logger.error("[ENTRA] Failed to acquire Graph token — Entra ID actions will be skipped: %s", e)
+    for permission, reason in _required_graph_permissions(conf):
+        logger.info("[ENTRA] Config requires %s — %s", permission, reason)
+
+    if conf["enable_confirm_risky"]:
+        logger.info("[ENTRA] EnableConfirmRisky also requires Entra ID P1/P2 licensing")
+
+    if not conf["enable_user_lookup"]:
+        logger.warning("[ENTRA] EnableUserLookup=false — User.Read.All is optional, but Entra lookup and all Entra-targeted actions will be skipped")
+        if any((
+            conf["enable_revoke_session"],
+            conf["enable_add_to_group"],
+            conf["enable_remove_from_group"],
+            conf["enable_password_change"],
+            conf["enable_disable_account"],
+            conf["enable_enable_account"],
+            conf["enable_confirm_risky"],
+            conf["enable_ropc"],
+        )):
+            logger.warning("[ENTRA] One or more Entra action toggles are enabled, but they cannot run while EnableUserLookup=false")
+    else:
+        try:
+            graph_token = entra.get_graph_token(
+                tenant_id=conf["tenant_id"],
+                client_id=conf["client_id"],
+                client_secret=conf["client_secret"]
+            )
+            graph_headers = {
+                "Authorization": f"Bearer {graph_token}",
+                "Content-Type": "application/json"
+            }
+        except Exception as e:
+            logger.error("[ENTRA] Failed to acquire Graph token — Entra ID actions will be skipped: %s", e)
 
     sources_to_run = []
     if conf["enable_botnet_source"]:
@@ -139,6 +179,13 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
                 continue
 
             # User lookup in Entra ID (skipped if Graph token unavailable or permissions missing)
+            if not conf["enable_user_lookup"]:
+                emp["entra_status"] = "skipped_user_lookup_disabled"
+                emp["actions_taken"] = []
+                emp.pop("_checkpoint_update", None)
+                records.append(emp)
+                continue
+
             if graph_disabled:
                 emp["entra_status"] = "skipped_no_token"
                 emp["actions_taken"] = []

@@ -31,6 +31,8 @@ def _int(key: str, default: int = 0) -> int:
 
 def load() -> dict:
     """Load and validate all configuration. Raises EnvironmentError on missing required settings."""
+    user_lookup = _bool("ENABLE_USER_LOOKUP", True)
+
     return {
         # SOCRadar API
         "socradar_base_url":   _get("SOCRADAR_BASE_URL", default="https://platform.socradar.com"),
@@ -42,12 +44,13 @@ def load() -> dict:
         "enable_pii_source":      _bool("ENABLE_PII_SOURCE", True),
         "enable_vip_source":      _bool("ENABLE_VIP_SOURCE", False),
 
-        # Entra ID
-        "tenant_id":     _get("ENTRA_TENANT_ID", required=True),
-        "client_id":     _get("ENTRA_CLIENT_ID", required=True),
-        "client_secret": _get("ENTRA_CLIENT_SECRET", required=True),
+        # Entra ID (required only when user lookup is enabled)
+        "tenant_id":     _get("ENTRA_TENANT_ID", required=user_lookup),
+        "client_id":     _get("ENTRA_CLIENT_ID", required=user_lookup),
+        "client_secret": _get("ENTRA_CLIENT_SECRET", required=user_lookup),
 
         # Action toggles
+        "enable_user_lookup":       user_lookup,
         "enable_ropc":              _bool("ENABLE_ROPC", False),
         "enable_revoke_session":    _bool("ENABLE_REVOKE_SESSION", True),
         "enable_add_to_group":      _bool("ENABLE_ADD_TO_GROUP", True),
@@ -67,7 +70,7 @@ def load() -> dict:
         "workspace_id":  _get("WORKSPACE_ID", required=True),
         "workspace_key": _get("WORKSPACE_KEY", required=True),
 
-        # Sentinel (optional, only if create_incident=true)
+        # Microsoft Sentinel (optional, only if create_incident=true)
         "subscription_id":          _get("SUBSCRIPTION_ID", default=""),
         "workspace_name":           _get("WORKSPACE_NAME", default=""),
         "workspace_location":       _get("WORKSPACE_LOCATION", default=""),

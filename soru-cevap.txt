@@ -52,11 +52,13 @@ C: Test sirasinda Entra ID credential olarak "placeholder" verdik. Bu durumda:
 
 S: Entra ID App Registration icin hangi yetkiler gerekli?
 C: Application tipi (admin consent gerekli):
-   - User.Read.All → Kullanici arama (her zaman gerekli)
+   - User.Read.All → Kullanici arama (EnableUserLookup icin)
    - User.RevokeSessions.All → Session iptal (EnableRevokeSession icin)
-   - GroupMember.ReadWrite.All → Gruba ekleme (EnableAddToGroup icin)
-   - User.ReadWrite.All → Hesap kapatma veya sifre degistirme
+   - GroupMember.ReadWrite.All → Gruba ekleme/cikarma (EnableAddToGroup / EnableRemoveFromGroup icin)
+   - User-PasswordProfile.ReadWrite.All → Sonraki giriste sifre degistirmeye zorla (EnablePasswordChange icin)
+   - User.EnableDisableAccount.All → Hesap kapat/aç (EnableDisableAccount / EnableEnableAccount icin)
    - IdentityRiskyUser.ReadWrite.All → Confirm compromised (P1/P2 lisans gerekli)
+   - User.ReadWrite.All → GEREKLI DEGIL, verilmemeli
 
 ---
 

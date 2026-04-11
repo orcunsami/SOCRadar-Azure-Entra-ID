@@ -17,8 +17,13 @@ SOCRADAR_API_KEY=your-platform-api-key
 SOCRADAR_COMPANY_ID=330
 
 # Entra ID App Registration
-# Required permissions: User.Read.All, GroupMember.ReadWrite.All
-# Optional: IdentityRiskyUser.ReadWrite.All (for ENABLE_CONFIRM_RISKY)
+# Grant only the permissions required by the features you enable:
+# - User.Read.All for ENABLE_USER_LOOKUP
+# - User.RevokeSessions.All for ENABLE_REVOKE_SESSION
+# - GroupMember.ReadWrite.All for ENABLE_ADD_TO_GROUP / ENABLE_REMOVE_FROM_GROUP
+# - User-PasswordProfile.ReadWrite.All for ENABLE_PASSWORD_CHANGE
+# - User.EnableDisableAccount.All for ENABLE_DISABLE_ACCOUNT / ENABLE_ENABLE_ACCOUNT
+# - IdentityRiskyUser.ReadWrite.All for ENABLE_CONFIRM_RISKY
 ENTRA_TENANT_ID=your-tenant-id
 ENTRA_CLIENT_ID=your-client-id
 ENTRA_CLIENT_SECRET=your-client-secret
@@ -32,10 +37,13 @@ ENABLE_PII=true
 ENABLE_VIP=false                   # UNVERIFIED endpoint
 
 # Action toggles
+ENABLE_USER_LOOKUP=true            # if false, User.Read.All is not required and Entra actions are skipped
 ENABLE_REVOKE_SESSION=true
 ENABLE_ADD_TO_GROUP=true
+ENABLE_REMOVE_FROM_GROUP=false
 ENABLE_PASSWORD_CHANGE=false
 ENABLE_DISABLE_ACCOUNT=false
+ENABLE_ENABLE_ACCOUNT=false
 ENABLE_CONFIRM_RISKY=false         # requires P1/P2
 ENABLE_ROPC=false                  # Microsoft discourages this
 ENABLE_CREATE_INCIDENT=false

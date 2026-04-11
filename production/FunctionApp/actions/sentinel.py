@@ -35,7 +35,7 @@ def _get_mgmt_token(tenant_id: str, client_id: str, client_secret: str) -> str:
 
 def create_incident(conf: dict, email: str, source: str, severity: str):
     """
-    Create a Sentinel incident for a compromised employee credential.
+    Create a Microsoft Sentinel incident for a compromised employee credential.
 
     SECURITY: Only email, source name, and severity are included.
     Password/credential data NEVER appears in incident title, description, or comments.
@@ -80,12 +80,12 @@ def create_incident(conf: dict, email: str, source: str, severity: str):
         "properties": {
             "title":       title,
             "description": description,
-            "severity":    severity.capitalize(),
+            "severity":    "High" if severity.upper() == "CRITICAL" else severity.capitalize(),
             "status":      "New",
             "labels": [
-                {"labelName": "SOCRadar"},
-                {"labelName": source.upper()},
-                {"labelName": "LeakedCredential"},
+                {"labelName": "SOCRadar", "labelType": "User"},
+                {"labelName": source.upper(), "labelType": "User"},
+                {"labelName": "LeakedCredential", "labelType": "User"},
             ]
         }
     }

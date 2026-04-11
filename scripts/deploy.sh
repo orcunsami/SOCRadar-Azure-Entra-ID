@@ -42,10 +42,13 @@ ENABLE_PII="${ENABLE_PII:-true}"
 ENABLE_VIP="${ENABLE_VIP:-false}"
 
 # Action toggles
+ENABLE_USER_LOOKUP="${ENABLE_USER_LOOKUP:-true}"
 ENABLE_REVOKE_SESSION="${ENABLE_REVOKE_SESSION:-true}"
 ENABLE_ADD_TO_GROUP="${ENABLE_ADD_TO_GROUP:-true}"
+ENABLE_REMOVE_FROM_GROUP="${ENABLE_REMOVE_FROM_GROUP:-false}"
 ENABLE_PASSWORD_CHANGE="${ENABLE_PASSWORD_CHANGE:-false}"
 ENABLE_DISABLE_ACCOUNT="${ENABLE_DISABLE_ACCOUNT:-false}"
+ENABLE_ENABLE_ACCOUNT="${ENABLE_ENABLE_ACCOUNT:-false}"
 ENABLE_CONFIRM_RISKY="${ENABLE_CONFIRM_RISKY:-false}"
 ENABLE_ROPC="${ENABLE_ROPC:-false}"
 ENABLE_CREATE_INCIDENT="${ENABLE_CREATE_INCIDENT:-false}"
@@ -69,8 +72,10 @@ echo "  Lookback:             $INITIAL_LOOKBACK_MINUTES min (~$((INITIAL_LOOKBAC
 echo "  Polling:              Every $POLLING_INTERVAL_HOURS hours"
 echo ""
 echo "  Sources:  Botnet=$ENABLE_BOTNET  PII=$ENABLE_PII  VIP=$ENABLE_VIP"
+echo "  Lookup:   UserLookup=$ENABLE_USER_LOOKUP"
 echo "  Actions:  Revoke=$ENABLE_REVOKE_SESSION  Group=$ENABLE_ADD_TO_GROUP"
-echo "            PwChange=$ENABLE_PASSWORD_CHANGE  Disable=$ENABLE_DISABLE_ACCOUNT"
+echo "            RemoveGroup=$ENABLE_REMOVE_FROM_GROUP  PwChange=$ENABLE_PASSWORD_CHANGE"
+echo "            Disable=$ENABLE_DISABLE_ACCOUNT  Enable=$ENABLE_ENABLE_ACCOUNT"
 echo "            Risky=$ENABLE_CONFIRM_RISKY  ROPC=$ENABLE_ROPC"
 echo "            Incident=$ENABLE_CREATE_INCIDENT  ResolveAlarm=$ENABLE_RESOLVE_ALARM"
 echo ""
@@ -139,10 +144,13 @@ DEPLOY_OUTPUT=$(az deployment group create \
         EnableBotnetSource="$ENABLE_BOTNET" \
         EnablePiiSource="$ENABLE_PII" \
         EnableVipSource="$ENABLE_VIP" \
+        EnableUserLookup="$ENABLE_USER_LOOKUP" \
         EnableRevokeSession="$ENABLE_REVOKE_SESSION" \
         EnableAddToGroup="$ENABLE_ADD_TO_GROUP" \
+        EnableRemoveFromGroup="$ENABLE_REMOVE_FROM_GROUP" \
         EnablePasswordChange="$ENABLE_PASSWORD_CHANGE" \
         EnableDisableAccount="$ENABLE_DISABLE_ACCOUNT" \
+        EnableEnableAccount="$ENABLE_ENABLE_ACCOUNT" \
         EnableConfirmRisky="$ENABLE_CONFIRM_RISKY" \
         EnableROPC="$ENABLE_ROPC" \
         EnableCreateIncident="$ENABLE_CREATE_INCIDENT" \

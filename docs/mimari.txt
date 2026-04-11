@@ -173,7 +173,7 @@ MICROSOFT GRAPH API (Entra ID Islemleri)
 
   Session Iptal:
     POST https://graph.microsoft.com/v1.0/users/{id}/revokeSignInSessions
-    Permission: User.Read.All (Application)
+    Permission: User.RevokeSessions.All (Application)
     Kullanim: actions/entra_id.py → revoke_sessions()
 
   Gruba Ekle:
@@ -184,13 +184,13 @@ MICROSOFT GRAPH API (Entra ID Islemleri)
   Hesap Kapat:
     PATCH https://graph.microsoft.com/v1.0/users/{id}
     Body: { accountEnabled: false }
-    Permission: User.ReadWrite.All (Application)
+    Permission: User.EnableDisableAccount.All (Application)
     Kullanim: actions/entra_id.py → disable_account()
 
   Sifre Degistir:
     PATCH https://graph.microsoft.com/v1.0/users/{id}
     Body: { passwordProfile: { forceChangePasswordNextSignIn: true } }
-    Permission: User.ReadWrite.All (Application)
+    Permission: User-PasswordProfile.ReadWrite.All (Application)
     Kullanim: actions/entra_id.py → force_password_change()
 
   Risky Isaretle:
@@ -469,8 +469,9 @@ AZURE TABLE STORAGE (Checkpoint)
 
   App Registration: SOCRadar-EntraID-Integration-Test
     Client ID:    b0afca82-a991-4fea-ad87-94ec348b2e68
-    Permissions:  User.Read.All, User.ReadWrite.All,
-                  GroupMember.ReadWrite.All, IdentityRiskyUser.ReadWrite.All
+    Permissions:  User.Read.All, User.RevokeSessions.All,
+                  GroupMember.ReadWrite.All, User-PasswordProfile.ReadWrite.All,
+                  User.EnableDisableAccount.All, IdentityRiskyUser.ReadWrite.All
     Admin Consent: VERILMEDI
                    orcun hesabi Subscription Owner ama Entra ID admin degil
                    Sadece burak goger Global Admin — consent verebilir

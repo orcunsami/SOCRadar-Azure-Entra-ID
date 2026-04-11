@@ -6,7 +6,6 @@ Pulls leaked employee credentials from SOCRadar and takes automated remediation 
 
 | Source | Description | Key Required |
 |--------|-------------|--------------|
-| Identity Intelligence | Domain-specific credential exposure | Separate Identity key (pay-per-use) |
 | Botnet Data v2 | Employee credentials from botnet logs | Platform key |
 | PII Exposure v2 | Employee credentials from data breaches | Platform key |
 | VIP Protection v2 | VIP user exposures | Platform key — ⚠️ UNVERIFIED endpoint |
@@ -22,28 +21,40 @@ az deployment group create \
   --resource-group YOUR-RG \
   --template-file production/azuredeploy.json \
   --parameters \
+    WorkspaceName="your-workspace-name" \
+    WorkspaceLocation="northeurope" \
     SocradarApiKey="your-platform-key" \
     SocradarCompanyId="your-company-id" \
-    MonitoredDomains="yourdomain.com,olddomain.com" \
     EntraIdTenantId="your-tenant-id" \
     EntraIdClientId="your-app-client-id" \
     EntraIdClientSecret="your-app-secret" \
-    WorkspaceId="your-law-workspace-id" \
-    WorkspaceKey="your-law-workspace-key"
+    SecurityGroupId="your-security-group-object-id"
 ```
 
 ## Entra ID App Registration
 
-Create an App Registration with these Application permissions (admin consent required):
+Create an App Registration with only the Microsoft Graph Application permissions required by the features you enable (admin consent required).
 
 | Permission | Required For |
 |------------|-------------|
-| `User.Read.All` | User lookup (always required) |
-| `GroupMember.ReadWrite.All` | `EnableAddToGroup=true` |
-| `User.ReadWrite.All` | `EnableDisableAccount` or `EnablePasswordChange` |
+| `User.Read.All` | `EnableUserLookup=true` (look up users in Entra ID before taking action) |
+| `User.RevokeSessions.All` | `EnableRevokeSession=true` |
+| `GroupMember.ReadWrite.All` | `EnableAddToGroup=true` or `EnableRemoveFromGroup=true` |
+| `User-PasswordProfile.ReadWrite.All` | `EnablePasswordChange=true` |
+| `User.EnableDisableAccount.All` | `EnableDisableAccount=true` or `EnableEnableAccount=true` |
 | `IdentityRiskyUser.ReadWrite.All` | `EnableConfirmRisky` (requires P1/P2 license) |
 
+`User.ReadWrite.All` is not required for the current action model and should not be granted unless you intentionally add a broader capability.
+
 For ROPC password validation (`EnableROPC=true`): enable **Allow public client flows** on the App Registration.
+
+## Least-Privilege Model
+
+The deployment is designed so that each Entra action is configurable independently.
+
+- If `EnableUserLookup=false`, the app still fetches SOCRadar data and writes to Log Analytics, but it skips Entra user matching and all Entra-targeted actions.
+- If an action is disabled, the corresponding Microsoft Graph permission does not need to be granted.
+- High-impact actions such as account disable, account re-enable, password reset, and risky-user confirmation are disabled by default.
 
 ## Parameters
 
@@ -51,21 +62,18 @@ For ROPC password validation (`EnableROPC=true`): enable **Allow public client f
 
 | Parameter | Description |
 |-----------|-------------|
+| `WorkspaceName` | Log Analytics workspace name |
+| `WorkspaceLocation` | Workspace region |
 | `SocradarApiKey` | SOCRadar platform API key |
 | `SocradarCompanyId` | SOCRadar company ID |
-| `MonitoredDomains` | Comma-separated domains for Identity Intelligence (e.g., `contoso.com,fabrikam.com`) |
-| `EntraIdTenantId` | Azure AD tenant ID |
+| `EntraIdTenantId` | Microsoft Entra tenant ID |
 | `EntraIdClientId` | App Registration client ID |
 | `EntraIdClientSecret` | App Registration client secret |
-| `WorkspaceId` | Log Analytics workspace ID |
-| `WorkspaceKey` | Log Analytics workspace key |
 
 ### Sources
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `EnableIdentitySource` | `true` | Identity Intelligence (requires `SocradarIdentityApiKey` and `MonitoredDomains`) |
-| `SocradarIdentityApiKey` | `""` | Identity Intelligence API key (separate, pay-per-use) |
 | `EnableBotnetSource` | `true` | Botnet Data v2 |
 | `EnablePiiSource` | `true` | PII Exposure v2 |
 | `EnableVipSource` | `false` | VIP Protection v2 (UNVERIFIED endpoint) |
@@ -74,26 +82,27 @@ For ROPC password validation (`EnableROPC=true`): enable **Allow public client f
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `EnableRevokeSession` | `true` | Revoke all sign-in sessions |
-| `EnableAddToGroup` | `true` | Add user to a security group |
-| `EnableRemoveFromGroup` | `false` | Remove user from security group (reverse of AddToGroup) |
+| `EnableUserLookup` | `true` | Look up leaked identities in Entra ID before taking action. Requires `User.Read.All`. If `false`, the app runs in data-ingest mode and skips Entra actions. |
+| `EnableRevokeSession` | `true` | Revoke all sign-in sessions. Requires `User.RevokeSessions.All`. |
+| `EnableAddToGroup` | `true` | Add user to a security group. Requires `GroupMember.ReadWrite.All`. |
+| `EnableRemoveFromGroup` | `false` | Remove user from security group. Requires `GroupMember.ReadWrite.All`. |
 | `SecurityGroupId` | `""` | Security group object ID (required if `EnableAddToGroup` or `EnableRemoveFromGroup`) |
-| `EnableDisableAccount` | `false` | Disable the account |
-| `EnableEnableAccount` | `false` | Re-enable a previously disabled account |
-| `EnablePasswordChange` | `false` | Force password change on next sign-in |
-| `EnableConfirmRisky` | `false` | Mark user as confirmed compromised in Identity Protection |
+| `EnableDisableAccount` | `false` | Disable the account. Requires `User.EnableDisableAccount.All`. |
+| `EnableEnableAccount` | `false` | Re-enable a previously disabled account. Requires `User.EnableDisableAccount.All`. |
+| `EnablePasswordChange` | `false` | Force password change on next sign-in. Requires `User-PasswordProfile.ReadWrite.All`. |
+| `EnableConfirmRisky` | `false` | Mark user as confirmed compromised in Identity Protection. Requires `IdentityRiskyUser.ReadWrite.All` and P1/P2 licensing. |
 | `EnableCreateIncident` | `false` | Create Microsoft Sentinel incident |
 | `EnableROPC` | `false` | Validate password via ROPC (only for plaintext passwords) |
+| `EnableResolveAlarm` | `false` | Resolve the SOCRadar alarm when a matched user is found in Entra ID |
 
 ### Other
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `PollingSchedule` | `0 */6 * * *` | Cron schedule (default: every 6 hours) |
-| `InitialLookbackMinutes` | `600` | Lookback window for first run (minutes) |
+| `PollingIntervalHours` | `6` | Polling interval in hours |
+| `InitialLookbackMinutes` | `43200` | Lookback window for first run (minutes) |
+| `InitialStartDate` | `""` | Optional first-run start date in `YYYY-MM-DD` format |
 | `EnableLogPlaintextPassword` | `false` | Write plaintext passwords to Log Analytics (customer decision) |
-| `WorkspaceName` | `""` | Sentinel workspace name (required for `EnableCreateIncident`) |
-| `WorkspaceLocation` | `""` | Workspace region |
 | `WorkspaceResourceGroup` | `""` | Workspace resource group (for cross-RG deployments) |
 
 ## Log Analytics Tables
@@ -102,7 +111,6 @@ For ROPC password validation (`EnableROPC=true`): enable **Allow public client f
 |-------|--------|
 | `SOCRadar_Botnet_CL` | Botnet Data v2 |
 | `SOCRadar_PII_CL` | PII Exposure v2 |
-| `SOCRadar_Identity_CL` | Identity Intelligence |
 | `SOCRadar_VIP_CL` | VIP Protection v2 |
 | `SOCRadar_EntraID_Audit_CL` | Audit log (all sources) |
 
