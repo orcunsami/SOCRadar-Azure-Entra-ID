@@ -58,66 +58,67 @@ class TestForceMfaReregistration(unittest.TestCase):
         """User has authenticator + phone + password → 2 DELETE, 1 skip."""
         list_resp = _mock_response(200, {"value": [AUTHENTICATOR_METHOD, PHONE_METHOD, PASSWORD_METHOD]})
         del_resp = _mock_response(204)
+        # _graph_request is called once for list, then once per non-password method
+        side_effect = [list_resp, del_resp, del_resp]
 
-        with patch("actions.entra_id.requests.get", return_value=list_resp), \
-             patch("actions.entra_id.requests.delete", return_value=del_resp) as mock_del:
+        with patch("actions.entra_id._graph_request", side_effect=side_effect) as mock_req:
             result = entra_id.force_mfa_reregistration(self.USER_ID, self.HEADERS)
 
         self.assertEqual(result["methods_deleted"], 2)
         self.assertEqual(result["methods_skipped"], 1)
         self.assertEqual(result["errors"], [])
         self.assertFalse(result["permission_denied"])
-        self.assertEqual(mock_del.call_count, 2)
+        # 1 list + 2 deletes
+        self.assertEqual(mock_req.call_count, 3)
 
     def test_permission_denied_on_list(self):
         """GET /authentication/methods returns 403 → permission_denied, no deletes."""
         list_resp = _mock_response(403, text="Insufficient privileges")
 
-        with patch("actions.entra_id.requests.get", return_value=list_resp), \
-             patch("actions.entra_id.requests.delete") as mock_del:
+        with patch("actions.entra_id._graph_request", return_value=list_resp) as mock_req:
             result = entra_id.force_mfa_reregistration(self.USER_ID, self.HEADERS)
 
         self.assertTrue(result["permission_denied"])
         self.assertEqual(result["methods_deleted"], 0)
-        self.assertEqual(mock_del.call_count, 0)
+        # Only the list call was made — no delete calls
+        self.assertEqual(mock_req.call_count, 1)
         self.assertTrue(any("403" in e for e in result["errors"]))
 
     def test_permission_denied_on_delete(self):
         """First DELETE returns 401 → bail out, permission_denied True."""
         list_resp = _mock_response(200, {"value": [AUTHENTICATOR_METHOD, PHONE_METHOD]})
         del_resp = _mock_response(401)
+        side_effect = [list_resp, del_resp]  # bails out on first 401 delete
 
-        with patch("actions.entra_id.requests.get", return_value=list_resp), \
-             patch("actions.entra_id.requests.delete", return_value=del_resp) as mock_del:
+        with patch("actions.entra_id._graph_request", side_effect=side_effect) as mock_req:
             result = entra_id.force_mfa_reregistration(self.USER_ID, self.HEADERS)
 
         self.assertTrue(result["permission_denied"])
         self.assertEqual(result["methods_deleted"], 0)
-        # Bails out on first 401 — only 1 delete attempted
-        self.assertEqual(mock_del.call_count, 1)
+        # 1 list + 1 delete (bailed out)
+        self.assertEqual(mock_req.call_count, 2)
 
     def test_unknown_odata_type_continues(self):
         """Unknown method type logs error but doesn't block other deletes."""
         list_resp = _mock_response(200, {"value": [UNKNOWN_METHOD, AUTHENTICATOR_METHOD]})
         del_resp = _mock_response(204)
+        # Unknown is skipped without a delete call; only known method is deleted
+        side_effect = [list_resp, del_resp]
 
-        with patch("actions.entra_id.requests.get", return_value=list_resp), \
-             patch("actions.entra_id.requests.delete", return_value=del_resp) as mock_del:
+        with patch("actions.entra_id._graph_request", side_effect=side_effect) as mock_req:
             result = entra_id.force_mfa_reregistration(self.USER_ID, self.HEADERS)
 
         self.assertEqual(result["methods_deleted"], 1)
         self.assertFalse(result["permission_denied"])
         self.assertTrue(any("unknown method type" in e for e in result["errors"]))
-        self.assertEqual(mock_del.call_count, 1)
+        self.assertEqual(mock_req.call_count, 2)
 
     def test_partial_failure_continues(self):
         """DELETE 500 on one method doesn't stop others."""
         list_resp = _mock_response(200, {"value": [AUTHENTICATOR_METHOD, PHONE_METHOD]})
-        # First DELETE fails 500, second succeeds
-        delete_responses = [_mock_response(500, text="internal"), _mock_response(204)]
+        side_effect = [list_resp, _mock_response(500, text="internal"), _mock_response(204)]
 
-        with patch("actions.entra_id.requests.get", return_value=list_resp), \
-             patch("actions.entra_id.requests.delete", side_effect=delete_responses):
+        with patch("actions.entra_id._graph_request", side_effect=side_effect):
             result = entra_id.force_mfa_reregistration(self.USER_ID, self.HEADERS)
 
         self.assertEqual(result["methods_deleted"], 1)
@@ -129,19 +130,19 @@ class TestForceMfaReregistration(unittest.TestCase):
         """User has only password → 0 deleted, 1 skipped, no errors."""
         list_resp = _mock_response(200, {"value": [PASSWORD_METHOD]})
 
-        with patch("actions.entra_id.requests.get", return_value=list_resp), \
-             patch("actions.entra_id.requests.delete") as mock_del:
+        with patch("actions.entra_id._graph_request", return_value=list_resp) as mock_req:
             result = entra_id.force_mfa_reregistration(self.USER_ID, self.HEADERS)
 
         self.assertEqual(result["methods_deleted"], 0)
         self.assertEqual(result["methods_skipped"], 1)
         self.assertEqual(result["errors"], [])
-        self.assertEqual(mock_del.call_count, 0)
+        # Only the list call — no delete calls
+        self.assertEqual(mock_req.call_count, 1)
 
     def test_list_network_error(self):
-        """Network exception on GET → captured as error string, permission_denied False."""
+        """Network exception on list → captured as error string, permission_denied False."""
         import requests
-        with patch("actions.entra_id.requests.get", side_effect=requests.RequestException("connection reset")):
+        with patch("actions.entra_id._graph_request", side_effect=requests.RequestException("connection reset")):
             result = entra_id.force_mfa_reregistration(self.USER_ID, self.HEADERS)
 
         self.assertFalse(result["permission_denied"])

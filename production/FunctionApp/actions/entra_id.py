@@ -5,6 +5,7 @@ ROPC is optional and requires "Allow public client flows" enabled on App Registr
 """
 
 import logging
+import time
 import requests
 from msal import ConfidentialClientApplication, PublicClientApplication
 
@@ -13,6 +14,35 @@ logger = logging.getLogger("socradar.entra.graph")
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 GRAPH_BETA  = "https://graph.microsoft.com/beta"
 LOGIN_URL   = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
+
+
+def _graph_request(method: str, url: str, headers: dict, json=None, timeout: int = 15, max_retries: int = 3):
+    """
+    Graph API request wrapper that handles 429 Retry-After throttling.
+    Returns the final requests.Response after up to max_retries retries.
+    Per-retry sleep is capped at 30s to avoid hanging the function host.
+    Network errors bubble up as requests.RequestException (caller handles).
+    """
+    attempt = 0
+    while True:
+        if json is not None:
+            resp = requests.request(method, url, headers=headers, json=json, timeout=timeout)
+        else:
+            resp = requests.request(method, url, headers=headers, timeout=timeout)
+        if resp.status_code != 429 or attempt >= max_retries:
+            return resp
+        retry_after_raw = resp.headers.get("Retry-After", "2")
+        try:
+            retry_after = int(retry_after_raw)
+        except ValueError:
+            retry_after = 2
+        retry_after = max(1, min(retry_after, 30))
+        logger.warning(
+            "[ENTRA] 429 throttled on %s %s — sleeping %ds (attempt %d/%d)",
+            method, url.rsplit('/', 2)[-1], retry_after, attempt + 1, max_retries
+        )
+        time.sleep(retry_after)
+        attempt += 1
 
 
 def get_graph_token(tenant_id: str, client_id: str, client_secret: str) -> str:
@@ -42,7 +72,7 @@ def lookup_user(email: str, graph_headers: dict) -> dict | None:
     global _last_status
     url = f"{GRAPH_BASE}/users/{email}"
     try:
-        resp = requests.get(url, headers=graph_headers, timeout=15)
+        resp = _graph_request("GET", url, graph_headers, timeout=15)
         _last_status = resp.status_code
         if resp.status_code == 200:
             logger.debug("[ENTRA] lookup %s → found", email)
@@ -62,7 +92,7 @@ def revoke_sessions(user_id: str, graph_headers: dict) -> bool:
     """Revoke all sign-in sessions for a user."""
     url = f"{GRAPH_BASE}/users/{user_id}/revokeSignInSessions"
     try:
-        resp = requests.post(url, headers=graph_headers, timeout=15)
+        resp = _graph_request("POST", url, graph_headers, timeout=15)
         ok = resp.status_code in (200, 204)
         logger.info("[ENTRA] revokeSession %s → %s", user_id[:8], "ok" if ok else f"HTTP {resp.status_code}")
         return ok
@@ -76,7 +106,7 @@ def add_to_group(user_id: str, group_id: str, graph_headers: dict) -> bool:
     url = f"{GRAPH_BASE}/groups/{group_id}/members/$ref"
     body = {"@odata.id": f"{GRAPH_BASE}/directoryObjects/{user_id}"}
     try:
-        resp = requests.post(url, headers=graph_headers, json=body, timeout=15)
+        resp = _graph_request("POST", url, graph_headers, json=body, timeout=15)
         # 204 = added, 400 with "already exists" = already member
         if resp.status_code == 204:
             logger.info("[ENTRA] addToGroup %s → ok", user_id[:8])
@@ -95,7 +125,7 @@ def remove_from_group(user_id: str, group_id: str, graph_headers: dict) -> bool:
     """Remove user from a security group."""
     url = f"{GRAPH_BASE}/groups/{group_id}/members/{user_id}/$ref"
     try:
-        resp = requests.delete(url, headers=graph_headers, timeout=15)
+        resp = _graph_request("DELETE", url, graph_headers, timeout=15)
         if resp.status_code == 204:
             logger.info("[ENTRA] removeFromGroup %s → ok", user_id[:8])
             return True
@@ -114,7 +144,7 @@ def disable_account(user_id: str, graph_headers: dict) -> bool:
     url = f"{GRAPH_BASE}/users/{user_id}"
     body = {"accountEnabled": False}
     try:
-        resp = requests.patch(url, headers=graph_headers, json=body, timeout=15)
+        resp = _graph_request("PATCH", url, graph_headers, json=body, timeout=15)
         ok = resp.status_code == 204
         logger.info("[ENTRA] disableAccount %s → %s", user_id[:8], "ok" if ok else f"HTTP {resp.status_code}")
         return ok
@@ -128,7 +158,7 @@ def enable_account(user_id: str, graph_headers: dict) -> bool:
     url = f"{GRAPH_BASE}/users/{user_id}"
     body = {"accountEnabled": True}
     try:
-        resp = requests.patch(url, headers=graph_headers, json=body, timeout=15)
+        resp = _graph_request("PATCH", url, graph_headers, json=body, timeout=15)
         ok = resp.status_code == 204
         logger.info("[ENTRA] enableAccount %s → %s", user_id[:8], "ok" if ok else f"HTTP {resp.status_code}")
         return ok
@@ -147,7 +177,7 @@ def force_password_change(user_id: str, graph_headers: dict) -> bool:
         }
     }
     try:
-        resp = requests.patch(url, headers=graph_headers, json=body, timeout=15)
+        resp = _graph_request("PATCH", url, graph_headers, json=body, timeout=15)
         ok = resp.status_code == 204
         logger.info("[ENTRA] forcePasswordChange %s → %s", user_id[:8], "ok" if ok else f"HTTP {resp.status_code}")
         return ok
@@ -164,7 +194,7 @@ def confirm_compromised(user_id: str, graph_headers: dict) -> bool:
     url = f"{GRAPH_BETA}/riskyUsers/confirmCompromised"
     body = {"userIds": [user_id]}
     try:
-        resp = requests.post(url, headers=graph_headers, json=body, timeout=15)
+        resp = _graph_request("POST", url, graph_headers, json=body, timeout=15)
         ok = resp.status_code == 204
         logger.info("[ENTRA] confirmRisky %s → %s", user_id[:8], "ok" if ok else f"HTTP {resp.status_code}")
         return ok
@@ -260,7 +290,7 @@ def force_mfa_reregistration(user_id: str, graph_headers: dict) -> dict:
     }
     list_url = f"{GRAPH_BASE}/users/{user_id}/authentication/methods"
     try:
-        resp = requests.get(list_url, headers=graph_headers, timeout=20)
+        resp = _graph_request("GET", list_url, graph_headers, timeout=20)
     except requests.RequestException as e:
         result["errors"].append(f"list methods request error: {e}")
         return result
@@ -289,7 +319,7 @@ def force_mfa_reregistration(user_id: str, graph_headers: dict) -> dict:
             continue
         del_url = f"{GRAPH_BASE}/users/{user_id}/authentication/{endpoint}/{method_id}"
         try:
-            del_resp = requests.delete(del_url, headers=graph_headers, timeout=20)
+            del_resp = _graph_request("DELETE", del_url, graph_headers, timeout=20)
         except requests.RequestException as e:
             result["errors"].append(f"delete {endpoint} request error: {e}")
             continue
