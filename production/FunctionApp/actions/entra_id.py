@@ -58,12 +58,14 @@ class ConsentRevokedError(RuntimeError):
 
 # AADSTS codes that specifically indicate missing or revoked consent.
 # Reference: https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes
+# NOTE: AADSTS7000215 is NOT here — it means "Invalid client secret", which is a
+# credential rotation issue, not a consent issue. Routing it through ConsentRevokedError
+# would mislead operators into re-granting consent when they need to rotate the secret.
 _CONSENT_AADSTS_CODES = {
     "AADSTS650052",   # App needs access to a service that your organization hasn't subscribed to
     "AADSTS650054",   # App removed by admin
     "AADSTS700016",   # App not found in directory (no service principal)
     "AADSTS700022",   # Multi-tenant app: tenant has not consented
-    "AADSTS7000215",  # Invalid client secret / credential mismatch — often revocation signal
     "AADSTS65001",    # User or admin has not consented to this app
     "AADSTS7000112",  # App disabled
     "AADSTS7000229",  # Application not authorized in this tenant

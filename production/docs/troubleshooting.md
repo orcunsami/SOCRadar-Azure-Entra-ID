@@ -38,12 +38,12 @@ Scan the symptom first. If none match, the last section lists how to collect dia
 | `AADSTS50020` | User account not in tenant | Wrong tenant. Check `ENTRA_TENANT_ID`. |
 | other | Transient or new error | Retry in 5 min, then open support ticket with the full trace. |
 
-Since the 2026-04 refactor, consent-related AADSTS codes are written as `event_type=consent_revoked` rows to `SOCRadar_EntraID_Audit_CL`. Query for them:
+Since the 2026-04 refactor, token acquisition failures are written to `SOCRadar_EntraID_Audit_CL` as lifecycle events. Consent-specific codes get `event_type=consent_revoked`; all other failures (including `AADSTS7000215` which is a credential issue, not consent) get `event_type=token_acquisition_failed`. Check both:
 
 ```kql
 SOCRadar_EntraID_Audit_CL
-| where event_type_s == "consent_revoked"
-| project TimeGenerated, tenant_id_s, aadsts_code_s, details_s
+| where event_type_s in ("consent_revoked", "token_acquisition_failed")
+| project TimeGenerated, event_type_s, tenant_id_s, aadsts_code_s, details_s
 | order by TimeGenerated desc
 ```
 

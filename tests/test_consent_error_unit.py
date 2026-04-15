@@ -39,6 +39,18 @@ class TestClassifyTokenError(unittest.TestCase):
             entra_id._classify_token_error("AADSTS50126: invalid username or password")
         )
 
+    def test_invalid_client_secret_is_not_consent(self):
+        # AADSTS7000215 = "Invalid client secret provided". It's a credential
+        # rotation issue, not consent. Must NOT be classified as consent_revoked
+        # to avoid misleading operators.
+        self.assertIsNone(
+            entra_id._classify_token_error(
+                "AADSTS7000215: Invalid client secret provided. Ensure the secret "
+                "being sent in the request is the client secret value, not the client "
+                "secret ID, for a secret added to app 'xxx'."
+            )
+        )
+
     def test_empty_description(self):
         self.assertIsNone(entra_id._classify_token_error(""))
         self.assertIsNone(entra_id._classify_token_error(None))

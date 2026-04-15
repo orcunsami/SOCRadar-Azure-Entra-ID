@@ -144,6 +144,7 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
                 credential=credential,
                 graph_headers=graph_headers
             )
+            result["duration"] = round(time.time() - src_start, 1)
             audit_results.append(result)
         except Exception as e:
             logger.error("[%s] Unhandled error: %s", source_name.upper(), e, exc_info=True)
