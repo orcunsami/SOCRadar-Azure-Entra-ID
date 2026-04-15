@@ -1,0 +1,48 @@
+name: Release on tag
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build FunctionApp.zip and attach to release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build FunctionApp.zip
+        run: |
+          cd production/FunctionApp
+          zip -r "$GITHUB_WORKSPACE/FunctionApp.zip" . \
+            -x "__pycache__/*" \
+            -x "**/__pycache__/*" \
+            -x "*.pyc" \
+            -x ".python_packages/*" \
+            -x ".pytest_cache/*" \
+            -x ".DS_Store" \
+            -x "**/.DS_Store"
+          ls -la "$GITHUB_WORKSPACE/FunctionApp.zip"
+
+      - name: Create GitHub release with zip asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          NOTES="Automated release from tag ${TAG_NAME}.
+
+          Install URL for ARM:
+          https://github.com/${REPO}/releases/download/${TAG_NAME}/FunctionApp.zip
+
+          Refactored Function App bundled from production/FunctionApp at tag ${TAG_NAME}."
+
+          gh release create "$TAG_NAME" \
+            "$GITHUB_WORKSPACE/FunctionApp.zip" \
+            --repo "$REPO" \
+            --title "$TAG_NAME" \
+            --notes "$NOTES"
