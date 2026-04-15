@@ -1,265 +1,283 @@
-<mxfile host="app.diagrams.net" modified="2026-04-15T14:20:00.000Z" agent="hand-crafted" version="24.0.0">
+<mxfile host="app.diagrams.net" modified="2026-04-15T14:35:00.000Z" agent="hand-crafted" version="24.0.0">
   <diagram name="1. Architecture" id="architecture">
-    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="title1" value="SOCRadar Entra ID Integration — Architecture" style="text;strokeColor=none;fillColor=none;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1320" height="40" as="geometry" />
+        <mxCell id="title1" value="SOCRadar Entra ID — Architecture" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1720" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="ext_grp" value="EXTERNAL SERVICES" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="60" y="90" width="400" height="720" as="geometry" />
+        <mxCell id="subtitle" value="Hub-and-spoke: Function App is the central orchestrator. External services on the left. Customer Azure resources on the right." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1720" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="socr" value="SOCRadar Platform API&#xa;platform.socradar.com&#xa;&#xa;GET /api/company/330/v2/threat-feed/search/botnet&#xa;GET /api/company/330/v2/incident/pii&#xa;GET /api/company/330/v2/incident/vip-protection&#xa;POST /api/company/330/incident/alarms/{id}/resolve&#xa;&#xa;Auth: X-Api-Key header" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="90" y="140" width="340" height="160" as="geometry" />
+        <mxCell id="ext_grp" value="EXTERNAL SERVICES" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="440" height="900" as="geometry" />
         </mxCell>
-        <mxCell id="login" value="login.microsoftonline.com&#xa;&#xa;POST /{tenant_id}/oauth2/v2.0/token&#xa;scope=https://graph.microsoft.com/.default&#xa;grant_type=client_credentials&#xa;&#xa;Returns: access_token (60-min TTL)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="90" y="340" width="340" height="140" as="geometry" />
+        <mxCell id="socr" value="&lt;b&gt;SOCRadar Platform API&lt;/b&gt;&#xa;platform.socradar.com&#xa;&#xa;GET /botnet&#xa;GET /pii&#xa;GET /vip&#xa;POST /alarm/resolve&#xa;&#xa;Auth: X-Api-Key header" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="80" y="160" width="360" height="180" as="geometry" />
         </mxCell>
-        <mxCell id="graph" value="Microsoft Graph API v1.0&#xa;graph.microsoft.com&#xa;&#xa;GET /users/{email}&#xa;POST /users/{id}/revokeSignInSessions&#xa;POST /groups/{gid}/members/$ref&#xa;PATCH /users/{id}&#xa;POST /riskyUsers/confirmCompromised&#xa;GET /users/{id}/authentication/methods&#xa;DELETE /users/{id}/authentication/.../{mid}&#xa;&#xa;Auth: Bearer access_token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="90" y="520" width="340" height="240" as="geometry" />
+        <mxCell id="login" value="&lt;b&gt;login.microsoftonline.com&lt;/b&gt;&#xa;&#xa;POST /{tenant}/oauth2/v2.0/token&#xa;scope: graph.microsoft.com/.default&#xa;grant_type: client_credentials&#xa;&#xa;Returns: access_token (60m TTL)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="80" y="400" width="360" height="160" as="geometry" />
         </mxCell>
-        <mxCell id="az_grp" value="CUSTOMER AZURE SUBSCRIPTION" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="600" y="90" width="720" height="720" as="geometry" />
+        <mxCell id="graph" value="&lt;b&gt;Microsoft Graph API v1.0&lt;/b&gt;&#xa;graph.microsoft.com&#xa;&#xa;GET  /users/{email}&#xa;POST /users/{id}/revokeSignInSessions&#xa;POST /groups/{gid}/members/$ref&#xa;PATCH /users/{id}&#xa;POST /riskyUsers/confirmCompromised&#xa;GET  /users/{id}/authentication/methods&#xa;DELETE /users/{id}/authentication/.../{mid}&#xa;&#xa;Auth: Bearer access_token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="80" y="620" width="360" height="260" as="geometry" />
         </mxCell>
-        <mxCell id="fa" value="⚡ Azure Function App&#xa;socradar-entraid-xxx&#xa;&#xa;Python 3.11 / Consumption&#xa;Timer trigger (6h)&#xa;run_on_startup=true&#xa;&#xa;function_app.py — entry point&#xa;actions/* — Graph + Sentinel&#xa;sources/* — SOCRadar fetch&#xa;utils/* — config, checkpoint, logging" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="840" y="140" width="260" height="210" as="geometry" />
+        <mxCell id="az_grp" value="CUSTOMER AZURE SUBSCRIPTION" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
+          <mxGeometry x="640" y="110" width="1120" height="900" as="geometry" />
         </mxCell>
-        <mxCell id="uami" value="🔑 User-Assigned&#xa;Managed Identity&#xa;&#xa;(DefaultAzureCredential)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=center;" vertex="1" parent="1">
-          <mxGeometry x="630" y="140" width="180" height="90" as="geometry" />
+        <mxCell id="fa" value="&lt;b&gt;⚡ Azure Function App&lt;/b&gt;&#xa;socradar-entraid-xxx&#xa;&#xa;Python 3.11 / Consumption&#xa;Timer trigger (every 6h)&#xa;run_on_startup = true&#xa;&#xa;• function_app.py — entry point&#xa;• actions/* — Graph, Sentinel, LAW&#xa;• sources/* — SOCRadar fetch&#xa;• utils/* — config, checkpoint, logging" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=0;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="700" y="400" width="320" height="240" as="geometry" />
         </mxCell>
-        <mxCell id="stor" value="💾 Storage Account&#xa;&#xa;Table: EntraIDState&#xa;• PartitionKey=source&#xa;• RowKey=checkpoint&#xa;• last_start_date, last_page" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="630" y="260" width="200" height="140" as="geometry" />
+        <mxCell id="uami" value="&lt;b&gt;🔑 User-Assigned&lt;/b&gt;&#xa;&lt;b&gt;Managed Identity&lt;/b&gt;&#xa;&#xa;DefaultAzureCredential&#xa;(AZURE_CLIENT_ID env)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="160" width="260" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="ai" value="📊 Application Insights&#xa;&#xa;traces / requests /&#xa;exceptions / metrics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=center;" vertex="1" parent="1">
-          <mxGeometry x="1130" y="140" width="170" height="90" as="geometry" />
+        <mxCell id="stor" value="&lt;b&gt;💾 Storage Account&lt;/b&gt;&#xa;&#xa;Table: EntraIDState&#xa;PartitionKey = source&#xa;RowKey = checkpoint&#xa;&#xa;Fields:&#xa;• last_start_date&#xa;• last_page" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=18;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=18;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="340" width="260" height="200" as="geometry" />
         </mxCell>
-        <mxCell id="law" value="📋 Log Analytics Workspace&#xa;(HTTP Data Collector API)&#xa;&#xa;• SOCRadar_Botnet_CL&#xa;• SOCRadar_PII_CL&#xa;• SOCRadar_VIP_CL&#xa;• SOCRadar_Identity_CL&#xa;• SOCRadar_EntraID_Audit_CL&#xa;&#xa;Auth: HMAC-signed POST" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=15;" vertex="1" parent="1">
-          <mxGeometry x="850" y="400" width="260" height="210" as="geometry" />
+        <mxCell id="ai" value="&lt;b&gt;📊 Application Insights&lt;/b&gt;&#xa;&#xa;traces / requests /&#xa;exceptions / metrics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="160" width="240" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="sent" value="🚨 Microsoft Sentinel&#xa;(optional — ENABLE_CREATE_INCIDENT)&#xa;&#xa;PUT .../incidents/{guid}?api-version=2024-03-01&#xa;&#xa;Flows to SecurityIncident table in LAW" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="850" y="650" width="320" height="130" as="geometry" />
+        <mxCell id="law" value="&lt;b&gt;📋 Log Analytics Workspace&lt;/b&gt;&#xa;&#xa;HTTP Data Collector API&#xa;HMAC-signed POST&#xa;&#xa;Custom tables:&#xa;• SOCRadar_Botnet_CL&#xa;• SOCRadar_PII_CL&#xa;• SOCRadar_VIP_CL&#xa;• SOCRadar_Identity_CL&#xa;• SOCRadar_EntraID_Audit_CL" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=18;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=18;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="680" y="700" width="360" height="240" as="geometry" />
         </mxCell>
-        <mxCell id="e1" style="endArrow=classic;html=1;exitX=1;exitY=0.3;entryX=0;entryY=0.3;startSize=8;endSize=8;strokeColor=#000;" edge="1" parent="1" source="fa" target="socr">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="500" y="180" />
-            </Array>
+        <mxCell id="sent" value="&lt;b&gt;🚨 Microsoft Sentinel&lt;/b&gt;&#xa;(optional — ENABLE_CREATE_INCIDENT)&#xa;&#xa;PUT .../incidents/{guid}&#xa;?api-version=2024-03-01&#xa;&#xa;Flows to SecurityIncident table in LAW" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="700" width="360" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.25;entryX=1;entryY=0.5;endArrow=classic;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="fa" target="socr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1_label" value="GET leaks" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e1">
+          <mxGeometry x="-0.5" relative="1" as="geometry">
+            <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="e1l" value="GET leaks (X-Api-Key)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e1">
-          <mxGeometry x="-0.3" y="-1" relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e2" style="endArrow=classic;html=1;startArrow=classic;startFill=1;exitX=0;exitY=0.6;entryX=1;entryY=0.5;strokeColor=#000;" edge="1" parent="1" source="fa" target="login">
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;endArrow=classic;startArrow=classic;startFill=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="fa" target="login">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e2l" value="client creds ↔ Bearer token" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e2">
-          <mxGeometry x="-0.2" y="-1" relative="1" as="geometry" />
+        <mxCell id="e2_label" value="client_id + secret ⇄ Bearer token" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e2">
+          <mxGeometry x="-0.3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e3" style="endArrow=classic;html=1;startArrow=classic;startFill=1;exitX=0;exitY=0.9;entryX=1;entryY=0.3;strokeColor=#000;" edge="1" parent="1" source="fa" target="graph">
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.75;entryX=1;entryY=0.5;endArrow=classic;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="fa" target="graph">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e3l" value="Graph actions (Bearer)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e3">
-          <mxGeometry x="-0.2" y="0" relative="1" as="geometry" />
+        <mxCell id="e3_label" value="Graph actions (Bearer)" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e3">
+          <mxGeometry x="-0.3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e4" style="endArrow=classic;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#000;" edge="1" parent="1" source="fa" target="law">
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.25;entryX=0;entryY=0.5;endArrow=classic;startArrow=classic;startFill=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="fa" target="stor">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e4l" value="POST LAW records (HMAC)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e4">
-          <mxGeometry x="-0.1" relative="1" as="geometry" />
+        <mxCell id="e4_label" value="R/W checkpoint" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e4">
+          <mxGeometry x="-0.3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e5" style="endArrow=classic;html=1;exitX=0.4;exitY=1;entryX=0.3;entryY=0;strokeColor=#000;dashed=1;" edge="1" parent="1" source="law" target="sent">
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;endArrow=classic;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="fa" target="law">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e5l" value="(Sentinel incidents land here)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e5">
-          <mxGeometry x="-0.1" relative="1" as="geometry" />
+        <mxCell id="e5_label" value="POST records (HMAC)" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e5">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e6" style="endArrow=classic;html=1;startArrow=classic;startFill=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;strokeColor=#000;" edge="1" parent="1" source="fa" target="stor">
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.1;entryX=0;entryY=0.5;endArrow=classic;strokeColor=#666666;strokeWidth=1;" edge="1" parent="1" source="fa" target="ai">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e6l" value="read/write checkpoint" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e6">
-          <mxGeometry x="-0.1" relative="1" as="geometry" />
+        <mxCell id="e6_label" value="telemetry" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=2;labelBackgroundColor=#ffffff;fontColor=#666;" vertex="1" connectable="0" parent="e6">
+          <mxGeometry x="-0.3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e7" style="endArrow=classic;html=1;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;" edge="1" parent="1" source="uami" target="stor">
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;exitX=1;exitY=0.9;entryX=0;entryY=0.3;endArrow=classic;strokeColor=#666666;strokeWidth=1;" edge="1" parent="1" source="fa" target="sent">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e7l" value="DefaultAzureCredential" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;fontColor=#666;" vertex="1" connectable="0" parent="e7">
-          <mxGeometry x="-0.1" relative="1" as="geometry" />
+        <mxCell id="e7_label" value="PUT incident (optional)" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=2;labelBackgroundColor=#ffffff;fontColor=#666;" vertex="1" connectable="0" parent="e7">
+          <mxGeometry x="-0.3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e8" style="endArrow=classic;html=1;exitX=1;exitY=0.2;entryX=0;entryY=0.5;strokeColor=#000;" edge="1" parent="1" source="fa" target="ai">
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;endArrow=classic;strokeColor=#999999;strokeWidth=1;" edge="1" parent="1" source="uami" target="stor">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e8l" value="telemetry" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e8">
-          <mxGeometry x="-0.1" relative="1" as="geometry" />
+        <mxCell id="e8_label" value="identity (DefaultAzureCredential)" style="edgeLabel;html=1;align=center;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;fontColor=#999;" vertex="1" connectable="0" parent="e8">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e9" style="endArrow=classic;html=1;dashed=1;exitX=0.1;exitY=1;entryX=0;entryY=0.3;strokeColor=#666;" edge="1" parent="1" source="fa" target="sent">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="legend_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1020" width="1720" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="e9l" value="PUT incident (optional)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;fontColor=#666;" vertex="1" connectable="0" parent="e9">
-          <mxGeometry x="-0.1" relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="legend" value="Legend:&#xa;───  required connection&#xa;- - -  optional / identity" style="text;strokeColor=none;fillColor=none;html=1;fontSize=10;align=left;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="60" y="830" width="300" height="50" as="geometry" />
+        <mxCell id="legend_txt" value="&lt;b&gt;Legend:&lt;/b&gt;   ───  required connection (bold)   ▪▪▪  optional / identity binding (dashed, grey)   |   &lt;b&gt;Colors:&lt;/b&gt;   🔵 external service   🟢 Azure resource   🟡 Function App (central orchestrator)" style="text;strokeColor=none;fillColor=none;html=1;fontSize=12;align=left;spacingLeft=20;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1020" width="1720" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram name="2. Runtime Flow" id="runtime">
-    <mxGraphModel dx="1400" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="1400" math="0" shadow="0">
+    <mxGraphModel dx="1400" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1500" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="title2" value="One Timer Tick — End-to-End Flow" style="text;strokeColor=none;fillColor=none;html=1;fontSize=20;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="920" height="40" as="geometry" />
+        <mxCell id="title2" value="One Timer Tick — End-to-End Flow" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1120" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="n1" value="TIMER fires&#xa;(every 6 hours, run_on_startup=true)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="380" y="80" width="240" height="70" as="geometry" />
+        <mxCell id="subtitle2" value="Top-down. Diamonds are branches. Process rectangles fill the outer loop (per source) and inner loop (per leaked employee)." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1120" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="n2" value="config.load()&#xa;Read all ENABLE_* toggles + secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="380" y="180" width="240" height="60" as="geometry" />
+        <mxCell id="n1" value="&lt;b&gt;TIMER fires&lt;/b&gt;&#xa;every 6 hours · run_on_startup = true" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="460" y="110" width="280" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="n3" value="_required_graph_permissions()&#xa;Log which permissions are needed based on config" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="380" y="270" width="240" height="60" as="geometry" />
+        <mxCell id="n2" value="&lt;b&gt;config.load()&lt;/b&gt;&#xa;Read all ENABLE_* toggles + secrets from app settings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="240" width="360" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="n4" value="ENABLE_USER_LOOKUP?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="400" y="360" width="200" height="70" as="geometry" />
+        <mxCell id="n3" value="&lt;b&gt;_required_graph_permissions(conf)&lt;/b&gt;&#xa;Log which Graph permissions are expected based on toggles" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="330" width="360" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="n5a" value="FALSE branch:&#xa;Skip MSAL token&#xa;Skip all Entra actions&#xa;Only source fetch + LAW audit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="80" y="360" width="260" height="90" as="geometry" />
+        <mxCell id="n4" value="&lt;b&gt;ENABLE_USER_LOOKUP?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="470" y="420" width="260" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="n5b" value="TRUE branch:&#xa;MSAL: POST /{tenant}/oauth2/v2.0/token&#xa;→ access_token (60-min TTL)&#xa;graph_headers = {Bearer ...}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="660" y="360" width="260" height="90" as="geometry" />
+        <mxCell id="n5a" value="&lt;b&gt;FALSE branch&lt;/b&gt;&#xa;• Skip MSAL token&#xa;• Skip all Entra actions&#xa;• Still fetch SOCRadar sources&#xa;• Still write LAW audit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=12;align=left;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="440" width="320" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="n6" value="LOOP — for source in [botnet, pii, vip]" style="shape=process;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="320" y="480" width="360" height="50" as="geometry" />
+        <mxCell id="n5b" value="&lt;b&gt;TRUE branch&lt;/b&gt;&#xa;• MSAL: POST /{tenant}/oauth2/v2.0/token&#xa;• Returns access_token (60m TTL)&#xa;• graph_headers = {Authorization: Bearer ...}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="820" y="440" width="340" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="n7" value="Table Storage: GET checkpoint&#xa;(last_start_date, last_page)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="80" y="560" width="260" height="60" as="geometry" />
+        <mxCell id="n6" value="&lt;b&gt;OUTER LOOP — for source in [botnet, pii, vip]&lt;/b&gt;" style="shape=process;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="600" width="560" height="56" as="geometry" />
         </mxCell>
-        <mxCell id="n8" value="SOCRadar: GET /v2/.../search?...&#xa;Returns [{email, password, severity, ...}]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="380" y="560" width="240" height="60" as="geometry" />
+        <mxCell id="n7" value="&lt;b&gt;Checkpoint: GET&lt;/b&gt;&#xa;Table Storage → last_start_date, last_page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="690" width="320" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="n9" value="Table Storage: PATCH new checkpoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="660" y="560" width="260" height="60" as="geometry" />
+        <mxCell id="n8" value="&lt;b&gt;SOCRadar: GET leaks&lt;/b&gt;&#xa;[{email, password, severity, ...}]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="440" y="690" width="320" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="n10" value="INNER LOOP — for emp in leaked_users" style="shape=process;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="320" y="660" width="360" height="50" as="geometry" />
+        <mxCell id="n9" value="&lt;b&gt;Checkpoint: PATCH&lt;/b&gt;&#xa;Table Storage ← new last_start_date/page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="820" y="690" width="320" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="n11" value="Graph: GET /users/{email}&#xa;200 = found / 404 = not_found / 403 = perm denied" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="320" y="740" width="360" height="60" as="geometry" />
+        <mxCell id="n10" value="&lt;b&gt;INNER LOOP — for emp in leaked_users&lt;/b&gt;" style="shape=process;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="800" width="560" height="56" as="geometry" />
         </mxCell>
-        <mxCell id="n12" value="User found → Action chain (each opt-in)&#xa;&#xa;• enable_revoke_session → POST /revokeSignInSessions&#xa;• enable_add_to_group → POST /groups/{gid}/members/$ref&#xa;• enable_remove_from_group → DELETE members/{id}/$ref&#xa;• enable_disable_account → PATCH accountEnabled=false&#xa;• enable_enable_account → PATCH accountEnabled=true&#xa;• enable_password_change → PATCH passwordProfile&#xa;• enable_confirm_risky → POST /riskyUsers/confirmCompromised  [needs P1/P2]&#xa;• enable_force_mfa_reregistration ⭐ NEW → GET + DELETE auth methods&#xa;• enable_ropc → validate password via ROPC (if plaintext)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="140" y="830" width="720" height="200" as="geometry" />
+        <mxCell id="n11" value="&lt;b&gt;Graph: GET /users/{email}&lt;/b&gt;&#xa;200 = found · 404 = not_found · 403 = permission denied" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="890" width="560" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="n13" value="Log Analytics: POST SOCRadar_{source}_CL&#xa;(one record per employee with actions_taken[])" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="320" y="1060" width="360" height="60" as="geometry" />
+        <mxCell id="n12" value="&lt;b&gt;Action chain (each toggle-gated)&lt;/b&gt;&#xa;&#xa;1. enable_revoke_session → POST /revokeSignInSessions&#xa;2. enable_add_to_group → POST /groups/{gid}/members/$ref&#xa;3. enable_remove_from_group → DELETE members/{id}/$ref&#xa;4. enable_disable_account → PATCH accountEnabled = false&#xa;5. enable_enable_account → PATCH accountEnabled = true&#xa;6. enable_password_change → PATCH passwordProfile&#xa;7. enable_confirm_risky → POST /riskyUsers/confirmCompromised  [needs P1/P2]&#xa;8. ⭐ enable_force_mfa_reregistration (NEW) → GET + DELETE auth methods&#xa;9. enable_ropc → validate password via ROPC (if plaintext, discouraged)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="200" y="990" width="800" height="230" as="geometry" />
         </mxCell>
-        <mxCell id="n14" value="Sentinel (optional): PUT /incidents/{guid}&#xa;SOCRadar (optional): POST /alarms/{id}/resolve" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#ffffff;strokeColor=#666;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="320" y="1150" width="360" height="60" as="geometry" />
+        <mxCell id="n13" value="&lt;b&gt;LAW: POST SOCRadar_{source}_CL&lt;/b&gt;&#xa;One record per employee, includes actions_taken[]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1260" width="560" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="n15" value="END of tick&#xa;Write SOCRadar_EntraID_Audit_CL (3 rows)&#xa;Total: 1-32 seconds" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="340" y="1250" width="320" height="80" as="geometry" />
+        <mxCell id="n14" value="Optional: Sentinel PUT /incidents/{guid}&#xa;Optional: SOCRadar POST /alarms/{id}/resolve" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#ffffff;strokeColor=#666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1350" width="560" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="f1" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n1" target="n2">
+        <mxCell id="n15" value="&lt;b&gt;END of tick&lt;/b&gt;&#xa;LAW: POST SOCRadar_EntraID_Audit_CL (3 rows)&#xa;Total: 1–32 seconds" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1440" width="440" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="f1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n1" target="n2">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f2" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n2" target="n3">
+        <mxCell id="f2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n2" target="n3">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f3" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n3" target="n4">
+        <mxCell id="f3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n3" target="n4">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f4" value="false" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n4" target="n5a">
+        <mxCell id="f4" value="false" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#b85450;exitX=0;exitY=0.5;entryX=1;entryY=0.5;fontSize=11;fontStyle=1;" edge="1" parent="1" source="n4" target="n5a">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f5" value="true" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n4" target="n5b">
+        <mxCell id="f5" value="true" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#82b366;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=11;fontStyle=1;" edge="1" parent="1" source="n4" target="n5b">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f6" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n5a" target="n6">
+        <mxCell id="f6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n5a" target="n6">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f7" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n5b" target="n6">
+        <mxCell id="f7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n5b" target="n6">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f8" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n6" target="n7">
+        <mxCell id="f8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#9673a6;exitX=0.2;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n6" target="n7">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f9" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n7" target="n8">
+        <mxCell id="f9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#9673a6;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n6" target="n8">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f10" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n8" target="n9">
+        <mxCell id="f10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#9673a6;exitX=0.8;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n6" target="n9">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f11" style="endArrow=classic;html=1;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n8" target="n10">
+        <mxCell id="f11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n8" target="n10">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f12" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n10" target="n11">
+        <mxCell id="f12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n10" target="n11">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f13" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n11" target="n12">
+        <mxCell id="f13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n11" target="n12">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f14" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n12" target="n13">
+        <mxCell id="f14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n12" target="n13">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f15" style="endArrow=classic;html=1;strokeColor=#000;dashed=1;" edge="1" parent="1" source="n13" target="n14">
+        <mxCell id="f15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#666;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n13" target="n14">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f16" style="endArrow=classic;html=1;strokeColor=#000;" edge="1" parent="1" source="n14" target="n15">
+        <mxCell id="f16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n14" target="n15">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram name="3. Progress" id="progress">
-    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="title3" value="Entra ID Integration — Progress State" style="text;strokeColor=none;fillColor=none;html=1;fontSize=20;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1520" height="40" as="geometry" />
+        <mxCell id="title3" value="Entra ID Integration — Progress State" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1720" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="col1" value="✅ DONE — on origin/master" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="40" y="80" width="500" height="780" as="geometry" />
+        <mxCell id="subtitle3" value="Three-column status board: what is shipped (left), what needs admin action (middle), what awaits your decision (right)." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1720" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="c1" value="commit 33a4e7d&#xa;Least-privilege refactor&#xa;&#xa;• EnableUserLookup toggle added&#xa;• User.ReadWrite.All removed from&#xa;  requiredResourceAccess&#xa;• 6 narrow permissions wired 1-to-1&#xa;  with feature toggles&#xa;• Sentinel labels now include labelType:User&#xa;• CRITICAL → High severity mapping&#xa;• Cross-RG workspaceResourceId fix&#xa;• conditional Entra credentials&#xa;• Microsoft Sentinel branding" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="60" y="130" width="460" height="200" as="geometry" />
+        <mxCell id="col1" value="✅ DONE — origin/master · deployed · verified" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="560" height="900" as="geometry" />
         </mxCell>
-        <mxCell id="c2" value="commit 4dd0535&#xa;v1.1.0 GitHub release + ARM URL fix&#xa;&#xa;• FunctionApp.zip (23K) attached to release&#xa;• ARM WEBSITE_RUN_FROM_PACKAGE now&#xa;  points to v1.1.0 (was v1.0.0 which&#xa;  never actually existed on GitHub)&#xa;• Customer Deploy to Azure button works" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="60" y="350" width="460" height="140" as="geometry" />
+        <mxCell id="c1" value="&lt;b&gt;commit 33a4e7d&lt;/b&gt; — Least-privilege refactor&#xa;&#xa;• EnableUserLookup toggle added&#xa;• User.ReadWrite.All removed from requiredResourceAccess&#xa;• 6 narrow Graph permissions, 1-to-1 with feature toggles&#xa;• Sentinel labels gained labelType:&quot;User&quot;&#xa;• CRITICAL → High severity mapping&#xa;• Cross-RG workspaceResourceId fix (3-param resourceId)&#xa;• Entra credentials conditionally required" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="160" width="500" height="180" as="geometry" />
         </mxCell>
-        <mxCell id="c3" value="commit ac1eb6a&#xa;Force MFA Re-registration (Option 1)&#xa;&#xa;• EnableForceMfaReregistration toggle (off)&#xa;• actions/entra_id.force_mfa_reregistration()&#xa;• 7 authentication method types supported&#xa;• Password method always preserved&#xa;• Graceful 401/403 permission-denied handling&#xa;• 9 files touched: config.py, entra_id.py,&#xa;  function_app.py, azuredeploy.json, README,&#xa;  .env.example, deploy.sh, deploy.config,&#xa;  validate.sh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="60" y="510" width="460" height="200" as="geometry" />
+        <mxCell id="c2" value="&lt;b&gt;commit 4dd0535&lt;/b&gt; — v1.1.0 release + ARM URL fix&#xa;&#xa;• FunctionApp.zip (23K) attached to v1.1.0 release&#xa;• ARM WEBSITE_RUN_FROM_PACKAGE → v1.1.0&#xa;• Customer &quot;Deploy to Azure&quot; button now works&#xa;  (v1.0.0 never actually existed on GitHub)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="360" width="500" height="140" as="geometry" />
         </mxCell>
-        <mxCell id="c4" value="commit cf83299&#xa;Tests&#xa;&#xa;• 7 mock-based unit tests (unittest.mock,&#xa;  no network, CI-safe) — 7/7 PASS&#xa;• test_actions.py test_13 added (live,&#xa;  --run-destructive default off)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="60" y="730" width="460" height="110" as="geometry" />
+        <mxCell id="c3" value="&lt;b&gt;commit ac1eb6a&lt;/b&gt; — Force MFA Re-registration&#xa;&#xa;• EnableForceMfaReregistration toggle (OFF by default)&#xa;• actions/entra_id.force_mfa_reregistration()&#xa;• 7 method types: Authenticator, phone, FIDO2,&#xa;  software OATH, Windows Hello, email, TAP&#xa;• Password method always preserved&#xa;• 401/403 graceful permission-denied handling&#xa;• Required: UserAuthenticationMethod.ReadWrite.All" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="520" width="500" height="200" as="geometry" />
         </mxCell>
-        <mxCell id="col2" value="⏸ BLOCKED — admin action required" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="560" y="80" width="500" height="780" as="geometry" />
+        <mxCell id="c4" value="&lt;b&gt;commit cf83299&lt;/b&gt; — Tests&#xa;&#xa;• 7 mock-based unit tests (unittest.mock, no network)&#xa;• 7/7 PASS · CI-safe&#xa;• scripts/test_actions.py test_13 added (live integration,&#xa;  destructive, --run-destructive flag, default off)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="740" width="500" height="140" as="geometry" />
         </mxCell>
-        <mxCell id="b1" value="#7 — Remove lingering broad grant&#xa;&#xa;SP: b7d1f4b7-9870-4102-bd73-ffbb507fb95e&#xa;appRoleAssignment:&#xa;  t_TRt3CYAkG9c_-7UH-5Xvv640PPP01FnrhKGGT-XAo&#xa;permission: User.ReadWrite.All&#xa;&#xa;Needs: Privileged Role Admin or Global Admin&#xa;Current login returns Authorization_RequestDenied&#xa;&#xa;az rest --method DELETE --url &quot;https://graph...&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="580" y="130" width="460" height="190" as="geometry" />
+        <mxCell id="col2" value="⏸ BLOCKED — admin action required" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
+          <mxGeometry x="620" y="110" width="560" height="900" as="geometry" />
         </mxCell>
-        <mxCell id="b2" value="#5 — Rerun action tests, narrow permissions only&#xa;&#xa;python3 scripts/test_actions.py --skip-ropc&#xa;&#xa;Proves that the narrow permissions alone&#xa;work (not just the broad grant underneath).&#xa;Until #7 is done, this test cannot distinguish&#xa;between narrow and broad behavior." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="580" y="340" width="460" height="160" as="geometry" />
+        <mxCell id="b1" value="&lt;b&gt;#7 — Remove lingering broad grant&lt;/b&gt;&#xa;&#xa;SP:   b7d1f4b7-9870-4102-bd73-ffbb507fb95e&#xa;Role: t_TRt3CYAkG9c_-7UH-5Xvv640PPP01FnrhKGGT-XAo&#xa;Perm: User.ReadWrite.All&#xa;&#xa;Needs: Privileged Role Admin or Global Admin&#xa;Current account: Authorization_RequestDenied&#xa;&#xa;az rest --method DELETE --url &quot;https://graph...&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="650" y="160" width="500" height="210" as="geometry" />
         </mxCell>
-        <mxCell id="b3" value="Force MFA — live E2E test&#xa;&#xa;Needs:&#xa;1. Grant UserAuthenticationMethod.ReadWrite.All&#xa;   app permission + admin consent&#xa;2. Assign Privileged Authentication Administrator&#xa;   directory role to the SP&#xa;3. Disposable test user with registered MFA&#xa;4. python3 scripts/test_actions.py --run-destructive&#xa;&#xa;Unit tests already pass (7/7 mock-based)." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="580" y="520" width="460" height="200" as="geometry" />
+        <mxCell id="b2" value="&lt;b&gt;#5 — Rerun action tests with narrow perms only&lt;/b&gt;&#xa;&#xa;python3 scripts/test_actions.py --skip-ropc&#xa;&#xa;Proves narrow permissions are sufficient on their own.&#xa;Until #7 clears, broad grant silently satisfies calls,&#xa;masking the narrow-only behavior." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="650" y="400" width="500" height="160" as="geometry" />
         </mxCell>
-        <mxCell id="b_edge" style="endArrow=classic;html=1;strokeColor=#856404;" edge="1" parent="1" source="b1" target="b2">
+        <mxCell id="b3" value="&lt;b&gt;Force MFA — live E2E test&lt;/b&gt;&#xa;&#xa;Needs:&#xa;1. Grant UserAuthenticationMethod.ReadWrite.All app&#xa;   permission + admin consent&#xa;2. Assign Privileged Authentication Administrator&#xa;   directory role to the SP&#xa;3. Disposable test user with registered MFA methods&#xa;4. python3 scripts/test_actions.py --run-destructive&#xa;&#xa;Mock tests already PASS (7/7)." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="650" y="590" width="500" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="b_edge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#856404;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="b1" target="b2">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="b_edge2" value="also needed for" style="endArrow=classic;html=1;strokeColor=#856404;dashed=1;fontSize=10;fontStyle=2;" edge="1" parent="1" source="b1" target="b3">
+        <mxCell id="b_edge2" value="also unlocks" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#856404;dashed=1;exitX=1;exitY=0.7;entryX=1;entryY=0;fontSize=10;fontStyle=2;" edge="1" parent="1" source="b1" target="b3">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="col3" value="📋 PENDING — your decision" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="80" width="500" height="780" as="geometry" />
+        <mxCell id="col3" value="📋 PENDING — awaiting your decision" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="110" width="560" height="900" as="geometry" />
         </mxCell>
-        <mxCell id="p1" value="Option 2 — MSSP Multi-Tenant&#xa;&#xa;Convert app registration to multi-tenant so&#xa;one integration can act on multiple customer&#xa;Entra tenants (A manages X, Y).&#xa;&#xa;Changes:&#xa;• signInAudience = AzureADMultipleOrgs&#xa;• TENANT_MAPPING env var (domain → tenant_id)&#xa;• Per-tenant token cache&#xa;• target_tenant_id column in LAW&#xa;• new setup_multitenant_app.sh script&#xa;&#xa;Blockers:&#xa;3 product questions open (email not in mapping&#xa;behavior, multi-workspace routing, per-tenant&#xa;toggles)&#xa;&#xa;Effort: 1-2 sessions + 2-tenant E2E test" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="1100" y="130" width="460" height="380" as="geometry" />
+        <mxCell id="p1" value="&lt;b&gt;Option 2 — MSSP Multi-Tenant&lt;/b&gt;&#xa;&#xa;Convert app reg to AzureADMultipleOrgs so one&#xa;integration can act on multiple customer tenants&#xa;(A manages X, Y).&#xa;&#xa;Changes:&#xa;• signInAudience = AzureADMultipleOrgs&#xa;• TENANT_MAPPING env var (domain → tenant_id)&#xa;• Per-tenant token cache in function_app.py&#xa;• target_tenant_id column in LAW records&#xa;• scripts/setup_multitenant_app.sh (new)&#xa;&#xa;Blockers:&#xa;• 3 product questions open (defaults proposed)&#xa;• Needs a second disposable Entra tenant for E2E&#xa;&#xa;Effort: 1–2 sessions + 2-tenant E2E test" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="160" width="500" height="440" as="geometry" />
         </mxCell>
-        <mxCell id="p2" value="GitHub Actions auto-release&#xa;&#xa;Workflow that on every git tag push:&#xa;• zips production/FunctionApp/&#xa;• attaches to a new GitHub release&#xa;• tags release as the target of ARM URL&#xa;&#xa;Could then pin ARM URL to&#xa;/releases/latest/download/FunctionApp.zip&#xa;instead of a specific version.&#xa;&#xa;Nice-to-have, not blocking." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="1100" y="530" width="460" height="210" as="geometry" />
+        <mxCell id="p2" value="&lt;b&gt;GitHub Actions auto-release (nice-to-have)&lt;/b&gt;&#xa;&#xa;Workflow on tag push:&#xa;• zips production/FunctionApp/&#xa;• attaches to a new GitHub release&#xa;• ARM URL pins to /releases/latest/download/&#xa;&#xa;Avoids the stale-URL bug that hit v1.0.0." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="620" width="500" height="180" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
