@@ -1,0 +1,74 @@
+%% SOCRadar Entra ID Integration - Runtime Sequence (one timer tick)
+%% Import into draw.io: Arrange > Insert > Advanced > Mermaid
+
+sequenceDiagram
+    autonumber
+    participant T as Timer<br/>(6h)
+    participant F as Function App
+    participant CP as Table Storage<br/>(checkpoint)
+    participant S as SOCRadar API
+    participant M as login.microsoft<br/>online.com
+    participant G as Microsoft Graph
+    participant L as Log Analytics
+    participant SI as Sentinel<br/>(optional)
+
+    T->>F: tick
+    F->>F: config.load() + toggle log
+
+    alt ENABLE_USER_LOOKUP = true
+        F->>M: POST /{tenant}/oauth2/v2.0/token
+        M-->>F: access_token (60m TTL)
+    else ENABLE_USER_LOOKUP = false
+        Note over F: skip token, skip Entra actions
+    end
+
+    loop for source in [botnet, pii, vip]
+        F->>CP: GET last_start_date, last_page
+        F->>S: GET leaks since checkpoint
+        S-->>F: {email, password, severity, ...}[]
+        F->>CP: PATCH new checkpoint
+
+        loop for each leaked email
+            opt ENABLE_USER_LOOKUP
+                F->>G: GET /users/{email}
+                G-->>F: user object or 404
+            end
+
+            alt user found
+                opt enable_revoke_session
+                    F->>G: POST /users/{id}/revokeSignInSessions
+                end
+                opt enable_add_to_group
+                    F->>G: POST /groups/{gid}/members/$ref
+                end
+                opt enable_password_change
+                    F->>G: PATCH /users/{id} passwordProfile
+                end
+                opt enable_disable_account
+                    F->>G: PATCH /users/{id} accountEnabled=false
+                end
+                opt enable_confirm_risky (P1/P2)
+                    F->>G: POST /riskyUsers/confirmCompromised
+                end
+                opt enable_force_mfa_reregistration ⭐ NEW
+                    F->>G: GET /users/{id}/authentication/methods
+                    loop each non-password method
+                        F->>G: DELETE /auth/methods/{mid}
+                    end
+                end
+            end
+
+            F->>L: POST SOCRadar_{source}_CL
+
+            opt enable_create_incident
+                F->>SI: PUT /incidents/{guid}
+            end
+
+            opt enable_resolve_alarm
+                F->>S: POST /alarms/{id}/resolve
+            end
+        end
+    end
+
+    F->>L: POST SOCRadar_EntraID_Audit_CL
+    Note over F: total: 1-32 seconds

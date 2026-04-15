@@ -1,0 +1,39 @@
+%% SOCRadar Entra ID - Progress State
+%% Import into draw.io: Arrange > Insert > Advanced > Mermaid
+
+flowchart TB
+    subgraph DONE["✅ DONE — on origin/master, deployed, verified"]
+        direction TB
+        C1["commit 33a4e7d<br/>Least-privilege refactor<br/>• EnableUserLookup toggle<br/>• 6 narrow Graph permissions<br/>• Sentinel labelType fix<br/>• Cross-RG workspaceResourceId"]
+        C2["commit 4dd0535<br/>v1.1.0 GitHub release<br/>• FunctionApp.zip 23K bundled<br/>• ARM WEBSITE_RUN_FROM_PACKAGE<br/>  now points to v1.1.0<br/>• Customer Deploy button works"]
+        C3["commit ac1eb6a<br/>Force MFA Re-registration<br/>• EnableForceMfaReregistration<br/>• UserAuthenticationMethod.ReadWrite.All<br/>• 7 method types supported<br/>• Password method preserved<br/>• 401/403 graceful handling"]
+        C4["commit cf83299<br/>Tests<br/>• 7 unit tests (mock) — 7/7 PASS<br/>• test_13 live (--run-destructive)"]
+
+        C1 --> C2 --> C3 --> C4
+    end
+
+    subgraph BLOCKED["⏸ BLOCKED — external admin action required"]
+        direction TB
+        B1["#7 — Remove lingering broad grant<br/>User.ReadWrite.All still on SP<br/>b7d1f4b7-9870-4102-bd73-ffbb507fb95e<br/><br/>Needs: Privileged Role Admin<br/>orcun@SOCRadar gets 403"]
+        B2["#5 — Rerun action tests<br/>with narrow permissions only<br/><br/>scripts/test_actions.py --skip-ropc<br/>BLOCKED until B1 done"]
+        B3["Force MFA live E2E test<br/>Needs:<br/>1. UserAuthenticationMethod.ReadWrite.All grant<br/>2. Privileged Authentication Admin role<br/>3. Disposable test user with MFA<br/>4. test_actions.py --run-destructive"]
+
+        B1 --> B2
+        B1 -. also needed .-> B3
+    end
+
+    subgraph PENDING["📋 PENDING — your decision"]
+        direction TB
+        P1["Option 2: MSSP Multi-Tenant<br/>• Convert app reg to AzureADMultipleOrgs<br/>• TENANT_MAPPING env var<br/>• Per-tenant token cache<br/>• target_tenant_id column in LAW<br/><br/>3 product questions open<br/>Effort: 1-2 sessions + 2-tenant E2E"]
+        P2["GitHub Actions auto-release<br/>Zip FunctionApp on tag push<br/>Pin ARM URL to /releases/latest<br/><br/>Nice-to-have, not blocking"]
+    end
+
+    DONE ==> BLOCKED
+    DONE -.-> PENDING
+
+    classDef done fill:#d4edda,stroke:#155724,color:#000
+    classDef blocked fill:#fff3cd,stroke:#856404,color:#000
+    classDef pending fill:#cce5ff,stroke:#004085,color:#000
+    class C1,C2,C3,C4 done
+    class B1,B2,B3 blocked
+    class P1,P2 pending

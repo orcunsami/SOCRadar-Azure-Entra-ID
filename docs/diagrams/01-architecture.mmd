@@ -1,0 +1,39 @@
+%% SOCRadar Entra ID Integration - Component Architecture
+%% Import into draw.io: Arrange > Insert > Advanced > Mermaid
+
+flowchart LR
+    subgraph EXT["🌐 EXTERNAL SERVICES"]
+        SOCR["SOCRadar Platform API<br/>platform.socradar.com<br/><br/>• GET /botnet<br/>• GET /pii<br/>• GET /vip<br/>• POST /alarm/resolve"]
+        LOGIN["login.microsoftonline.com<br/><br/>POST /oauth2/v2.0/token<br/>client credentials flow"]
+        GRAPH["Microsoft Graph API v1.0<br/>graph.microsoft.com<br/><br/>• GET /users/{email}<br/>• POST /users/{id}/revokeSignInSessions<br/>• POST /groups/{id}/members/$ref<br/>• PATCH /users/{id}<br/>• POST /riskyUsers/confirmCompromised<br/>• DELETE /users/{id}/authentication/methods/{mid}"]
+    end
+
+    subgraph SUB["☁️ CUSTOMER AZURE SUBSCRIPTION"]
+        direction TB
+        FA["⚡ Azure Function App<br/>Python 3.11 / Consumption<br/>Timer trigger (6h)<br/>run_on_startup=true"]
+        UAMI["🔑 User-Assigned<br/>Managed Identity"]
+        STOR[("💾 Storage Account<br/>Table: EntraIDState<br/>checkpoint per source")]
+        AI["📊 Application Insights<br/>traces + metrics"]
+        LAW[("📋 Log Analytics Workspace<br/><br/>SOCRadar_Botnet_CL<br/>SOCRadar_PII_CL<br/>SOCRadar_VIP_CL<br/>SOCRadar_Identity_CL<br/>SOCRadar_EntraID_Audit_CL")]
+        SENT["🚨 Microsoft Sentinel<br/>(optional)<br/><br/>PUT /incidents/{guid}"]
+    end
+
+    FA -- "GET leaks (X-Api-Key)" --> SOCR
+    SOCR -. "alarm resolve (optional)" .-> FA
+    FA -- "acquire token (client_id + secret)" --> LOGIN
+    LOGIN -- "Bearer access_token (60m)" --> FA
+    FA -- "Graph actions (Bearer)" --> GRAPH
+    FA -- "HMAC-signed POST" --> LAW
+    FA -. "PUT incident" .-> SENT
+    SENT -. "incident appears in SecurityIncident table" .-> LAW
+    FA -- "read/write checkpoint" --> STOR
+    UAMI -. "DefaultAzureCredential" .- STOR
+    UAMI -. "DefaultAzureCredential" .- LAW
+    FA -- "telemetry" --> AI
+
+    classDef ext fill:#b3d9ff,stroke:#004a99,color:#000
+    classDef azure fill:#d4edda,stroke:#155724,color:#000
+    classDef optional stroke-dasharray: 5 5
+    class SOCR,LOGIN,GRAPH ext
+    class FA,UAMI,STOR,AI,LAW azure
+    class SENT optional
