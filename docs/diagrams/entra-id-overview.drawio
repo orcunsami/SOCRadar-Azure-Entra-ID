@@ -1,611 +1,491 @@
-<mxfile host="app.diagrams.net" modified="2026-04-15T17:25:00.000Z" agent="hand-crafted" version="24.0.0">
-  <diagram name="0. Overview" id="toc">
-    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="T0" value="SOCRadar Entra ID Integration — Complete Overview" style="text;strokeColor=none;fillColor=none;html=1;fontSize=28;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="30" width="1520" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="T0s" value="Each tab in this file is a standalone page. Start with page 1 for architecture, then pick the topic you need." style="text;strokeColor=none;fillColor=none;html=1;fontSize=14;align=center;fontColor=#555;" vertex="1" parent="1">
-          <mxGeometry x="40" y="85" width="1520" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="P1b" value="&lt;b&gt;1. Architecture&lt;/b&gt;&#xa;&#xa;Hangi bileşen neyle konuşuyor.&#xa;External servisler vs Azure kaynakları.&#xa;Endpoint URL'leri + auth yöntemi." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="160" width="360" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="P2b" value="&lt;b&gt;2. Runtime Flow&lt;/b&gt;&#xa;&#xa;Bir timer tick'inde ne oluyor.&#xa;SOCRadar fetch → user lookup → actions → LAW.&#xa;9 aksiyon seçeneği detaylı." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="450" y="160" width="360" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="P3b" value="&lt;b&gt;3. Feature Matrix&lt;/b&gt;&#xa;&#xa;Tüm ENABLE_* toggle'ları.&#xa;Her biri ne yapıyor, hangi permission gerektiriyor,&#xa;hangi lisansa bağlı." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="840" y="160" width="360" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="P4b" value="&lt;b&gt;4. MSSP: Setup Flow&lt;/b&gt;&#xa;&#xa;A firması X, Y'ye hizmet veriyor.&#xa;X ve Y admin'leri nasıl onay veriyor.&#xa;Tek deployment, 3 tenant." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1230" y="160" width="330" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="P5b" value="&lt;b&gt;5. MSSP: Runtime Flow&lt;/b&gt;&#xa;&#xa;Leak geldiğinde:&#xa;email domain → tenant lookup →&#xa;per-tenant token → per-tenant action." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="360" width="360" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="P6b" value="&lt;b&gt;6. Force MFA Options&lt;/b&gt;&#xa;&#xa;4 seçenek yan yana:&#xa;A=Delete methods · B=perUserMfaState&#xa;C=ConfirmRisky · D=Programmatic CA." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="450" y="360" width="360" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="P7b" value="&lt;b&gt;7. Distribution Paths&lt;/b&gt;&#xa;&#xa;Customer onboarding:&#xa;ARM button (var) vs Content Hub (yok).&#xa;Content Hub'a publish etmek ne kazandırır." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="840" y="360" width="360" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="P8b" value="&lt;b&gt;8. Security Evolution&lt;/b&gt;&#xa;&#xa;Şimdi: ENTRA_CLIENT_SECRET plaintext,&#xa;2 yıl TTL, elle rotation.&#xa;Hedef: Federated Identity Credential." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1230" y="360" width="330" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="P9b" value="&lt;b&gt;9. Progress State&lt;/b&gt;&#xa;&#xa;4 tier durum panosu:&#xa;✅ shipped · ⏸ admin-blocked&#xa;📋 pending decision · 🎯 roadmap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="560" width="360" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="lg" value="&lt;b&gt;Renk kodu:&lt;/b&gt;&#xa;🔵 Mavi = nasıl çalışıyor (architecture + runtime)&#xa;🟢 Yeşil = özellik envanteri + progress state&#xa;🟣 Mor = MSSP (multi-tenant konsept)&#xa;🟡 Sarı = feature karşılaştırma + distribution&#xa;🔴 Kırmızı = security / gelecekteki değişiklik" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="450" y="560" width="750" height="160" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram name="1. Architecture" id="arch">
+<mxfile host="app.diagrams.net" modified="2026-04-15T18:35:00.000Z" agent="hand-crafted" version="24.0.0">
+  <diagram name="1. Summary" id="summary">
     <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="t1" value="Architecture — Hub-and-Spoke" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1720" height="40" as="geometry" />
+        <mxCell id="t1" value="SOCRadar Entra ID Integration — What &amp; Why" style="text;strokeColor=none;fillColor=none;html=1;fontSize=26;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="30" width="1720" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="t1s" value="Function App ortada. External servisler solda. Azure kaynakları sağda. Her ok bir HTTP çağrısı." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
-          <mxGeometry x="40" y="62" width="1720" height="24" as="geometry" />
+        <mxCell id="t1s" value="Automated response to compromised credentials. Customer deploys once, it runs every 6 hours, pulls leaks from SOCRadar, acts on matched Entra ID users, logs everything to Sentinel." style="text;strokeColor=none;fillColor=none;html=1;fontSize=14;align=center;fontColor=#555;" vertex="1" parent="1">
+          <mxGeometry x="40" y="85" width="1720" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="ext" value="EXTERNAL SERVICES" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="40" y="110" width="440" height="900" as="geometry" />
+        <mxCell id="colIN" value="① DATA IN&#xa;(SOCRadar Platform)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;fontStyle=1;verticalAlign=top;spacingTop=10;opacity=80;" vertex="1" parent="1">
+          <mxGeometry x="40" y="140" width="540" height="560" as="geometry" />
         </mxCell>
-        <mxCell id="socr" value="&lt;b&gt;SOCRadar Platform API&lt;/b&gt;&#xa;platform.socradar.com&#xa;&#xa;GET /botnet&#xa;GET /pii&#xa;GET /vip&#xa;POST /alarm/resolve&#xa;&#xa;Auth: X-Api-Key" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="80" y="160" width="360" height="170" as="geometry" />
+        <mxCell id="inA" value="&lt;b&gt;Botnet leaks&lt;/b&gt; ✅ default ON&#xa;Stealer malware log captures&#xa;→ Writes SOCRadar_Botnet_CL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="200" width="500" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="login" value="&lt;b&gt;login.microsoftonline.com&lt;/b&gt;&#xa;&#xa;POST /{tenant}/oauth2/v2.0/token&#xa;scope: graph.microsoft.com/.default&#xa;grant_type: client_credentials&#xa;&#xa;Returns: access_token (60m TTL)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="80" y="370" width="360" height="150" as="geometry" />
+        <mxCell id="inB" value="&lt;b&gt;PII exposure&lt;/b&gt; ✅ default ON&#xa;Breach/darkweb email+password dumps&#xa;→ Writes SOCRadar_PII_CL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="300" width="500" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="graph" value="&lt;b&gt;Microsoft Graph v1.0&lt;/b&gt;&#xa;graph.microsoft.com&#xa;&#xa;GET /users/{email}&#xa;POST /users/{id}/revokeSignInSessions&#xa;POST /groups/{gid}/members/$ref&#xa;PATCH /users/{id}&#xa;POST /riskyUsers/confirmCompromised&#xa;GET /users/{id}/authentication/methods&#xa;DELETE /users/{id}/auth/.../{mid}&#xa;&#xa;Auth: Bearer token&#xa;Throttling: 429 Retry-After (retry wrapper)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="80" y="560" width="360" height="270" as="geometry" />
+        <mxCell id="inC" value="&lt;b&gt;VIP protection&lt;/b&gt; ⚠ default OFF&#xa;Exec/VIP-targeted leaks (unverified endpoint)&#xa;→ Writes SOCRadar_VIP_CL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="400" width="500" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="az" value="CUSTOMER AZURE SUBSCRIPTION" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="640" y="110" width="1120" height="900" as="geometry" />
+        <mxCell id="inInfo" value="&lt;b&gt;Domain filtering&lt;/b&gt;&#xa;Done on SOCRadar side (customer selects monitored&#xa;domains in platform). App processes everything the&#xa;API returns for the configured company_id.&#xa;&#xa;&lt;b&gt;Schedule&lt;/b&gt;  Timer trigger every 6 hours&#xa;  + one immediate run on startup/deploy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="500" width="500" height="180" as="geometry" />
         </mxCell>
-        <mxCell id="fa" value="&lt;b&gt;⚡ Azure Function App&lt;/b&gt;&#xa;&#xa;Python 3.11 / Consumption&#xa;Timer trigger (6h)&#xa;run_on_startup=true&#xa;&#xa;• function_app.py (entry)&#xa;• actions/* (Graph, Sentinel, LAW)&#xa;• sources/* (SOCRadar)&#xa;• utils/* (config, checkpoint)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=0;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="700" y="400" width="320" height="240" as="geometry" />
+        <mxCell id="colFA" value="② PROCESSING&#xa;(Function App in customer Azure)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;fontStyle=1;verticalAlign=top;spacingTop=10;opacity=80;" vertex="1" parent="1">
+          <mxGeometry x="620" y="140" width="560" height="560" as="geometry" />
         </mxCell>
-        <mxCell id="uami" value="&lt;b&gt;🔑 User-Assigned MI&lt;/b&gt;&#xa;&#xa;DefaultAzureCredential&#xa;(AZURE_CLIENT_ID env)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1100" y="160" width="260" height="110" as="geometry" />
+        <mxCell id="faBig" value="&lt;b&gt;⚡ Azure Function App&lt;/b&gt;&#xa;Python 3.11 · Consumption tier&#xa;Timer trigger every 6h&#xa;&#xa;&lt;b&gt;Per tick&lt;/b&gt;&#xa;1. Load config (16 toggles + secrets)&#xa;2. Acquire Graph token via MSAL (unless lookup disabled)&#xa;3. For each enabled source: read checkpoint, fetch leaks,&#xa;   write new checkpoint&#xa;4. For each leak email: look up user in Entra,&#xa;   apply enabled actions, write LAW record&#xa;5. Write per-source audit summary to LAW&#xa;6. Optional: create Sentinel incident, resolve SOCRadar alarm&#xa;&#xa;&lt;b&gt;Built-in resilience&lt;/b&gt;&#xa;• 429 Retry-After handling (up to 3 retries, 30s cap)&#xa;• Consent revocation detection + audit event&#xa;• Per-source exception isolation&#xa;• Checkpoint resumes if interrupted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="640" y="200" width="520" height="480" as="geometry" />
         </mxCell>
-        <mxCell id="stor" value="&lt;b&gt;💾 Storage Account&lt;/b&gt;&#xa;&#xa;Table: EntraIDState&#xa;• PK=source&#xa;• RK=checkpoint&#xa;• last_start_date&#xa;• last_page" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=18;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=18;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1100" y="320" width="260" height="180" as="geometry" />
+        <mxCell id="colOUT" value="③ DATA OUT&#xa;(Entra + Sentinel + SOCRadar)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;fontStyle=1;verticalAlign=top;spacingTop=10;opacity=80;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="140" width="540" height="560" as="geometry" />
         </mxCell>
-        <mxCell id="ai" value="&lt;b&gt;📊 App Insights&lt;/b&gt;&#xa;&#xa;traces / requests /&#xa;exceptions / metrics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1440" y="160" width="240" height="110" as="geometry" />
+        <mxCell id="outA" value="&lt;b&gt;Entra ID actions (9 options, opt-in)&lt;/b&gt;&#xa;Revoke session · Add/Remove group · Password change&#xa;Disable/Enable account · Confirm risky (P1/P2)&#xa;Force MFA re-registration ⭐ · ROPC validation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="200" width="500" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="law" value="&lt;b&gt;📋 Log Analytics Workspace&lt;/b&gt;&#xa;HTTP Data Collector API (HMAC)&#xa;&#xa;• SOCRadar_Botnet_CL&#xa;• SOCRadar_PII_CL&#xa;• SOCRadar_VIP_CL&#xa;• SOCRadar_Identity_CL&#xa;• SOCRadar_EntraID_Audit_CL" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=18;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=18;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="680" y="700" width="360" height="200" as="geometry" />
+        <mxCell id="outB" value="&lt;b&gt;Log Analytics Workspace (always on)&lt;/b&gt;&#xa;5 custom tables: Botnet_CL, PII_CL, VIP_CL,&#xa;Identity_CL, EntraID_Audit_CL&#xa;5 pre-built workbooks deployed with ARM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="330" width="500" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="sent" value="&lt;b&gt;🚨 Microsoft Sentinel&lt;/b&gt;&#xa;(optional — ENABLE_CREATE_INCIDENT)&#xa;&#xa;PUT .../incidents/{guid}&#xa;Flows to SecurityIncident in LAW" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1100" y="700" width="400" height="150" as="geometry" />
+        <mxCell id="outC" value="&lt;b&gt;Microsoft Sentinel (optional)&lt;/b&gt;&#xa;Creates incident per compromised user,&#xa;labels with SOCRadar + source + LeakedCredential" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="450" width="500" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="ae1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.25;entryX=1;entryY=0.5;endArrow=classic;strokeColor=#000;strokeWidth=2;" edge="1" parent="1" source="fa" target="socr">
+        <mxCell id="outD" value="&lt;b&gt;SOCRadar feedback loop (optional)&lt;/b&gt;&#xa;Auto-resolves the originating alarm after successful&#xa;remediation, closes the loop so SOC doesn't&#xa;manually triage auto-handled cases." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="560" width="500" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="arrowIN" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=3;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="colIN" target="colFA">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ae1l" value="GET leaks" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="ae1">
-          <mxGeometry x="-0.5" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-        </mxCell>
-        <mxCell id="ae2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;endArrow=classic;startArrow=classic;startFill=1;strokeColor=#000;strokeWidth=2;" edge="1" parent="1" source="fa" target="login">
+        <mxCell id="arrowOUT" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#82b366;strokeWidth=3;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="colFA" target="colOUT">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ae2l" value="client_id+secret ⇄ Bearer" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="ae2">
-          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        <mxCell id="install" value="&lt;b&gt;How customers install&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="730" width="1720" height="260" as="geometry" />
         </mxCell>
-        <mxCell id="ae3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.75;entryX=1;entryY=0.5;endArrow=classic;strokeColor=#000;strokeWidth=2;" edge="1" parent="1" source="fa" target="graph">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="inst1" value="&lt;b&gt;TODAY ✅&lt;/b&gt;  Deploy-to-Azure button on GitHub&#xa;&#xa;Customer clicks the button in our README.md →&#xa;Azure portal opens ARM template → customer fills&#xa;parameters (SOCRadar key, Entra credentials, LAW name)&#xa;→ click Create → ~3 minutes, live.&#xa;&#xa;Function code pulled from: GitHub Releases v1.1.0 zip&#xa;(auto-built on tag push via GitHub Actions)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="780" width="820" height="190" as="geometry" />
         </mxCell>
-        <mxCell id="ae3l" value="Graph actions (Bearer)" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="ae3">
-          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        <mxCell id="inst2" value="&lt;b&gt;FUTURE 🎯&lt;/b&gt;  Microsoft Sentinel Content Hub&#xa;&#xa;Customer browses Sentinel → Content Hub → searches &quot;SOCRadar&quot;&#xa;→ finds our Entra ID solution → one-click install.&#xa;&#xa;Status today (2026-04-15):&#xa;• Incidents PR #13628 open in Azure-Sentinel — reviewer pending&#xa;• Feeds + TAXII packaged locally — PR not opened yet&#xa;• Entra ID — NOT PACKAGED YET (decision pending)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="900" y="780" width="820" height="190" as="geometry" />
         </mxCell>
-        <mxCell id="ae4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.3;entryX=0;entryY=0.5;endArrow=classic;startArrow=classic;startFill=1;strokeColor=#000;strokeWidth=2;" edge="1" parent="1" source="fa" target="stor">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ae4l" value="R/W checkpoint" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="ae4">
-          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-        </mxCell>
-        <mxCell id="ae5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;endArrow=classic;strokeColor=#000;strokeWidth=2;" edge="1" parent="1" source="fa" target="law">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ae5l" value="POST records (HMAC)" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="ae5">
-          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-        </mxCell>
-        <mxCell id="ae6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.1;entryX=0;entryY=0.5;endArrow=classic;strokeColor=#666;" edge="1" parent="1" source="fa" target="ai">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ae6l" value="telemetry" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=2;labelBackgroundColor=#ffffff;fontColor=#666;" vertex="1" connectable="0" parent="ae6">
-          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-        </mxCell>
-        <mxCell id="ae7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;exitX=1;exitY=0.9;entryX=0;entryY=0.3;endArrow=classic;strokeColor=#666;" edge="1" parent="1" source="fa" target="sent">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ae7l" value="PUT incident (optional)" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=2;labelBackgroundColor=#ffffff;fontColor=#666;" vertex="1" connectable="0" parent="ae7">
-          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-        </mxCell>
-        <mxCell id="ae8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;endArrow=classic;strokeColor=#999;" edge="1" parent="1" source="uami" target="stor">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ae8l" value="identity (DefaultAzureCredential)" style="edgeLabel;html=1;align=center;fontSize=10;fontStyle=2;labelBackgroundColor=#ffffff;fontColor=#999;" vertex="1" connectable="0" parent="ae8">
-          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        <mxCell id="footer" value="&lt;b&gt;MSSP multi-tenant support&lt;/b&gt;  Designed (consent-per-customer-tenant, domain→tenant routing) but not yet implemented. 1-2 sessions of work when demand lands." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontStyle=2;fontColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1020" width="1720" height="40" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram name="2. Runtime Flow" id="runtime">
-    <mxGraphModel dx="1400" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1700" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="t2" value="Runtime Flow — One Timer Tick (every 6h)" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1120" height="40" as="geometry" />
-        </mxCell>
-        <mxCell id="t2s" value="Top-down. Diamonds = branch. Process rectangles = loop. Typical duration 1–32 seconds." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
-          <mxGeometry x="40" y="62" width="1120" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="r1" value="&lt;b&gt;TIMER fires&lt;/b&gt;&#xa;every 6 hours · run_on_startup=true" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
-          <mxGeometry x="460" y="110" width="280" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="r2" value="&lt;b&gt;config.load()&lt;/b&gt;&#xa;Read all ENABLE_* toggles + secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="420" y="240" width="360" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="r3" value="&lt;b&gt;_required_graph_permissions()&lt;/b&gt;&#xa;Log which Graph permissions are expected" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="420" y="330" width="360" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="r4" value="&lt;b&gt;ENABLE_USER_LOOKUP?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="470" y="420" width="260" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="r5a" value="&lt;b&gt;FALSE&lt;/b&gt;&#xa;• Skip MSAL token&#xa;• Skip all Entra actions&#xa;• Still fetch SOCRadar sources&#xa;• Still write LAW audit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=12;align=left;spacingLeft=12;" vertex="1" parent="1">
-          <mxGeometry x="60" y="440" width="320" height="110" as="geometry" />
-        </mxCell>
-        <mxCell id="r5b" value="&lt;b&gt;TRUE&lt;/b&gt;&#xa;• MSAL: POST /{tenant}/oauth2/v2.0/token&#xa;• Returns access_token (60m TTL)&#xa;• Consent check: ConsentRevokedError catches AADSTS&#xa;• Write consent_revoked audit event if failed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;" vertex="1" parent="1">
-          <mxGeometry x="820" y="440" width="340" height="110" as="geometry" />
-        </mxCell>
-        <mxCell id="r6" value="&lt;b&gt;OUTER LOOP — for source in [botnet, pii, vip]&lt;/b&gt;" style="shape=process;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="320" y="600" width="560" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="r7" value="&lt;b&gt;Checkpoint: GET&lt;/b&gt;&#xa;Table Storage → last_start_date, last_page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="60" y="690" width="320" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="r8" value="&lt;b&gt;SOCRadar: GET leaks&lt;/b&gt;&#xa;[{email, password, severity, ...}]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="440" y="690" width="320" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="r9" value="&lt;b&gt;Checkpoint: PATCH&lt;/b&gt;&#xa;Table Storage ← new start_date/page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="820" y="690" width="320" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="r10" value="&lt;b&gt;INNER LOOP — for emp in leaked_users&lt;/b&gt;" style="shape=process;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="320" y="800" width="560" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="r11" value="&lt;b&gt;Graph: GET /users/{email}&lt;/b&gt;  (with retry 429 wrapper)&#xa;200=found · 404=not_found · 403=permission_denied" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="320" y="890" width="560" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="r12" value="&lt;b&gt;Action chain (each toggle-gated, retry wrapper on all)&lt;/b&gt;&#xa;&#xa;1. enable_revoke_session → POST /revokeSignInSessions&#xa;2. enable_add_to_group → POST /groups/{gid}/members/$ref&#xa;3. enable_remove_from_group → DELETE members/{id}/$ref&#xa;4. enable_disable_account → PATCH accountEnabled=false&#xa;5. enable_enable_account → PATCH accountEnabled=true&#xa;6. enable_password_change → PATCH passwordProfile&#xa;7. enable_confirm_risky → POST /riskyUsers/confirmCompromised  [P1/P2]&#xa;8. ⭐ enable_force_mfa_reregistration → GET + DELETE auth methods&#xa;9. enable_ropc → validate password via ROPC (if plaintext, discouraged)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="200" y="990" width="800" height="230" as="geometry" />
-        </mxCell>
-        <mxCell id="r13" value="&lt;b&gt;LAW: POST SOCRadar_{source}_CL&lt;/b&gt;&#xa;One record per employee, includes actions_taken[]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="320" y="1260" width="560" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="r14" value="Optional: Sentinel PUT /incidents/{guid}&#xa;Optional: SOCRadar POST /alarms/{id}/resolve" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#ffffff;strokeColor=#666;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="320" y="1350" width="560" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="r15" value="&lt;b&gt;END of tick&lt;/b&gt;&#xa;LAW: POST SOCRadar_EntraID_Audit_CL (3 rows per source)&#xa;Total: 1–32 seconds" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="380" y="1440" width="440" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="rf1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="r1" target="r2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="r2" target="r3"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="r3" target="r4"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf4" value="false" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#b85450;fontSize=11;fontStyle=1;" edge="1" parent="1" source="r4" target="r5a"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf5" value="true" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#82b366;fontSize=11;fontStyle=1;" edge="1" parent="1" source="r4" target="r5b"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="r5a" target="r6"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="r5b" target="r6"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="r6" target="r7"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="r6" target="r8"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="r6" target="r9"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="r8" target="r10"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="r10" target="r11"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="r11" target="r12"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="r12" target="r13"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#666;dashed=1;" edge="1" parent="1" source="r13" target="r14"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="rf16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="r14" target="r15"><mxGeometry relative="1" as="geometry" /></mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram name="3. Feature Matrix" id="features">
+  <diagram name="2. Endpoints" id="endpoints">
     <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="tf" value="Feature Matrix — Every ENABLE_* toggle" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
+        <mxCell id="t2" value="Endpoints &amp; Parameters — Every HTTP Call the App Makes" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
           <mxGeometry x="40" y="20" width="1720" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="tfs" value="Three columns: Sources (what to ingest) · Actions (what to do on matched users) · Output (where alerts go). Every toggle can be independently on/off." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
+        <mxCell id="t2s" value="Three owners, one Function App. Every endpoint listed with its parameters, auth method, and which toggle fires it." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
           <mxGeometry x="40" y="62" width="1720" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="srcgrp" value="① SOURCES — what to fetch from SOCRadar" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="40" y="110" width="560" height="1060" as="geometry" />
+        <mxCell id="hdrSOCR" value="&lt;b&gt;SOCRadar Platform API&lt;/b&gt;    Owner: SOCRadar · Auth: X-Api-Key header    Host: platform.socradar.com" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;align=left;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="1720" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="s1" value="&lt;b&gt;ENABLE_BOTNET_SOURCE&lt;/b&gt;  (default: true)&#xa;&#xa;Fetches leaked credentials detected on&#xa;botnet infrastructure (stealer logs).&#xa;&#xa;API: GET /threat-feed/search/botnet&#xa;Writes: SOCRadar_Botnet_CL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="160" width="520" height="160" as="geometry" />
+        <mxCell id="se1" value="&lt;b&gt;GET&lt;/b&gt; /api/company/{company_id}/v2/threat-feed/search/botnet&lt;br&gt;Params: start_date, end_date, page, limit&#xa;Fires when: ENABLE_BOTNET_SOURCE=true&#xa;Returns: list of botnet-leaked credentials" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="155" width="570" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="s2" value="&lt;b&gt;ENABLE_PII_SOURCE&lt;/b&gt;  (default: true)&#xa;&#xa;Fetches employee credentials detected in&#xa;PII exposure incidents (dark web, breaches).&#xa;&#xa;API: GET /incident/pii&#xa;Writes: SOCRadar_PII_CL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="340" width="520" height="160" as="geometry" />
+        <mxCell id="se2" value="&lt;b&gt;GET&lt;/b&gt; /api/company/{company_id}/v2/incident/pii&#xa;Params: start_date, page, limit&#xa;Fires when: ENABLE_PII_SOURCE=true&#xa;Returns: PII exposure incidents with employee creds" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="625" y="155" width="570" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="s3" value="&lt;b&gt;ENABLE_VIP_SOURCE&lt;/b&gt;  (default: false)&#xa;&#xa;Fetches credentials flagged as VIP (executives).&#xa;&#xa;⚠ UNVERIFIED — endpoint not in official API docs.&#xa;Use with caution.&#xa;&#xa;API: GET /incident/vip-protection&#xa;Writes: SOCRadar_VIP_CL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="520" width="520" height="180" as="geometry" />
+        <mxCell id="se3" value="&lt;b&gt;GET&lt;/b&gt; /api/company/{company_id}/v2/incident/vip-protection&#xa;Params: start_date, page, limit&#xa;Fires when: ENABLE_VIP_SOURCE=true&#xa;⚠ UNVERIFIED — not in official API docs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#d79b00;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="155" width="560" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="s4" value="&lt;b&gt;ENABLE_USER_LOOKUP&lt;/b&gt;  (default: true)&#xa;&#xa;MASTER GATE for all Entra actions.&#xa;If false: sources still fetch + LAW writes,&#xa;but Entra lookup and ALL actions are skipped.&#xa;&#xa;Used for data-ingest-only mode.&#xa;Permission: User.Read.All" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="720" width="520" height="180" as="geometry" />
+        <mxCell id="se4" value="&lt;b&gt;POST&lt;/b&gt; /api/company/{company_id}/incident/alarms/{alarm_id}/resolve&#xa;Body: {&quot;comment&quot;: &quot;User {email} found in Entra ID — auto-resolved&quot;}&#xa;Fires when: ENABLE_RESOLVE_ALARM=true AND user was found + acted&#xa;Purpose: close the alarm on SOCRadar side so SOC doesn't re-triage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="265" width="1710" height="95" as="geometry" />
         </mxCell>
-        <mxCell id="s5" value="&lt;b&gt;ENABLE_LOG_PLAINTEXT_PASSWORD&lt;/b&gt;  (default: false)&#xa;&#xa;Password retention policy.&#xa;false = only password_present masked field stored&#xa;true = plaintext password written to LAW (unsafe)&#xa;&#xa;Enable ONLY if security policy explicitly requires." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="920" width="520" height="180" as="geometry" />
+        <mxCell id="hdrMSIP" value="&lt;b&gt;Microsoft identity platform&lt;/b&gt;    Owner: Microsoft · Auth: client credentials    Host: login.microsoftonline.com" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;align=left;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="380" width="1720" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="actgrp" value="② ACTIONS — what to do on matched users" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="620" y="110" width="560" height="1060" as="geometry" />
+        <mxCell id="se5" value="&lt;b&gt;POST&lt;/b&gt; /{tenant_id}/oauth2/v2.0/token&#xa;Body: grant_type=client_credentials &amp; client_id={app_id} &amp; client_secret={secret} &amp; scope=https://graph.microsoft.com/.default&#xa;Fires when: ENABLE_USER_LOOKUP=true (once per tick, token cached for 60 min)&#xa;Returns: access_token (Bearer) · 401 on consent revoked (AADSTS700016/65001/etc) · 7000215 if secret expired" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="425" width="1710" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="a1" value="&lt;b&gt;ENABLE_REVOKE_SESSION&lt;/b&gt;  (default: true)&#xa;Kick user out of all signed-in devices.&#xa;Perm: User.RevokeSessions.All" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="640" y="160" width="520" height="80" as="geometry" />
+        <mxCell id="se6" value="&lt;b&gt;POST&lt;/b&gt; /{tenant_id}/oauth2/v2.0/token    [ROPC flow, NOT through retry wrapper]&#xa;Body: grant_type=password &amp; username={email} &amp; password={leaked_pwd} &amp; client_id={app_id} &amp; scope=openid&#xa;Fires when: ENABLE_ROPC=true AND plaintext password present&#xa;Returns: valid / invalid / mfa_blocked — validates whether the leaked password still works" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="545" width="1710" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="a2" value="&lt;b&gt;ENABLE_ADD_TO_GROUP&lt;/b&gt;  (default: true)&#xa;Add user to a security/quarantine group.&#xa;Perm: GroupMember.ReadWrite.All + SECURITY_GROUP_ID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="640" y="250" width="520" height="80" as="geometry" />
+        <mxCell id="hdrMSG" value="&lt;b&gt;Microsoft Graph v1.0&lt;/b&gt;    Owner: Microsoft · Auth: Bearer token (with 429 Retry-After wrapper, 3 retries, 30s cap)    Host: graph.microsoft.com" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;align=left;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="675" width="1720" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="a3" value="&lt;b&gt;ENABLE_REMOVE_FROM_GROUP&lt;/b&gt;  (default: false)&#xa;Reverse of add. Perm: GroupMember.ReadWrite.All" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="640" y="340" width="520" height="70" as="geometry" />
+        <mxCell id="se7" value="&lt;b&gt;GET&lt;/b&gt; /users/{email}&#xa;Fires: ENABLE_USER_LOOKUP=true per leaked email&#xa;Perm: User.Read.All&#xa;Returns: user object / 404 / 403" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="720" width="430" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="a4" value="&lt;b&gt;ENABLE_PASSWORD_CHANGE&lt;/b&gt;  (default: false)&#xa;Force password change at next sign-in.&#xa;Perm: User-PasswordProfile.ReadWrite.All" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="640" y="420" width="520" height="80" as="geometry" />
+        <mxCell id="se8" value="&lt;b&gt;POST&lt;/b&gt; /users/{id}/revokeSignInSessions&#xa;Fires: ENABLE_REVOKE_SESSION=true&#xa;Perm: User.RevokeSessions.All&#xa;Body: none · 204 on success" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="485" y="720" width="430" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="a5" value="&lt;b&gt;ENABLE_DISABLE_ACCOUNT&lt;/b&gt;  (default: false)&#xa;Disable user account.&#xa;Perm: User.EnableDisableAccount.All.  HIGH IMPACT." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="640" y="510" width="520" height="80" as="geometry" />
+        <mxCell id="se9" value="&lt;b&gt;POST&lt;/b&gt; /groups/{sec_group_id}/members/$ref&#xa;Body: {&quot;@odata.id&quot;: &quot;.../directoryObjects/{user_id}&quot;}&#xa;Fires: ENABLE_ADD_TO_GROUP=true + SECURITY_GROUP_ID&#xa;Perm: GroupMember.ReadWrite.All" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="920" y="720" width="430" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="a6" value="&lt;b&gt;ENABLE_ENABLE_ACCOUNT&lt;/b&gt;  (default: false)&#xa;Re-enable previously disabled accounts.&#xa;Perm: User.EnableDisableAccount.All" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="640" y="600" width="520" height="80" as="geometry" />
+        <mxCell id="se10" value="&lt;b&gt;DELETE&lt;/b&gt; /groups/{sec_group_id}/members/{user_id}/$ref&#xa;Fires: ENABLE_REMOVE_FROM_GROUP=true&#xa;Perm: GroupMember.ReadWrite.All&#xa;204 on success, 404 if not a member" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1355" y="720" width="405" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="a7" value="&lt;b&gt;ENABLE_CONFIRM_RISKY&lt;/b&gt;  (default: false)&#xa;Flag user as compromised. Customer's CA policy takes over.&#xa;Perm: IdentityRiskyUser.ReadWrite.All + Entra P1/P2 license" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="640" y="690" width="520" height="80" as="geometry" />
+        <mxCell id="se11" value="&lt;b&gt;PATCH&lt;/b&gt; /users/{id}&#xa;Body: {&quot;accountEnabled&quot;: false}&#xa;Fires: ENABLE_DISABLE_ACCOUNT=true&#xa;Perm: User.EnableDisableAccount.All · HIGH IMPACT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="830" width="430" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="a8" value="&lt;b&gt;⭐ ENABLE_FORCE_MFA_REREGISTRATION&lt;/b&gt;  (default: false)&#xa;Delete ALL non-password auth methods (Authenticator,&#xa;phone, FIDO2, etc) → user re-registers MFA at next sign-in.&#xa;Perm: UserAuthenticationMethod.ReadWrite.All + PrivAuthAdmin role&#xa;HIGHEST IMPACT — works on every Entra tier" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="640" y="780" width="520" height="130" as="geometry" />
+        <mxCell id="se12" value="&lt;b&gt;PATCH&lt;/b&gt; /users/{id}&#xa;Body: {&quot;accountEnabled&quot;: true}&#xa;Fires: ENABLE_ENABLE_ACCOUNT=true&#xa;Perm: User.EnableDisableAccount.All" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="485" y="830" width="430" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="a9" value="&lt;b&gt;ENABLE_ROPC&lt;/b&gt;  (default: false)&#xa;Validate leaked password via ROPC (does it still work?).&#xa;Only with plaintext. Microsoft discourages in production.&#xa;Requires 'Allow public client flows' on App Registration." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="640" y="930" width="520" height="120" as="geometry" />
+        <mxCell id="se13" value="&lt;b&gt;PATCH&lt;/b&gt; /users/{id}&#xa;Body: {&quot;passwordProfile&quot;: {&quot;forceChangePasswordNextSignIn&quot;: true}}&#xa;Fires: ENABLE_PASSWORD_CHANGE=true&#xa;Perm: User-PasswordProfile.ReadWrite.All" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="920" y="830" width="430" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="a_note" value="⚠ ALL actions above require ENABLE_USER_LOOKUP=true as master gate." style="text;strokeColor=none;fillColor=none;html=1;fontSize=11;align=center;fontColor=#b85450;fontStyle=2;" vertex="1" parent="1">
-          <mxGeometry x="640" y="1070" width="520" height="30" as="geometry" />
+        <mxCell id="se14" value="&lt;b&gt;POST&lt;/b&gt; /identityProtection/riskyUsers/confirmCompromised&#xa;Body: {&quot;userIds&quot;: [user_id]}&#xa;Fires: ENABLE_CONFIRM_RISKY=true&#xa;Perm: IdentityRiskyUser.ReadWrite.All · needs Entra P1/P2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1355" y="830" width="405" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="outgrp" value="③ OUTPUT — where alerts go" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="1200" y="110" width="560" height="1060" as="geometry" />
+        <mxCell id="se15" value="&lt;b&gt;GET&lt;/b&gt; /users/{id}/authentication/methods&#xa;then for each non-password method:&#xa;&lt;b&gt;DELETE&lt;/b&gt; /users/{id}/authentication/{methodsType}/{mid}&#xa;Fires: ENABLE_FORCE_MFA_REREGISTRATION=true · ⭐ NEW&#xa;Perm: UserAuthenticationMethod.ReadWrite.All + Privileged Auth Administrator role&#xa;Supported method types: Authenticator, phone, FIDO2, softwareOATH, Windows Hello, email, TAP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="940" width="1710" height="140" as="geometry" />
         </mxCell>
-        <mxCell id="o1" value="&lt;b&gt;ENABLE_CREATE_INCIDENT&lt;/b&gt;  (default: false)&#xa;&#xa;Create a Microsoft Sentinel incident for each&#xa;compromised user detected.&#xa;&#xa;Endpoint: PUT .../providers/Microsoft.SecurityInsights/&#xa;          incidents/{guid}?api-version=2024-03-01&#xa;&#xa;Auth: management.azure.com token (separate from Graph)&#xa;&#xa;Requires: WORKSPACE_NAME + WORKSPACE_RESOURCE_GROUP set" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1220" y="160" width="520" height="230" as="geometry" />
+        <mxCell id="hdrMGMT" value="&lt;b&gt;Azure Resource Manager / Sentinel + Storage/LAW&lt;/b&gt;    Owner: Microsoft · Auth: Managed Identity or management.azure.com token" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;align=left;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1100" width="1720" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="o2" value="&lt;b&gt;ENABLE_RESOLVE_ALARM&lt;/b&gt;  (default: false)&#xa;&#xa;When a leak-matched user is found in Entra and&#xa;actions are applied successfully, auto-resolve the&#xa;originating SOCRadar alarm (optional closed-loop).&#xa;&#xa;Endpoint: POST /incident/alarms/{id}/resolve&#xa;&#xa;Helps SOC avoid manual alarm triage for auto-remediated&#xa;cases." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1220" y="410" width="520" height="210" as="geometry" />
+        <mxCell id="se16" value="&lt;b&gt;PUT&lt;/b&gt; https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.OperationalInsights/workspaces/{ws}/providers/Microsoft.SecurityInsights/incidents/{guid}?api-version=2024-03-01&#xa;Fires: ENABLE_CREATE_INCIDENT=true&#xa;Body: {title, description, severity, status, labels:[{labelName, labelType:User}]}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1145" width="850" height="140" as="geometry" />
         </mxCell>
-        <mxCell id="o3" value="&lt;b&gt;Always-on outputs (no toggle)&lt;/b&gt;&#xa;&#xa;• SOCRadar_{source}_CL — per-employee record&#xa;  Fields: email, severity, actions_taken, entra_status,&#xa;          mfa_methods_deleted, timestamp&#xa;&#xa;• SOCRadar_EntraID_Audit_CL — per-source summary&#xa;  Fields: source, total, found, not_found, actions,&#xa;          errors, duration_sec, timestamp&#xa;&#xa;• SOCRadar_EntraID_Audit_CL — lifecycle events (NEW)&#xa;  event_type: consent_revoked, token_acquisition_failed&#xa;  Used for alerting on auth breakage&#xa;&#xa;• Application Insights — all traces, exceptions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1220" y="640" width="520" height="360" as="geometry" />
+        <mxCell id="se17" value="&lt;b&gt;POST&lt;/b&gt; https://{ws_id}.ods.opinsights.azure.com/api/logs?api-version=2016-04-01&#xa;Auth: HMAC-signed (SharedKey)&#xa;Fires: always (every tick writes per-employee records + audit summary + lifecycle events)&#xa;Log-Type: SOCRadar_Botnet / SOCRadar_PII / SOCRadar_VIP / SOCRadar_Identity / SOCRadar_EntraID_Audit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="905" y="1145" width="855" height="140" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram name="4. MSSP Setup" id="msspsetup">
+  <diagram name="3. Features" id="features">
     <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="tms" value="MSSP — One-Time Setup Flow" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
+        <mxCell id="t3" value="Features &amp; Configuration — 16 Toggles" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
           <mxGeometry x="40" y="20" width="1720" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="tmsb" value="A (MSSP) manages X and Y. A deploys the integration in its own Azure. X and Y admins click a consent link once. Done." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
+        <mxCell id="t3s" value="Each row = one ARM parameter + app setting + code branch. Customer flips these at deploy time or via Function App configuration." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
           <mxGeometry x="40" y="62" width="1720" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="step1" value="&lt;b&gt;STEP 1 — A deploys integration (in A's Azure subscription)&lt;/b&gt;&#xa;&#xa;• ARM template runs → Function App + UAMI + Storage + LAW in A's subscription&#xa;• App Registration created in A's tenant with signInAudience = AzureADMultipleOrgs (multi-tenant)&#xa;• This step = today's single-tenant deploy + ONE extra line: signInAudience switch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="40" y="110" width="1720" height="130" as="geometry" />
+        <mxCell id="hdrSrc" value="① SOURCES  —  what SOCRadar feeds to ingest" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;align=left;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="1720" height="35" as="geometry" />
         </mxCell>
-        <mxCell id="step2" value="&lt;b&gt;STEP 2 — A sends consent URLs to customer admins&lt;/b&gt;&#xa;&#xa;A generates per-tenant URLs:&#xa;https://login.microsoftonline.com/{X_TENANT_ID}/adminconsent?client_id={A_APP_ID}&#xa;https://login.microsoftonline.com/{Y_TENANT_ID}/adminconsent?client_id={A_APP_ID}&#xa;&#xa;Sends to X's BT yöneticisi and Y's BT yöneticisi by email." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="40" y="260" width="1720" height="170" as="geometry" />
+        <mxCell id="tblhdr1" value="&lt;b&gt;#&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="145" width="50" height="32" as="geometry" />
         </mxCell>
-        <mxCell id="step3" value="&lt;b&gt;STEP 3 — X and Y admins click their link (once, in their own browser)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="450" width="1720" height="40" as="geometry" />
+        <mxCell id="tblhdr2" value="&lt;b&gt;Toggle (ENABLE_*)&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=11;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="90" y="145" width="360" height="32" as="geometry" />
         </mxCell>
-        <mxCell id="atenant" value="&lt;b&gt;A's Tenant&lt;/b&gt;&#xa;(MSSP home)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="40" y="510" width="540" height="300" as="geometry" />
+        <mxCell id="tblhdr3" value="&lt;b&gt;Default&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="145" width="90" height="32" as="geometry" />
         </mxCell>
-        <mxCell id="aapp" value="App Registration&#xa;(signInAudience:&#xa; AzureADMultipleOrgs)&#xa;&#xa;appId = b0afca82-...&#xa;&#xa;Service Principal in A's tenant&#xa;→ full configured permissions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="70" y="560" width="480" height="230" as="geometry" />
+        <mxCell id="tblhdr4" value="&lt;b&gt;What it does&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=11;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="145" width="640" height="32" as="geometry" />
         </mxCell>
-        <mxCell id="xtenant" value="&lt;b&gt;X's Tenant&lt;/b&gt;&#xa;(customer)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="620" y="510" width="540" height="300" as="geometry" />
+        <mxCell id="tblhdr5" value="&lt;b&gt;Permission / license needed&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=11;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="145" width="580" height="32" as="geometry" />
         </mxCell>
-        <mxCell id="xapp" value="X admin clicks consent URL →&#xa;Microsoft creates NEW&#xa;Service Principal in X's tenant&#xa;for appId b0afca82-...&#xa;&#xa;X's SP has SAME permissions&#xa;as A's SP (User.Read.All,&#xa;User.RevokeSessions.All, ...)&#xa;but scoped to X's directory only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="650" y="560" width="480" height="230" as="geometry" />
+        <mxCell id="r1_1" value="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="177" width="50" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="ytenant" value="&lt;b&gt;Y's Tenant&lt;/b&gt;&#xa;(customer)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="1200" y="510" width="540" height="300" as="geometry" />
+        <mxCell id="r1_2" value="BOTNET_SOURCE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="177" width="360" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="yapp" value="Y admin clicks consent URL →&#xa;Microsoft creates NEW&#xa;Service Principal in Y's tenant&#xa;for appId b0afca82-...&#xa;&#xa;Y's SP scoped to Y's directory only.&#xa;&#xa;If Y revokes consent → A's app&#xa;gets 401 when trying to token for Y.&#xa;G3 consent_revoked event fires." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1230" y="560" width="480" height="230" as="geometry" />
+        <mxCell id="r1_3" value="✅ true" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e6ffed;strokeColor=#999;fontSize=11;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="177" width="90" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="step4" value="&lt;b&gt;STEP 4 — A adds tenant mapping to Function App config&lt;/b&gt;&#xa;&#xa;Function App env var:&#xa;TENANT_MAPPING = [&#xa;  {&quot;domain&quot;: &quot;acme.com&quot;, &quot;tenantId&quot;: &quot;{A_TID}&quot;},&#xa;  {&quot;domain&quot;: &quot;xholding.com&quot;, &quot;tenantId&quot;: &quot;{X_TID}&quot;},&#xa;  {&quot;domain&quot;: &quot;y-insaat.com&quot;, &quot;tenantId&quot;: &quot;{Y_TID}&quot;}&#xa;]&#xa;&#xa;Now runtime can route each leak to the correct tenant based on email domain." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="40" y="840" width="1720" height="220" as="geometry" />
+        <mxCell id="r1_4" value="Fetch botnet/stealer-log leaks from SOCRadar → SOCRadar_Botnet_CL" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="177" width="640" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="step5" value="✅ Setup complete. Runtime flow (next page) handles per-tenant routing automatically." style="text;strokeColor=none;fillColor=none;html=1;fontSize=14;align=center;fontStyle=1;fontColor=#2d7d32;" vertex="1" parent="1">
-          <mxGeometry x="40" y="1080" width="1720" height="40" as="geometry" />
+        <mxCell id="r1_5" value="SOCRadar API key + company_id (no Entra perms)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="177" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r2_1" value="2" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="217" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r2_2" value="PII_SOURCE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="217" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r2_3" value="✅ true" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e6ffed;strokeColor=#999;fontSize=11;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="217" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r2_4" value="Fetch PII exposure leaks (dark web / breach dumps) → SOCRadar_PII_CL" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="217" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r2_5" value="Same SOCRadar account" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="217" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r3_1" value="3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="257" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r3_2" value="VIP_SOURCE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="257" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r3_3" value="⚠ false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3cd;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="257" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r3_4" value="Fetch VIP-targeted leaks. UNVERIFIED endpoint — not in official API docs." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="257" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r3_5" value="Same SOCRadar account. Confirm with customer first." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="257" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hdrGate" value="② MASTER GATE  —  controls whether Entra ID is touched at all" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;fontStyle=1;align=left;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="310" width="1720" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="r4_1" value="4" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="345" width="50" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r4_2" value="USER_LOOKUP" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="345" width="360" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r4_3" value="✅ true" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e6ffed;strokeColor=#999;fontSize=11;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="345" width="90" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r4_4" value="Master gate. If false, sources still fetch + LAW writes, but NO Entra lookup, NO actions. Use for data-ingest-only / compliance mode." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="345" width="640" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r4_5" value="User.Read.All  (+ ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET app settings)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="345" width="580" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hdrAct" value="③ ACTIONS  —  what to do on a matched Entra user (all require USER_LOOKUP=true)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;align=left;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="1720" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="r5_1" value="5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="455" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r5_2" value="REVOKE_SESSION" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="455" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r5_3" value="✅ true" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e6ffed;strokeColor=#999;fontSize=11;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="455" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r5_4" value="Kick user out of all signed-in devices → forces re-auth" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="455" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r5_5" value="User.RevokeSessions.All" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="455" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r6_1" value="6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="495" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r6_2" value="ADD_TO_GROUP" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="495" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r6_3" value="✅ true" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e6ffed;strokeColor=#999;fontSize=11;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="495" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r6_4" value="Add user to quarantine/security group (customer pre-defines group)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="495" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r6_5" value="GroupMember.ReadWrite.All + SECURITY_GROUP_ID app setting" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="495" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r7_1" value="7" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="535" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r7_2" value="REMOVE_FROM_GROUP" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="535" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r7_3" value="false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="535" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r7_4" value="Remove user from security group (reverse of #6)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="535" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r7_5" value="GroupMember.ReadWrite.All" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="535" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r8_1" value="8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="575" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r8_2" value="PASSWORD_CHANGE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="575" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r8_3" value="false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="575" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r8_4" value="Flag user must change password at next sign-in" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="575" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r8_5" value="User-PasswordProfile.ReadWrite.All" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="575" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r9_1" value="9" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="615" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r9_2" value="DISABLE_ACCOUNT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="615" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r9_3" value="false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="615" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r9_4" value="Disable account (accountEnabled=false) — HIGH IMPACT, blocks all access" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="615" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r9_5" value="User.EnableDisableAccount.All" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="615" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r10_1" value="10" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="655" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r10_2" value="ENABLE_ACCOUNT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="655" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r10_3" value="false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="655" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r10_4" value="Re-enable previously disabled accounts (reverse of #9)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="655" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r10_5" value="User.EnableDisableAccount.All" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="655" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r11_1" value="11" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="695" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r11_2" value="CONFIRM_RISKY" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="695" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r11_3" value="false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="695" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r11_4" value="Flag user compromised in Identity Protection. Customer's Conditional Access policy takes over." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="695" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r11_5" value="IdentityRiskyUser.ReadWrite.All + Entra P1/P2 license" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="695" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r12_1" value="12 ⭐" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#999;fontSize=11;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="735" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r12_2" value="FORCE_MFA_REREGISTRATION" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="735" width="360" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r12_3" value="false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="735" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r12_4" value="⭐ NEW: delete all non-password MFA methods. User re-registers MFA at next sign-in. Works on every Entra tier (no P1/P2 needed)." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="735" width="640" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r12_5" value="UserAuthenticationMethod.ReadWrite.All + Privileged Authentication Administrator role" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="735" width="580" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r13_1" value="13" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="785" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r13_2" value="ROPC" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="785" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r13_3" value="false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="785" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r13_4" value="Validate whether leaked plaintext password still works (MS discourages in production)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="785" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r13_5" value="'Allow public client flows' enabled on app registration" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="785" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hdrOut" value="④ OUTPUT  —  where alerts go" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;align=left;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="840" width="1720" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="r14_1" value="14" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="875" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r14_2" value="CREATE_INCIDENT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="875" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r14_3" value="false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="875" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r14_4" value="Create Microsoft Sentinel incident per compromised user (PUT /incidents/{guid})" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="875" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r14_5" value="management.azure.com role on Sentinel workspace (separate from Graph perms)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="875" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r15_1" value="15" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="915" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r15_2" value="RESOLVE_ALARM" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="915" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r15_3" value="false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="915" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r15_4" value="After successful remediation, auto-resolve the originating SOCRadar alarm (closed loop for SOC)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="915" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="r15_5" value="No extra perms (uses same SOCRadar API key as sources)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="915" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hdrPol" value="⑤ POLICY  —  security/retention behavior" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1;align=left;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="970" width="1720" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="r16_1" value="16" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1005" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r16_2" value="LOG_PLAINTEXT_PASSWORD" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="90" y="1005" width="360" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r16_3" value="false" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="1005" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r16_4" value="If true, the plaintext leaked password is written to LAW. ⚠ Dangerous — only enable if security policy EXPLICITLY requires it." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="1005" width="640" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r16_5" value="None (policy flag only). Off by default." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="1005" width="580" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="foot3" value="&lt;b&gt;Required app settings (not toggles)&lt;/b&gt;: SOCRADAR_API_KEY, SOCRADAR_COMPANY_ID, WORKSPACE_ID, WORKSPACE_KEY, STORAGE_ACCOUNT_NAME, POLLING_INTERVAL_HOURS, INITIAL_LOOKBACK_MINUTES. ENTRA_* needed only when USER_LOOKUP=true." style="text;strokeColor=none;fillColor=none;html=1;fontSize=12;align=center;fontColor=#555;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1070" width="1720" height="40" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram name="5. MSSP Runtime" id="mssprun">
+  <diagram name="4. Status" id="status">
     <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="tmr" value="MSSP — Runtime Flow Per Leak" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
+        <mxCell id="t4" value="Status &amp; What's Next" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
           <mxGeometry x="40" y="20" width="1720" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="tmrs" value="One timer tick pulls leaks from one SOCRadar API. Each leak is routed by email domain to the correct Entra tenant. Function App caches one token per tenant." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
+        <mxCell id="t4s" value="What shipped, what's waiting on other people, what needs product decisions from you." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
           <mxGeometry x="40" y="62" width="1720" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="socr2" value="&lt;b&gt;SOCRadar API&lt;/b&gt;&#xa;(A's single account)&#xa;&#xa;Returns leaks:&#xa;• john@acme.com&#xa;• alice@xholding.com&#xa;• bob@y-insaat.com" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="130" width="320" height="180" as="geometry" />
+        <mxCell id="c1" value="✅ SHIPPED (origin/master, deployed, tested)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;opacity=80;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="560" height="900" as="geometry" />
         </mxCell>
-        <mxCell id="fa2" value="&lt;b&gt;⚡ Function App&lt;/b&gt;&#xa;(in A's subscription)&#xa;&#xa;Step: for each leak, parse domain" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="460" y="140" width="340" height="160" as="geometry" />
+        <mxCell id="s1" value="&lt;b&gt;Security &amp; reliability&lt;/b&gt;&#xa;• Least-privilege permission model (6 narrow Graph perms)&#xa;• EnableUserLookup master gate&#xa;• 429 retry wrapper (3 retries, 30s cap)&#xa;• Consent revocation detection → audit event&#xa;• Sentinel labels include labelType:User&#xa;• Cross-RG workspace support" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="160" width="520" height="210" as="geometry" />
         </mxCell>
-        <mxCell id="cache" value="&lt;b&gt;_graph_headers_by_tenant (module-level cache)&lt;/b&gt;&#xa;&#xa;{&#xa;  &quot;{A_TID}&quot;: {Bearer A-token (60m)},&#xa;  &quot;{X_TID}&quot;: {Bearer X-token (60m)},&#xa;  &quot;{Y_TID}&quot;: {Bearer Y-token (60m)}&#xa;}&#xa;&#xa;Populated on first call per tenant, reused across the tick." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="900" y="110" width="520" height="210" as="geometry" />
+        <mxCell id="s2" value="&lt;b&gt;Features&lt;/b&gt;&#xa;• 16 toggles documented &amp; wired&#xa;• Force MFA Re-registration (new, universal fallback)&#xa;• Data-ingest-only mode (ENABLE_USER_LOOKUP=false)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="390" width="520" height="140" as="geometry" />
         </mxCell>
-        <mxCell id="tmap" value="&lt;b&gt;TENANT_MAPPING (env var)&lt;/b&gt;&#xa;&#xa;[&#xa;  {&quot;domain&quot;: &quot;acme.com&quot;, &quot;tenantId&quot;: &quot;{A_TID}&quot;},&#xa;  {&quot;domain&quot;: &quot;xholding.com&quot;, &quot;tenantId&quot;: &quot;{X_TID}&quot;},&#xa;  {&quot;domain&quot;: &quot;y-insaat.com&quot;, &quot;tenantId&quot;: &quot;{Y_TID}&quot;}&#xa;]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1460" y="130" width="300" height="180" as="geometry" />
+        <mxCell id="s3" value="&lt;b&gt;Operations &amp; distribution&lt;/b&gt;&#xa;• v1.1.0 GitHub release (auto-built via tag workflow)&#xa;• Deploy-to-Azure button working&#xa;• GitHub Actions CI on every PR/push&#xa;• Customer troubleshooting runbook (12 scenarios)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="550" width="520" height="170" as="geometry" />
         </mxCell>
-        <mxCell id="divider" value="— PER LEAK PROCESSING —" style="text;strokeColor=none;fillColor=none;html=1;fontSize=14;fontStyle=1;align=center;fontColor=#9673a6;" vertex="1" parent="1">
-          <mxGeometry x="40" y="360" width="1720" height="30" as="geometry" />
+        <mxCell id="s4" value="&lt;b&gt;Quality&lt;/b&gt;&#xa;• 23 unit tests (mocked, CI-safe)&#xa;• Live integration test (test_actions.py, 13 cases)&#xa;• Code review pass clean (2 bugs found, both fixed)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="740" width="520" height="140" as="geometry" />
         </mxCell>
-        <mxCell id="leakA" value="&lt;b&gt;Leak 1: john@acme.com&lt;/b&gt;&#xa;&#xa;1. domain = &quot;acme.com&quot;&#xa;2. _resolve_tenant_for(domain) → {A_TID}&#xa;3. _acquire_graph_headers_for({A_TID})&#xa;   → token acquired if not cached&#xa;4. GET /users/john@acme.com (A's directory)&#xa;5. If found → apply enabled actions to A's user&#xa;6. LAW record: target_tenant_id = A_TID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="400" width="560" height="210" as="geometry" />
+        <mxCell id="s5" value="15 commits on master between 4dd0535 and b66a0b4" style="text;strokeColor=none;fillColor=none;html=1;fontSize=11;align=center;fontStyle=2;fontColor=#2d7d32;" vertex="1" parent="1">
+          <mxGeometry x="60" y="900" width="520" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="leakX" value="&lt;b&gt;Leak 2: alice@xholding.com&lt;/b&gt;&#xa;&#xa;1. domain = &quot;xholding.com&quot;&#xa;2. _resolve_tenant_for(domain) → {X_TID}&#xa;3. _acquire_graph_headers_for({X_TID})&#xa;   → token acquired against X's tenant&#xa;4. GET /users/alice@xholding.com (X's directory)&#xa;5. If found → apply enabled actions to X's user&#xa;6. LAW record: target_tenant_id = X_TID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="640" y="400" width="560" height="210" as="geometry" />
+        <mxCell id="c2" value="⏸ BLOCKED ON ADMIN (external action)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;opacity=80;" vertex="1" parent="1">
+          <mxGeometry x="620" y="110" width="540" height="900" as="geometry" />
         </mxCell>
-        <mxCell id="leakY" value="&lt;b&gt;Leak 3: bob@y-insaat.com&lt;/b&gt;&#xa;&#xa;1. domain = &quot;y-insaat.com&quot;&#xa;2. _resolve_tenant_for(domain) → {Y_TID}&#xa;3. _acquire_graph_headers_for({Y_TID})&#xa;   → token acquired against Y's tenant&#xa;4. GET /users/bob@y-insaat.com (Y's directory)&#xa;5. If found → apply enabled actions to Y's user&#xa;6. LAW record: target_tenant_id = Y_TID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1200" y="400" width="560" height="210" as="geometry" />
+        <mxCell id="b1" value="&lt;b&gt;1. Remove old User.ReadWrite.All grant from SP&lt;/b&gt;&#xa;&#xa;The service principal still has an old broad grant from&#xa;before the least-privilege refactor. Our current login&#xa;cannot delete it (Authorization_RequestDenied).&#xa;&#xa;Needs: Privileged Role Admin or Global Admin to run&#xa;one az CLI command (documented in runbook).&#xa;&#xa;Until this clears, we can't prove that the narrow&#xa;permissions alone are sufficient — the broad grant&#xa;silently covers everything." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="640" y="160" width="500" height="280" as="geometry" />
         </mxCell>
-        <mxCell id="edgeA" value="Test" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="fa2" target="leakA"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="edgeX" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="fa2" target="leakX"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="edgeY" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="fa2" target="leakY"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="edgeSocr" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#000;" edge="1" parent="1" source="socr2" target="fa2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="edgeSocrL" value="GET leaks (one batch)" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edgeSocr"><mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry></mxCell>
-        <mxCell id="edgeCache" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;startArrow=classic;startFill=1;dashed=1;strokeColor=#9673a6;" edge="1" parent="1" source="fa2" target="cache"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="edgeCacheL" value="cache lookup" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=2;labelBackgroundColor=#ffffff;fontColor=#9673a6;" vertex="1" connectable="0" parent="edgeCache"><mxGeometry x="-0.1" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry></mxCell>
-        <mxCell id="edgeMap" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;dashed=1;strokeColor=#666;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="tmap" target="cache"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="law2" value="&lt;b&gt;Log Analytics Workspace (in A's subscription)&lt;/b&gt;&#xa;&#xa;All leaks, regardless of target tenant, go to A's LAW.&#xa;The target_tenant_id column lets A's SOC filter by customer:&#xa;&#xa;SOCRadar_Botnet_CL&#xa;| where target_tenant_id == &quot;{X_TID}&quot;&#xa;| project TimeGenerated, email, actions_taken, entra_status" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=18;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=18;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="540" y="680" width="720" height="180" as="geometry" />
+        <mxCell id="b2" value="&lt;b&gt;2. Grant Force MFA permission + role to SP&lt;/b&gt;&#xa;&#xa;To run the live E2E test for the new Force MFA feature:&#xa;• Grant UserAuthenticationMethod.ReadWrite.All&#xa;  (application permission + admin consent)&#xa;• Assign Privileged Authentication Administrator role&#xa;  to the service principal&#xa;&#xa;Unit tests already pass (7/7 mock-based).&#xa;Live test without admin grant will return 403." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="640" y="460" width="500" height="270" as="geometry" />
         </mxCell>
-        <mxCell id="edgeLawA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#82b366;" edge="1" parent="1" source="leakA" target="law2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="edgeLawX" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#82b366;" edge="1" parent="1" source="leakX" target="law2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="edgeLawY" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#82b366;" edge="1" parent="1" source="leakY" target="law2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="note" value="&lt;b&gt;Edge case: domain NOT in mapping&lt;/b&gt;&#xa;&#xa;Leak email: charlie@unknown-new-client.com&#xa;_resolve_tenant_for(&quot;unknown-new-client.com&quot;) → falls back to ENTRA_TENANT_ID (A's default)&#xa;→ attempts lookup in A's directory → likely 404 → logged as not_found&#xa;&#xa;Recommended: also write a warning audit event so A knows to add the domain to TENANT_MAPPING." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="40" y="900" width="1720" height="170" as="geometry" />
+        <mxCell id="b3" value="&lt;b&gt;3. Incidents Content Hub PR review&lt;/b&gt;&#xa;&#xa;PR #13628 open in Azure/Azure-Sentinel, MS reviewer&#xa;response pending for weeks. Not Entra-ID-specific but&#xa;blocks overall SOCRadar marketplace strategy." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="640" y="750" width="500" height="180" as="geometry" />
         </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram name="6. Force MFA Options" id="mfa">
-    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="tmfa" value="Force MFA — 4 Options Compared" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1720" height="40" as="geometry" />
+        <mxCell id="c3" value="📋 NEEDS YOUR DECISION" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;opacity=80;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="110" width="580" height="900" as="geometry" />
         </mxCell>
-        <mxCell id="tmfas" value="When a password leaks, you can enforce MFA in four ways. Options are not mutually exclusive — A+C or A+D combinations are common." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
-          <mxGeometry x="40" y="62" width="1720" height="24" as="geometry" />
+        <mxCell id="d1" value="&lt;b&gt;Q1. Content Hub for Entra ID?&lt;/b&gt;&#xa;&#xa;Publish as official Sentinel marketplace solution&#xa;(like Incidents / Feeds / TAXII).&#xa;Effort: 2-3 sessions + Microsoft Partner Center review.&#xa;&#xa;Decision: yes (queue as Tier 3) / no (stay with ARM button)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="160" width="540" height="180" as="geometry" />
         </mxCell>
-        <mxCell id="oA" value="&lt;b&gt;OPTION A&lt;/b&gt;&#xa;Delete auth methods&#xa;&#xa;&lt;b&gt;STATUS: ✅ SHIPPED&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="110" width="420" height="90" as="geometry" />
+        <mxCell id="d2" value="&lt;b&gt;Q2. Kill the client secret (FIC migration)?&lt;/b&gt;&#xa;&#xa;Move from ENTRA_CLIENT_SECRET to Federated Identity&#xa;Credential (passwordless). Eliminates 2-year rotation clock.&#xa;Breaking for existing deployments.&#xa;&#xa;Decision: now (if no prod customers) / defer (phased migration)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="360" width="540" height="180" as="geometry" />
         </mxCell>
-        <mxCell id="oAd" value="&lt;b&gt;What it does&lt;/b&gt;&#xa;Delete every non-password auth method&#xa;(Authenticator, phone, FIDO2, OATH, WHfB,&#xa; email, TAP). User re-registers at next login.&#xa;&#xa;&lt;b&gt;Permission&lt;/b&gt;&#xa;UserAuthenticationMethod.ReadWrite.All&#xa;+ Privileged Auth Administrator role&#xa;&#xa;&lt;b&gt;Graph version&lt;/b&gt;  v1.0 stable&#xa;&lt;b&gt;License&lt;/b&gt;  ANY (works on Free tier)&#xa;&lt;b&gt;User friction&lt;/b&gt;  HIGH — re-register all&#xa;&lt;b&gt;Reversible&lt;/b&gt;  No (user registers again)&#xa;&lt;b&gt;Ongoing enforcement&lt;/b&gt;  No — one-time reset&#xa;&lt;b&gt;Customer-side config required&lt;/b&gt;  None" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="40" y="210" width="420" height="440" as="geometry" />
+        <mxCell id="d3" value="&lt;b&gt;Q3. Add Programmatic Conditional Access (Option D)?&lt;/b&gt;&#xa;&#xa;Alternative to Force MFA re-registration: create a per-user&#xa;CA policy that requires MFA for X hours. Less destructive.&#xa;Requires P1/P2 (same as Confirm Risky).&#xa;&#xa;Decision: add (softer option for P1/P2 customers) / skip" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="560" width="540" height="180" as="geometry" />
         </mxCell>
-        <mxCell id="oB" value="&lt;b&gt;OPTION B&lt;/b&gt;&#xa;perUserMfaState=enforced&#xa;&#xa;&lt;b&gt;STATUS: ❌ REJECTED&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="490" y="110" width="420" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="oBd" value="&lt;b&gt;What it does&lt;/b&gt;&#xa;PATCH user's authentication/requirements &#xa;→ force per-user MFA state to 'enforced'.&#xa;User prompted for MFA every sign-in.&#xa;&#xa;&lt;b&gt;Permission&lt;/b&gt;&#xa;Policy.ReadWrite.AuthenticationMethod&#xa;&#xa;&lt;b&gt;Graph version&lt;/b&gt;  BETA ONLY&#xa;&lt;b&gt;License&lt;/b&gt;  ANY&#xa;&lt;b&gt;User friction&lt;/b&gt;  Medium (MFA every login)&#xa;&lt;b&gt;Reversible&lt;/b&gt;  Yes (set back to 'disabled')&#xa;&lt;b&gt;Ongoing enforcement&lt;/b&gt;  Yes&#xa;&lt;b&gt;⚠ Why rejected:&lt;/b&gt;  Microsoft discourages beta&#xa;endpoints in production + per-user MFA is&#xa;legacy (MS pushes Conditional Access)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="490" y="210" width="420" height="440" as="geometry" />
-        </mxCell>
-        <mxCell id="oC" value="&lt;b&gt;OPTION C&lt;/b&gt;&#xa;Confirm Risky (existing)&#xa;&#xa;&lt;b&gt;STATUS: ✅ SHIPPED&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="940" y="110" width="420" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="oCd" value="&lt;b&gt;What it does&lt;/b&gt;&#xa;POST /riskyUsers/confirmCompromised&#xa;Flags user as compromised. Customer's&#xa;Conditional Access policy (if any) takes over&#xa;and enforces MFA or blocks.&#xa;&#xa;&lt;b&gt;Permission&lt;/b&gt;&#xa;IdentityRiskyUser.ReadWrite.All&#xa;&#xa;&lt;b&gt;Graph version&lt;/b&gt;  v1.0 stable&#xa;&lt;b&gt;License&lt;/b&gt;  Entra P1 or P2 required&#xa;&lt;b&gt;User friction&lt;/b&gt;  Low (depends on CA policy)&#xa;&lt;b&gt;Reversible&lt;/b&gt;  Yes (dismiss)&#xa;&lt;b&gt;Ongoing enforcement&lt;/b&gt;  Yes (while flagged)&#xa;&lt;b&gt;Customer-side config required&lt;/b&gt;  CA policy&#xa;targeting risky users must exist&#xa;&#xa;&lt;b&gt;MS recommendation:&lt;/b&gt;  ⭐ Preferred path" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="940" y="210" width="420" height="440" as="geometry" />
-        </mxCell>
-        <mxCell id="oD" value="&lt;b&gt;OPTION D&lt;/b&gt;&#xa;Programmatic CA policy&#xa;&#xa;&lt;b&gt;STATUS: 📋 PROPOSED&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="1390" y="110" width="370" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="oDd" value="&lt;b&gt;What it does&lt;/b&gt;&#xa;POST /identity/conditionalAccess/policies&#xa;Create a targeted policy for THIS user:&#xa;&quot;when X signs in, require MFA&quot; or block.&#xa;Less destructive than A, more specific than C.&#xa;&#xa;&lt;b&gt;Permission&lt;/b&gt;&#xa;Policy.ReadWrite.ConditionalAccess&#xa;&#xa;&lt;b&gt;Graph version&lt;/b&gt;  v1.0 stable&#xa;&lt;b&gt;License&lt;/b&gt;  Entra P1 or P2 required&#xa;&lt;b&gt;User friction&lt;/b&gt;  Low (normal MFA prompt)&#xa;&lt;b&gt;Reversible&lt;/b&gt;  Yes (DELETE policy)&#xa;&lt;b&gt;Ongoing enforcement&lt;/b&gt;  Yes (until deleted)&#xa;&lt;b&gt;Customer-side config required&lt;/b&gt;  None&#xa;&#xa;&lt;b&gt;Complements A:&lt;/b&gt;&#xa;• P1/P2 customers use D (gentle)&#xa;• Free-tier customers use A (harder)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1390" y="210" width="370" height="440" as="geometry" />
-        </mxCell>
-        <mxCell id="guide" value="&lt;b&gt;Which option to enable for a given customer&lt;/b&gt;&#xa;&#xa;🏢 &lt;b&gt;Enterprise customer with Entra P1/P2 + existing CA policy:&lt;/b&gt;  Option C alone. Soft, MS-recommended, ongoing.&#xa;&#xa;🏢 &lt;b&gt;Enterprise customer with P1/P2 but no CA policy:&lt;/b&gt;  Option D (create scoped policy per compromised user) + optionally C.&#xa;&#xa;🏠 &lt;b&gt;Small customer on Free tier:&lt;/b&gt;  Option A (Force MFA Re-registration). Only option that works without P1/P2.&#xa;&#xa;🔒 &lt;b&gt;High-severity / VIP compromise (any tier):&lt;/b&gt;  Option A + disable_account (kills session + locks out + forces re-register).&#xa;&#xa;⚠ Option B is intentionally excluded from the platform." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=13;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="40" y="690" width="1720" height="220" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram name="7. Distribution" id="dist">
-    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="td" value="Distribution — How Customers Install" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1720" height="40" as="geometry" />
-        </mxCell>
-        <mxCell id="tds" value="Two paths today. One is live, the other requires Microsoft certification." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
-          <mxGeometry x="40" y="62" width="1720" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="path1" value="&lt;b&gt;① ARM Button (available today, ✅)&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;fontStyle=1;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
-          <mxGeometry x="40" y="110" width="860" height="810" as="geometry" />
-        </mxCell>
-        <mxCell id="p1a" value="&lt;b&gt;Where customer finds it&lt;/b&gt;&#xa;README.md on GitHub → &quot;Deploy to Azure&quot; button&#xa;https://github.com/orcunsami/SOCRadar-Azure-Entra-ID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="160" width="820" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="p1b" value="&lt;b&gt;What happens&lt;/b&gt;&#xa;1. Click button → Azure portal opens with ARM template&#xa;2. Customer fills parameters: SOCRadar key, tenant_id, workspace, etc.&#xa;3. Click Create → Azure deploys Function App + Storage + UAMI + (optional) Sentinel wiring&#xa;4. Function App downloads code from WEBSITE_RUN_FROM_PACKAGE URL (our v1.1.0 release zip)&#xa;5. Timer starts automatically, first run in 3 minutes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="270" width="820" height="190" as="geometry" />
-        </mxCell>
-        <mxCell id="p1pros" value="&lt;b&gt;Pros&lt;/b&gt;&#xa;• Live today, no certification needed&#xa;• Full control over release cadence&#xa;• No review gatekeeper&#xa;• One-click install for technical customers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="490" width="400" height="180" as="geometry" />
-        </mxCell>
-        <mxCell id="p1cons" value="&lt;b&gt;Cons&lt;/b&gt;&#xa;• Customer lands on &quot;random GitHub repo&quot;&#xa;• BT güvenliği sometimes blocks this flow&#xa;• No Microsoft trust stamp&#xa;• No update notification in Sentinel&#xa;• Not discoverable via search" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="480" y="490" width="400" height="180" as="geometry" />
-        </mxCell>
-        <mxCell id="p1status" value="&lt;b&gt;Current status&lt;/b&gt;&#xa;✅ Works (fixed ARM URL to v1.1.0 this session)&#xa;✅ Auto-release workflow in place for future versions&#xa;🎯 Use this until Content Hub listing is live" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6ffed;strokeColor=#2d7d32;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="690" width="820" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="path2" value="&lt;b&gt;② Content Hub (not yet, 🎯 strategic)&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;fontStyle=1;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
-          <mxGeometry x="920" y="110" width="840" height="810" as="geometry" />
-        </mxCell>
-        <mxCell id="p2a" value="&lt;b&gt;Where customer finds it&lt;/b&gt;&#xa;Inside their Sentinel workspace → Content Hub → Browse&#xa;Search: &quot;SOCRadar&quot; or &quot;Entra ID&quot;&#xa;Filtered by: &quot;Publisher: SOCRadar&quot;, &quot;Type: Solution&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="940" y="160" width="800" height="100" as="geometry" />
-        </mxCell>
-        <mxCell id="p2b" value="&lt;b&gt;What customer sees&lt;/b&gt;&#xa;• Logo, description, screenshots&#xa;• List of what's in the solution (playbooks, workbooks, analytics)&#xa;• Install button in Sentinel UI&#xa;• Version, author, support contact&#xa;• Microsoft-certified badge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="940" y="280" width="800" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="p2pros" value="&lt;b&gt;Pros&lt;/b&gt;&#xa;• Microsoft trust stamp&#xa;• Discoverable — customer searches, finds us&#xa;• BT güvenliği approves by default&#xa;• Update notifications in Sentinel UI&#xa;• Marketplace presence for sales&#xa;• Incidents/Feeds/TAXII already there — Entra ID missing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="940" y="460" width="400" height="210" as="geometry" />
-        </mxCell>
-        <mxCell id="p2cons" value="&lt;b&gt;Cons&lt;/b&gt;&#xa;• One-time packaging work (2-3 sessions):&#xa;  V3 Solution tool, Data file, workbook refs,&#xa;  playbook ARMs, metadata JSON&#xa;• Microsoft Partner Center submission&#xa;• Review cycle (days to weeks)&#xa;• Must follow their branding/naming rules" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1360" y="460" width="400" height="210" as="geometry" />
-        </mxCell>
-        <mxCell id="p2status" value="&lt;b&gt;Current status — reality check&lt;/b&gt;&#xa;Nothing is LIVE on Sentinel Content Hub yet:&#xa;• Incidents: PR #13858 open in Azure/Azure-Sentinel, MS reviewer pending weeks/months&#xa;• Feeds: solution packaged locally, PR not opened yet&#xa;• TAXII: solution packaged locally, PR not opened yet&#xa;• Entra ID: ❌ not even packaged&#xa;&#xa;Decision needed for Entra ID: start packaging now, or wait for Incidents to clear first?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#d79b00;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="940" y="690" width="800" height="220" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram name="8. Security Evolution" id="security">
-    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="tsec" value="Security Evolution — Client Secret vs Federated Identity Credential" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1720" height="40" as="geometry" />
-        </mxCell>
-        <mxCell id="tsecs" value="Today we store a password. Tomorrow we don't. Migration requires one-time customer coordination." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
-          <mxGeometry x="40" y="62" width="1720" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="cur" value="&lt;b&gt;CURRENT — Client Secret (password-based)&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=16;fontStyle=1;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
-          <mxGeometry x="40" y="110" width="860" height="900" as="geometry" />
-        </mxCell>
-        <mxCell id="c1sec" value="&lt;b&gt;How it works&lt;/b&gt;&#xa;&#xa;1. Admin creates app registration → clicks &quot;New client secret&quot; → copies value&#xa;2. Secret is stored in Function App App Settings as ENTRA_CLIENT_SECRET (plaintext env var)&#xa;3. MSAL uses secret to acquire Graph token every ~60 minutes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="160" width="820" height="150" as="geometry" />
-        </mxCell>
-        <mxCell id="c2sec" value="&lt;b&gt;Risks&lt;/b&gt;&#xa;&#xa;• Secret in plaintext in App Settings — any portal user with Contributor role on the Function App can read it&#xa;• No KeyVault reference (not using @Microsoft.KeyVault(SecretUri=...) syntax)&#xa;• Secret expires after 2 years max — silent breakage when it does&#xa;• Rotation is manual: generate new → update setting → restart → verify → delete old&#xa;• If leaked, must revoke in app registration + rotate in all consumers&#xa;• Does NOT survive app registration deletion / migration easily" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="330" width="820" height="240" as="geometry" />
-        </mxCell>
-        <mxCell id="c3sec" value="&lt;b&gt;Code path&lt;/b&gt;&#xa;&#xa;# actions/entra_id.py:&#xa;app = ConfidentialClientApplication(&#xa;    client_id=client_id,&#xa;    client_credential=client_secret,   ← THE PASSWORD&#xa;    authority=f&quot;https://login.microsoftonline.com/{tenant_id}&quot;&#xa;)&#xa;result = app.acquire_token_for_client(scopes=[&quot;https://graph.microsoft.com/.default&quot;])" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=left;spacingLeft=14;spacingTop=8;fontFamily=Courier New;" vertex="1" parent="1">
-          <mxGeometry x="60" y="590" width="820" height="220" as="geometry" />
-        </mxCell>
-        <mxCell id="c4sec" value="&lt;b&gt;Current required app settings&lt;/b&gt;&#xa;ENTRA_TENANT_ID · ENTRA_CLIENT_ID · &lt;b&gt;ENTRA_CLIENT_SECRET&lt;/b&gt; (plaintext)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="830" width="820" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="fut" value="&lt;b&gt;PROPOSED — Federated Identity Credential (passwordless)&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;fontStyle=1;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
-          <mxGeometry x="920" y="110" width="840" height="900" as="geometry" />
-        </mxCell>
-        <mxCell id="f1sec" value="&lt;b&gt;How it works&lt;/b&gt;&#xa;&#xa;1. App registration adds a Federated Identity Credential (FIC) pointing to UAMI's issuer/subject&#xa;2. Function App's UAMI (already exists!) acquires its own Azure token&#xa;3. MSAL uses that token as client-assertion to get Graph token — no password&#xa;4. UAMI is managed by Azure, rotates automatically, can't leak" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="940" y="160" width="800" height="170" as="geometry" />
-        </mxCell>
-        <mxCell id="f2sec" value="&lt;b&gt;Benefits&lt;/b&gt;&#xa;&#xa;• No secret stored anywhere&#xa;• No rotation — UAMI auto-manages&#xa;• No expiration clock&#xa;• Can't be exfiltrated from App Settings (nothing to exfiltrate)&#xa;• Microsoft's recommended pattern for Azure-hosted daemons&#xa;• Unified with how we already auth to Storage + LAW" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="940" y="350" width="800" height="210" as="geometry" />
-        </mxCell>
-        <mxCell id="f3sec" value="&lt;b&gt;Breaking change risk&lt;/b&gt;&#xa;&#xa;• Existing v1.0.0/v1.1.0 customers use client_secret&#xa;• Migration needs: (a) add FIC to app reg (one-time), (b) redeploy ARM&#xa;• Mitigation: keep both code paths for 2 versions → feature flag → sunset old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="940" y="580" width="800" height="150" as="geometry" />
-        </mxCell>
-        <mxCell id="f4sec" value="&lt;b&gt;Decision gate&lt;/b&gt;&#xa;&#xa;Do we have production customers running?&#xa;&#xa;Yes → need phased migration plan, 2-week deprecation window&#xa;No → swap immediately, zero cost" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6ffed;strokeColor=#2d7d32;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="940" y="750" width="800" height="170" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram name="9. Progress" id="progress">
-    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="tp" value="Progress State — 2026-04-15" style="text;strokeColor=none;fillColor=none;html=1;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1720" height="40" as="geometry" />
-        </mxCell>
-        <mxCell id="tps" value="Four buckets: shipped → admin-blocked → your decision needed → strategic roadmap." style="text;strokeColor=none;fillColor=none;html=1;fontSize=13;align=center;fontColor=#555;" vertex="1" parent="1">
-          <mxGeometry x="40" y="62" width="1720" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="c1p" value="✅ SHIPPED (on origin/master)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="40" y="110" width="440" height="1040" as="geometry" />
-        </mxCell>
-        <mxCell id="sh1" value="&lt;b&gt;33a4e7d&lt;/b&gt; Least-privilege refactor&#xa;• EnableUserLookup toggle&#xa;• 6 narrow Graph perms&#xa;• Sentinel labelType fix + severity&#xa;• Cross-RG workspaceResourceId fix" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="160" width="400" height="130" as="geometry" />
-        </mxCell>
-        <mxCell id="sh2" value="&lt;b&gt;4dd0535&lt;/b&gt; v1.1.0 release + ARM URL fix&#xa;• FunctionApp.zip attached&#xa;• WEBSITE_RUN_FROM_PACKAGE updated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="310" width="400" height="100" as="geometry" />
-        </mxCell>
-        <mxCell id="sh3" value="&lt;b&gt;ac1eb6a&lt;/b&gt; Force MFA Re-registration&#xa;• EnableForceMfaReregistration toggle&#xa;• 7 auth method types&#xa;• 401/403 graceful degrade" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="430" width="400" height="120" as="geometry" />
-        </mxCell>
-        <mxCell id="sh4" value="&lt;b&gt;cf83299&lt;/b&gt; Tests&#xa;• 7 mock unit tests (force MFA)&#xa;• test_actions test_13 (destructive)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="570" width="400" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="sh5" value="&lt;b&gt;e744a38 + 8f2b968&lt;/b&gt; CI + G2 throttling&#xa;• GitHub Actions CI&#xa;• _graph_request retry wrapper&#xa;• 8 new unit tests" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="680" width="400" height="110" as="geometry" />
-        </mxCell>
-        <mxCell id="sh6" value="&lt;b&gt;a0b5989&lt;/b&gt; G3 Consent revocation detection&#xa;• ConsentRevokedError classify AADSTS&#xa;• write_lifecycle_event&#xa;• 7 new unit tests" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="810" width="400" height="110" as="geometry" />
-        </mxCell>
-        <mxCell id="sh7" value="&lt;b&gt;3e95d30&lt;/b&gt; G7 auto-release workflow&#xa;on tag push → zip + release" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="940" width="400" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="sh8" value="&lt;b&gt;4553e47&lt;/b&gt; G9 troubleshooting runbook&#xa;12 symptom/fix sections" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="1040" width="400" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="c2p" value="⏸ ADMIN-BLOCKED" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="500" y="110" width="440" height="1040" as="geometry" />
-        </mxCell>
-        <mxCell id="b1p" value="&lt;b&gt;#7 Remove lingering broad grant&lt;/b&gt;&#xa;SP has User.ReadWrite.All still granted.&#xa;az rest DELETE call (in plan).&#xa;Needs Privileged Role Admin." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="520" y="160" width="400" height="140" as="geometry" />
-        </mxCell>
-        <mxCell id="b2p" value="&lt;b&gt;#5 Narrow-perm E2E tests&lt;/b&gt;&#xa;scripts/test_actions.py --skip-ropc&#xa;Only meaningful after #7 clears broad grant." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="520" y="320" width="400" height="120" as="geometry" />
-        </mxCell>
-        <mxCell id="b3p" value="&lt;b&gt;Force MFA live E2E test&lt;/b&gt;&#xa;Needs:&#xa;1. Grant UserAuthenticationMethod.ReadWrite.All&#xa;2. Assign Privileged Auth Admin role to SP&#xa;3. Disposable test user with MFA registered&#xa;4. test_actions.py --run-destructive&#xa;&#xa;Mock tests pass (7/7). Live test blocked." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="520" y="460" width="400" height="200" as="geometry" />
-        </mxCell>
-        <mxCell id="c3p" value="📋 NEEDS DECISION" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="960" y="110" width="420" height="1040" as="geometry" />
-        </mxCell>
-        <mxCell id="d1p" value="&lt;b&gt;Q1: Content Hub for Entra ID&lt;/b&gt;&#xa;(Page 7 — Distribution)&#xa;&#xa;Publish this as Azure Marketplace solution?&#xa;Effort: 2-3 sessions + Partner Center review.&#xa;&#xa;• Yes → queue as Tier 3 roadmap&#xa;• Not yet → ARM button path stays" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="980" y="160" width="380" height="190" as="geometry" />
-        </mxCell>
-        <mxCell id="d2p" value="&lt;b&gt;Q2: Federated Identity migration&lt;/b&gt;&#xa;(Page 8 — Security Evolution)&#xa;&#xa;Kill ENTRA_CLIENT_SECRET?&#xa;&#xa;How many production customers running?&#xa;• 0 → swap immediately&#xa;• 1-5 → phased migration with feature flag&#xa;• many → 2-version deprecation window" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="980" y="370" width="380" height="200" as="geometry" />
-        </mxCell>
-        <mxCell id="d3p" value="&lt;b&gt;Q3: Option D — Programmatic CA&lt;/b&gt;&#xa;(Page 6 — Force MFA Options)&#xa;&#xa;Add Option D alongside existing A+C?&#xa;&#xa;• Yes → softer enforcement for P1/P2 customers&#xa;• No → Option A covers all cases (harder)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="980" y="590" width="380" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="d4p" value="&lt;b&gt;Q4: MSSP timing&lt;/b&gt;&#xa;(Pages 4 + 5 — MSSP Setup + Runtime)&#xa;&#xa;When does the first MSSP customer arrive?&#xa;&#xa;• This month → start Option 2 now&#xa;• Undefined → keep design, implement when demand lands" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="980" y="770" width="380" height="180" as="geometry" />
-        </mxCell>
-        <mxCell id="c4p" value="🎯 ROADMAP" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;verticalAlign=top;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="110" width="360" height="1040" as="geometry" />
-        </mxCell>
-        <mxCell id="r1p" value="&lt;b&gt;Tier 2 (next batch)&lt;/b&gt;&#xa;&#xa;• G5 Integration test harness&#xa;  (mocked Graph)&#xa;• G10 Operational workbook tiles&#xa;  (error_rate, token_failures, 429s)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1420" y="160" width="330" height="180" as="geometry" />
-        </mxCell>
-        <mxCell id="r2p" value="&lt;b&gt;Tier 3 (strategic)&lt;/b&gt;&#xa;&#xa;• G6 Content Hub solution package&#xa;  (if Q1 = yes)&#xa;• Option 2 MSSP multi-tenant&#xa;  (if Q4 = now)&#xa;• G1 Federated Identity Credential&#xa;  (if Q2 cleared)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1420" y="360" width="330" height="220" as="geometry" />
-        </mxCell>
-        <mxCell id="r3p" value="&lt;b&gt;Tier 4 (nice-to-have)&lt;/b&gt;&#xa;&#xa;• Option D programmatic CA&#xa;  (if Q3 = yes)&#xa;• Contract test against SOCRadar API&#xa;• Sentinel analytic rules for&#xa;  consent_revoked events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="1420" y="600" width="330" height="200" as="geometry" />
+        <mxCell id="d4" value="&lt;b&gt;Q4. When does MSSP multi-tenant ship?&lt;/b&gt;&#xa;&#xa;Design is done (consent-per-tenant, domain→tenant routing).&#xa;Implementation: 1-2 sessions + 2-tenant E2E test.&#xa;&#xa;Decision: build now (if MSSP customer pipeline exists) / defer (build when demand lands)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="760" width="540" height="200" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
