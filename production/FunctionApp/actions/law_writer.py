@@ -96,6 +96,30 @@ def write_records(conf: dict, source_name: str, records: list):
             time.sleep(0.5)
 
 
+def write_lifecycle_event(conf: dict, event_type: str, tenant_id: str = "", details: str = "", extra: dict = None):
+    """
+    Write a single lifecycle/operational event to SOCRadar_EntraID_Audit_CL.
+    Intended for events like consent_revoked, token_failure, permission_denied —
+    things the audit summary (per-source) doesn't capture.
+    """
+    workspace_id = conf.get("workspace_id")
+    workspace_key = conf.get("workspace_key")
+    if not workspace_id or not workspace_key:
+        logger.warning("[LAW] lifecycle event %s skipped — workspace not configured", event_type)
+        return False
+
+    record = {
+        "event_type": event_type,
+        "tenant_id":  tenant_id,
+        "details":    details[:1000] if details else "",
+        "timestamp":  datetime.now(timezone.utc).isoformat(),
+    }
+    if extra:
+        for k, v in extra.items():
+            record.setdefault(k, v)
+    return _post(workspace_id, workspace_key, "SOCRadar_EntraID_Audit", [record])
+
+
 def write_audit(conf: dict, audit_results: list):
     """Write audit summary records to SOCRadar_EntraID_Audit_CL table."""
     workspace_id = conf["workspace_id"]

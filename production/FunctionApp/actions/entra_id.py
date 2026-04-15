@@ -45,8 +45,47 @@ def _graph_request(method: str, url: str, headers: dict, json=None, timeout: int
         attempt += 1
 
 
+class ConsentRevokedError(RuntimeError):
+    """
+    Token acquisition failed because the target tenant has not consented
+    to the app, or consent was revoked. Distinct from transient errors.
+    """
+    def __init__(self, tenant_id: str, aadsts_code: str, message: str):
+        self.tenant_id = tenant_id
+        self.aadsts_code = aadsts_code
+        super().__init__(message)
+
+
+# AADSTS codes that specifically indicate missing or revoked consent.
+# Reference: https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes
+_CONSENT_AADSTS_CODES = {
+    "AADSTS650052",   # App needs access to a service that your organization hasn't subscribed to
+    "AADSTS650054",   # App removed by admin
+    "AADSTS700016",   # App not found in directory (no service principal)
+    "AADSTS700022",   # Multi-tenant app: tenant has not consented
+    "AADSTS7000215",  # Invalid client secret / credential mismatch — often revocation signal
+    "AADSTS65001",    # User or admin has not consented to this app
+    "AADSTS7000112",  # App disabled
+    "AADSTS7000229",  # Application not authorized in this tenant
+}
+
+
+def _classify_token_error(err_description: str) -> str | None:
+    """Return the first AADSTS code found in the description that indicates consent issue, else None."""
+    if not err_description:
+        return None
+    for code in _CONSENT_AADSTS_CODES:
+        if code in err_description:
+            return code
+    return None
+
+
 def get_graph_token(tenant_id: str, client_id: str, client_secret: str) -> str:
-    """Acquire access token for Microsoft Graph using client credentials (app permissions)."""
+    """
+    Acquire access token for Microsoft Graph using client credentials (app permissions).
+    Raises ConsentRevokedError when the AADSTS error code signals a consent problem;
+    otherwise raises RuntimeError for transient or generic failures.
+    """
     app = ConfidentialClientApplication(
         client_id=client_id,
         client_credential=client_secret,
@@ -55,6 +94,9 @@ def get_graph_token(tenant_id: str, client_id: str, client_secret: str) -> str:
     result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
     if "access_token" not in result:
         err = result.get("error_description", "Unknown error")
+        consent_code = _classify_token_error(err)
+        if consent_code:
+            raise ConsentRevokedError(tenant_id, consent_code, f"Consent issue ({consent_code}): {err}")
         raise RuntimeError(f"Failed to acquire Graph token: {err}")
     logger.info("[ENTRA] Graph token acquired")
     return result["access_token"]

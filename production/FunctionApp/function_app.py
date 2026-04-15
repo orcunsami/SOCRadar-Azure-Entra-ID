@@ -101,8 +101,26 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
                 "Authorization": f"Bearer {graph_token}",
                 "Content-Type": "application/json"
             }
+        except entra.ConsentRevokedError as e:
+            logger.error(
+                "[ENTRA] Consent issue for tenant %s (%s): %s — Entra ID actions will be skipped",
+                e.tenant_id, e.aadsts_code, e
+            )
+            law.write_lifecycle_event(
+                conf,
+                event_type="consent_revoked",
+                tenant_id=e.tenant_id,
+                details=str(e),
+                extra={"aadsts_code": e.aadsts_code}
+            )
         except Exception as e:
             logger.error("[ENTRA] Failed to acquire Graph token — Entra ID actions will be skipped: %s", e)
+            law.write_lifecycle_event(
+                conf,
+                event_type="token_acquisition_failed",
+                tenant_id=conf.get("tenant_id", ""),
+                details=str(e)[:500]
+            )
 
     sources_to_run = []
     if conf["enable_botnet_source"]:
