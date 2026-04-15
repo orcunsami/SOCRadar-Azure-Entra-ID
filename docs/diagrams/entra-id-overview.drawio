@@ -480,8 +480,8 @@
         <mxCell id="p2cons" value="&lt;b&gt;Cons&lt;/b&gt;&#xa;• One-time packaging work (2-3 sessions):&#xa;  V3 Solution tool, Data file, workbook refs,&#xa;  playbook ARMs, metadata JSON&#xa;• Microsoft Partner Center submission&#xa;• Review cycle (days to weeks)&#xa;• Must follow their branding/naming rules" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
           <mxGeometry x="1360" y="460" width="400" height="210" as="geometry" />
         </mxCell>
-        <mxCell id="p2status" value="&lt;b&gt;Current status&lt;/b&gt;&#xa;Incidents = done (v1.0.29 published)&#xa;Feeds = done (pushed)&#xa;TAXII = done (pushed)&#xa;Entra ID = ❌ NOT PACKAGED YET&#xa;&#xa;Decision needed: do we queue this as Tier 3?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#d79b00;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="940" y="690" width="800" height="160" as="geometry" />
+        <mxCell id="p2status" value="&lt;b&gt;Current status — reality check&lt;/b&gt;&#xa;Nothing is LIVE on Sentinel Content Hub yet:&#xa;• Incidents: PR #13858 open in Azure/Azure-Sentinel, MS reviewer pending weeks/months&#xa;• Feeds: solution packaged locally, PR not opened yet&#xa;• TAXII: solution packaged locally, PR not opened yet&#xa;• Entra ID: ❌ not even packaged&#xa;&#xa;Decision needed for Entra ID: start packaging now, or wait for Incidents to clear first?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#d79b00;fontSize=12;align=left;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="940" y="690" width="800" height="220" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
