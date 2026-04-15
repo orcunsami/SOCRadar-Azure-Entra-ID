@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    name: Unit tests + syntax checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r production/FunctionApp/requirements.txt
+
+      - name: Python syntax check (AST)
+        run: |
+          python - <<'PY'
+          import ast, pathlib, sys
+          failed = 0
+          for path in pathlib.Path('production/FunctionApp').rglob('*.py'):
+              if '__pycache__' in path.parts or '.python_packages' in path.parts:
+                  continue
+              try:
+                  ast.parse(path.read_text())
+              except SyntaxError as e:
+                  print(f"SYNTAX ERROR in {path}: {e}")
+                  failed += 1
+          if failed:
+              sys.exit(1)
+          print("All Python files parse cleanly")
+          PY
+
+      - name: ARM template JSON validity
+        run: python -c "import json; json.load(open('production/azuredeploy.json')); print('azuredeploy.json: valid JSON')"
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -p "test_*_unit.py" -v
