@@ -43,6 +43,7 @@ Create an App Registration with only the Microsoft Graph Application permissions
 | `User-PasswordProfile.ReadWrite.All` | `EnablePasswordChange=true` |
 | `User.EnableDisableAccount.All` | `EnableDisableAccount=true` or `EnableEnableAccount=true` |
 | `IdentityRiskyUser.ReadWrite.All` | `EnableConfirmRisky` (requires P1/P2 license) |
+| `UserAuthenticationMethod.ReadWrite.All` | `EnableForceMfaReregistration=true` (also needs Privileged Authentication Administrator role on the SP) |
 
 `User.ReadWrite.All` is not required for the current action model and should not be granted unless you intentionally add a broader capability.
 

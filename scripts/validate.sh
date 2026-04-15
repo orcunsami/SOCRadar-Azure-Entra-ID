@@ -112,7 +112,7 @@ if [[ -n "$FA_NAME" ]]; then
     # Check action toggles
     echo ""
     echo "  Action toggles:"
-    for toggle in "ENABLE_USER_LOOKUP" "ENABLE_REVOKE_SESSION" "ENABLE_ADD_TO_GROUP" "ENABLE_REMOVE_FROM_GROUP" "ENABLE_PASSWORD_CHANGE" "ENABLE_DISABLE_ACCOUNT" "ENABLE_ENABLE_ACCOUNT" "ENABLE_CONFIRM_RISKY" "ENABLE_ROPC" "ENABLE_CREATE_INCIDENT" "ENABLE_RESOLVE_ALARM"; do
+    for toggle in "ENABLE_USER_LOOKUP" "ENABLE_REVOKE_SESSION" "ENABLE_ADD_TO_GROUP" "ENABLE_REMOVE_FROM_GROUP" "ENABLE_PASSWORD_CHANGE" "ENABLE_DISABLE_ACCOUNT" "ENABLE_ENABLE_ACCOUNT" "ENABLE_CONFIRM_RISKY" "ENABLE_FORCE_MFA_REREGISTRATION" "ENABLE_ROPC" "ENABLE_CREATE_INCIDENT" "ENABLE_RESOLVE_ALARM"; do
         VAL=$(echo "$SETTINGS_JSON" | python3 -c "import sys,json; items=json.load(sys.stdin); vals=[i['value'] for i in items if i['name']=='$toggle']; print(vals[0] if vals else '?')" 2>/dev/null || echo "?")
         echo "    $toggle = $VAL"
     done

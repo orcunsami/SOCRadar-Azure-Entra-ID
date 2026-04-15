@@ -59,6 +59,7 @@ def load() -> dict:
         "enable_disable_account":   _bool("ENABLE_DISABLE_ACCOUNT", False),
         "enable_enable_account":    _bool("ENABLE_ENABLE_ACCOUNT", False),
         "enable_confirm_risky":     _bool("ENABLE_CONFIRM_RISKY", False),
+        "enable_force_mfa_reregistration": _bool("ENABLE_FORCE_MFA_REREGISTRATION", False),
         "enable_create_incident":   _bool("ENABLE_CREATE_INCIDENT", False),
         "enable_resolve_alarm":     _bool("ENABLE_RESOLVE_ALARM", False),
         "security_group_id":        _get("SECURITY_GROUP_ID", default=""),

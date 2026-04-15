@@ -47,6 +47,8 @@ def _required_graph_permissions(conf: dict) -> list[tuple[str, str]]:
         permissions.append(("User.EnableDisableAccount.All", "disable or re-enable user accounts"))
     if conf["enable_confirm_risky"]:
         permissions.append(("IdentityRiskyUser.ReadWrite.All", "confirm compromised users in Identity Protection"))
+    if conf["enable_force_mfa_reregistration"]:
+        permissions.append(("UserAuthenticationMethod.ReadWrite.All", "delete MFA methods to force re-registration"))
 
     return permissions
 
@@ -84,6 +86,7 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
             conf["enable_disable_account"],
             conf["enable_enable_account"],
             conf["enable_confirm_risky"],
+            conf["enable_force_mfa_reregistration"],
             conf["enable_ropc"],
         )):
             logger.warning("[ENTRA] One or more Entra action toggles are enabled, but they cannot run while EnableUserLookup=false")
@@ -281,6 +284,22 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
             if conf["enable_confirm_risky"]:
                 ok = entra.confirm_compromised(user_id, graph_headers)
                 taken.append("confirm_risky" if ok else "confirm_risky_failed")
+                actions += 1
+
+            if conf["enable_force_mfa_reregistration"]:
+                mfa_result = entra.force_mfa_reregistration(user_id, graph_headers)
+                if mfa_result["permission_denied"]:
+                    logger.warning(
+                        "[%s] force_mfa_rereg skipped — UserAuthenticationMethod.ReadWrite.All not granted",
+                        source_name.upper()
+                    )
+                    taken.append("force_mfa_rereg_no_permission")
+                elif mfa_result["methods_deleted"] > 0:
+                    taken.append("force_mfa_rereg")
+                else:
+                    taken.append("force_mfa_rereg_failed")
+                emp["mfa_methods_deleted"] = mfa_result["methods_deleted"]
+                emp["mfa_methods_skipped"] = mfa_result["methods_skipped"]
                 actions += 1
 
             if conf["enable_create_incident"]:

@@ -136,6 +136,13 @@
                 "description": "Confirm matched users as compromised in Identity Protection. Requires EnableUserLookup=true, IdentityRiskyUser.ReadWrite.All, and Entra ID P1/P2 licensing."
             }
         },
+        "EnableForceMfaReregistration": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Delete all non-password authentication methods (Microsoft Authenticator, phone, FIDO2, software OATH, Windows Hello, email, TAP) to force MFA re-registration at next sign-in. Works on all Entra ID tiers. Requires EnableUserLookup=true and UserAuthenticationMethod.ReadWrite.All. HIGH IMPACT — off by default."
+            }
+        },
         "EnableROPC": {
             "type": "bool",
             "defaultValue": false,
@@ -403,6 +410,10 @@
                         {
                             "name": "ENABLE_CONFIRM_RISKY",
                             "value": "[string(parameters('EnableConfirmRisky'))]"
+                        },
+                        {
+                            "name": "ENABLE_FORCE_MFA_REREGISTRATION",
+                            "value": "[string(parameters('EnableForceMfaReregistration'))]"
                         },
                         {
                             "name": "ENABLE_ROPC",

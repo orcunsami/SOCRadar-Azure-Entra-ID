@@ -222,3 +222,88 @@ def validate_password_ropc(email: str, password: str, tenant_id: str, client_id:
     finally:
         # Ensure password is not retained in any local traceback or closure
         del password
+
+
+# =============================================================================
+# Force MFA Re-registration
+# =============================================================================
+
+PASSWORD_METHOD_ID = "28c10230-6103-485e-b985-444c60001490"
+
+METHOD_TYPE_TO_ENDPOINT = {
+    "microsoft.graph.microsoftAuthenticatorAuthenticationMethod": "microsoftAuthenticatorMethods",
+    "microsoft.graph.phoneAuthenticationMethod":                   "phoneMethods",
+    "microsoft.graph.fido2AuthenticationMethod":                   "fido2Methods",
+    "microsoft.graph.softwareOathAuthenticationMethod":            "softwareOathMethods",
+    "microsoft.graph.windowsHelloForBusinessAuthenticationMethod": "windowsHelloForBusinessMethods",
+    "microsoft.graph.emailAuthenticationMethod":                   "emailMethods",
+    "microsoft.graph.temporaryAccessPassAuthenticationMethod":     "temporaryAccessPassMethods",
+}
+
+
+def force_mfa_reregistration(user_id: str, graph_headers: dict) -> dict:
+    """
+    Delete every non-password authentication method so the user must re-register
+    MFA at next sign-in. Requires UserAuthenticationMethod.ReadWrite.All.
+
+    Returns dict so caller can distinguish:
+      - methods_deleted > 0      : at least one method was deleted
+      - methods_skipped          : password method (always preserved)
+      - permission_denied = True : 401/403 on list or delete (missing permission)
+      - errors                   : list of per-method failure strings
+    """
+    result = {
+        "methods_deleted": 0,
+        "methods_skipped": 0,
+        "errors": [],
+        "permission_denied": False,
+    }
+    list_url = f"{GRAPH_BASE}/users/{user_id}/authentication/methods"
+    try:
+        resp = requests.get(list_url, headers=graph_headers, timeout=20)
+    except requests.RequestException as e:
+        result["errors"].append(f"list methods request error: {e}")
+        return result
+
+    if resp.status_code in (401, 403):
+        result["permission_denied"] = True
+        result["errors"].append(f"list methods: HTTP {resp.status_code}")
+        logger.warning(
+            "[ENTRA] forceMfaRereg %s: permission denied (need UserAuthenticationMethod.ReadWrite.All)",
+            user_id[:8]
+        )
+        return result
+    if resp.status_code != 200:
+        result["errors"].append(f"list methods: HTTP {resp.status_code} {resp.text[:200]}")
+        return result
+
+    for method in resp.json().get("value", []):
+        method_id = method.get("id")
+        odata_type = method.get("@odata.type", "").lstrip("#")
+        if method_id == PASSWORD_METHOD_ID:
+            result["methods_skipped"] += 1
+            continue
+        endpoint = METHOD_TYPE_TO_ENDPOINT.get(odata_type)
+        if not endpoint:
+            result["errors"].append(f"unknown method type: {odata_type}")
+            continue
+        del_url = f"{GRAPH_BASE}/users/{user_id}/authentication/{endpoint}/{method_id}"
+        try:
+            del_resp = requests.delete(del_url, headers=graph_headers, timeout=20)
+        except requests.RequestException as e:
+            result["errors"].append(f"delete {endpoint} request error: {e}")
+            continue
+        if del_resp.status_code == 204:
+            result["methods_deleted"] += 1
+        elif del_resp.status_code in (401, 403):
+            result["permission_denied"] = True
+            result["errors"].append(f"delete {endpoint}: HTTP {del_resp.status_code}")
+            return result
+        else:
+            result["errors"].append(f"delete {endpoint}: HTTP {del_resp.status_code}")
+
+    logger.info(
+        "[ENTRA] forceMfaRereg %s → deleted=%d skipped=%d errors=%d",
+        user_id[:8], result["methods_deleted"], result["methods_skipped"], len(result["errors"])
+    )
+    return result
