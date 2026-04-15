@@ -446,14 +446,86 @@ def test_12_alarm_resolve():
     save_pair("12-alarm-resolve", req_info, resp_info)
 
 
+def test_13_force_mfa_reregistration(headers, skip=True):
+    section(13, "Force MFA Re-registration (DESTRUCTIVE)")
+    if skip:
+        info("Skipped — use --run-destructive to execute (will delete test user's MFA methods)")
+        test_results.append({"test": 13, "name": "force_mfa_reregistration", "passed": None, "skipped": "destructive"})
+        return
+
+    # GET methods first
+    list_url = f"{GRAPH}/users/{TEST1_ID}/authentication/methods"
+    req_info = {"method": "GET", "url": list_url, "timestamp": datetime.now(timezone.utc).isoformat()}
+    try:
+        req = urllib.request.Request(list_url, headers=headers)
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read())
+            methods = data.get("value", [])
+            resp_info = {"status": resp.status, "method_count": len(methods)}
+    except urllib.error.HTTPError as e:
+        resp_info = {"status": e.code, "error": str(e)}
+        save_pair("13-force-mfa-list", req_info, resp_info)
+        if e.code in (401, 403):
+            info(f"HTTP {e.code} — requires UserAuthenticationMethod.ReadWrite.All")
+            test_results.append({"test": 13, "name": "force_mfa_reregistration", "passed": None, "skipped": "permission"})
+        else:
+            fail(f"List methods HTTP {e.code}")
+            test_results.append({"test": 13, "name": "force_mfa_reregistration", "passed": False})
+        return
+    except Exception as e:
+        fail(f"List error: {e}")
+        test_results.append({"test": 13, "name": "force_mfa_reregistration", "passed": False})
+        return
+    save_pair("13-force-mfa-list", req_info, resp_info)
+
+    PASSWORD_METHOD_ID = "28c10230-6103-485e-b985-444c60001490"
+    TYPE_MAP = {
+        "microsoft.graph.microsoftAuthenticatorAuthenticationMethod": "microsoftAuthenticatorMethods",
+        "microsoft.graph.phoneAuthenticationMethod":                   "phoneMethods",
+        "microsoft.graph.fido2AuthenticationMethod":                   "fido2Methods",
+        "microsoft.graph.softwareOathAuthenticationMethod":            "softwareOathMethods",
+        "microsoft.graph.windowsHelloForBusinessAuthenticationMethod": "windowsHelloForBusinessMethods",
+        "microsoft.graph.emailAuthenticationMethod":                   "emailMethods",
+        "microsoft.graph.temporaryAccessPassAuthenticationMethod":     "temporaryAccessPassMethods",
+    }
+
+    deleted = 0
+    skipped = 0
+    errors = []
+    for m in methods:
+        mid = m.get("id")
+        odata = m.get("@odata.type", "").lstrip("#")
+        if mid == PASSWORD_METHOD_ID:
+            skipped += 1
+            continue
+        endpoint = TYPE_MAP.get(odata)
+        if not endpoint:
+            errors.append(f"unknown: {odata}")
+            continue
+        r = graph_delete(f"{GRAPH}/users/{TEST1_ID}/authentication/{endpoint}/{mid}", headers, f"13-delete-{endpoint}")
+        if r.get("status") == 204:
+            deleted += 1
+        else:
+            errors.append(f"{endpoint}: HTTP {r.get('status')}")
+
+    info(f"deleted={deleted} skipped={skipped} errors={len(errors)}")
+    passed = deleted > 0 or (len(methods) == 1 and skipped == 1)  # only password or nothing to delete = still OK
+    if passed:
+        ok(f"Force MFA re-registration: {deleted} method(s) deleted")
+    else:
+        fail(f"Force MFA re-registration failed: {errors}")
+    test_results.append({"test": 13, "name": "force_mfa_reregistration", "passed": passed, "deleted": deleted, "skipped_password": skipped})
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="SOCRadar Entra ID Action Tests")
-    parser.add_argument("--test", type=int, help="Run single test by number (1-12)")
+    parser.add_argument("--test", type=int, help="Run single test by number (1-13)")
     parser.add_argument("--skip-ropc", action="store_true", help="Skip ROPC tests")
+    parser.add_argument("--run-destructive", action="store_true", help="Run destructive tests (test 13 force_mfa_reregistration)")
     args = parser.parse_args()
 
     print(f"""
@@ -493,6 +565,7 @@ def main():
         10: lambda: test_10_confirm_compromised(headers),
         11: lambda: test_11_law_write(),
         12: lambda: test_12_alarm_resolve(),
+        13: lambda: test_13_force_mfa_reregistration(headers, skip=not args.run_destructive),
     }
 
     if args.test:
