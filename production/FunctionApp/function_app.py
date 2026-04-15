@@ -182,8 +182,9 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
     elif source_name == "vip":
         employees = src_vip.fetch(conf, chk)
     else:
+        # Duration is set by the caller.
         return {"source": source_name, "total": 0, "employees": 0,
-                "found": 0, "not_found": 0, "actions": 0, "errors": 0, "duration": 0}
+                "found": 0, "not_found": 0, "actions": 0, "errors": 0}
 
     found = not_found = actions = errors = 0
     records = []
@@ -354,7 +355,9 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
     if new_checkpoint:
         cp.save(conf["storage_account_name"], credential, source_name, new_checkpoint)
 
-    duration = 0  # caller sets this
+    # Duration is set by the caller (socradar_entra_id_import) after this returns,
+    # so it always reflects real wall-clock time. Not included here to avoid a
+    # silent-zero trap if a future caller forgets to overwrite it.
     return {
         "source":     source_name,
         "total":      len(employees),
@@ -363,5 +366,4 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
         "not_found":  not_found,
         "actions":    actions,
         "errors":     errors,
-        "duration":   duration,
     }

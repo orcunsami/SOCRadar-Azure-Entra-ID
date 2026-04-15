@@ -127,7 +127,7 @@ SOCRadar_EntraID_Audit_CL
 
 ## 8. `ENTRA_CLIENT_SECRET` expired or about to expire
 
-**Symptom**: Consent-revoked-like AADSTS7000215 errors appear suddenly across all runs.
+**Symptom**: AADSTS7000215 errors appear suddenly across all runs, audit log shows `event_type=token_acquisition_failed` with this code.
 
 **Diagnosis**: Client secrets have a max 2-year lifetime. Check expiry: `az ad app credential list --id <appId> --query "[].endDateTime"`.
 
