@@ -1,0 +1,32 @@
+%% Sayfa 1 — Kavramlar: Ne nedir?
+%% draw.io: Arrange > Insert > Advanced > Mermaid
+
+flowchart TB
+    subgraph CLOUD["☁️ Microsoft Bulut Kimlik Sistemi"]
+        ENTRA["<b>Entra ID</b><br/>(eski adı: Azure Active Directory)<br/>Bulut kimlik yönetimi<br/>Kullanıcılar + Gruplar + Uygulamalar"]
+        TENANT["<b>Tenant</b><br/>Bir şirketin Entra ID'deki 'evi'<br/>Her şirketin benzersiz tenant GUID'i var"]
+        GRAPH["<b>Microsoft Graph API</b><br/>User/group/mail/security verilerine<br/>erişim tek noktası<br/>graph.microsoft.com/v1.0"]
+    end
+
+    subgraph AUTH["🔑 Kimlik Doğrulama Yöntemleri"]
+        APPREG["<b>App Registration</b><br/>❌ ESKİ YOL — biz kaldırdık<br/>Uygulama için kayıt + client_secret<br/>Secret 2 yılda expire olur"]
+        UAMI["<b>UAMI (Managed Identity)</b><br/>✅ YENİ YOL — şu an kullanıyoruz<br/>Azure otomatik yönetiyor<br/>Secret yok, expire yok, rotation yok"]
+        DEFCRED["<b>DefaultAzureCredential</b><br/>Python SDK'daki 'otomatik auth bul' sınıfı<br/>UAMI'yi algılar, token alır"]
+    end
+
+    subgraph PERM["📋 İzin Sistemi"]
+        GRAPHROLE["<b>Graph Role</b><br/>User.Read.All, GroupMember.ReadWrite.All, vs.<br/>UAMI'nin service principal'ına atanır<br/>assign_graph_roles.sh ile"]
+        SP["<b>Service Principal</b><br/>Bir uygulamanın (veya UAMI'nin)<br/>tenant'taki temsilcisi<br/>İzinler BURAYA atanır"]
+    end
+
+    ENTRA --> TENANT
+    TENANT --> GRAPH
+    UAMI --> DEFCRED
+    DEFCRED -->|"token al"| GRAPH
+    UAMI --> SP
+    SP --> GRAPHROLE
+    APPREG -.->|"artık kullanılmıyor"| SP
+
+    style APPREG fill:#f8cecc,stroke:#b85450
+    style UAMI fill:#d5e8d4,stroke:#82b366
+    style DEFCRED fill:#d5e8d4,stroke:#82b366

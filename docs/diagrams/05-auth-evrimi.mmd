@@ -1,0 +1,25 @@
+%% Sayfa 5 — Auth Evrimi: Secret → Secretless
+%% draw.io: Arrange > Insert > Advanced > Mermaid
+
+flowchart LR
+    subgraph OLD["❌ ESKİ YOL (v1.0.0 – v1.1.0)"]
+        O1["1. Müşteri App Registration oluşturur"]
+        O2["2. Client Secret generate eder<br/>(2 yıl ömür)"]
+        O3["3. Secret'ı Function App<br/>App Settings'e koyar<br/>(plaintext!)"]
+        O4["4. Kod: MSAL + secret ile<br/>Graph token alır"]
+        O5["⚠ 2 yıl sonra expire olur<br/>⚠ Plaintext'te duruyor<br/>⚠ Elle rotation lazım<br/>⚠ Leak riski"]
+        O1 --> O2 --> O3 --> O4 --> O5
+    end
+
+    subgraph NEW["✅ YENİ YOL (v1.2.0+, şu an)"]
+        N1["1. ARM template UAMI oluşturur<br/>(otomatik, müşteri bir şey yapmaz)"]
+        N2["2. Admin assign_graph_roles.sh<br/>çalıştırır (bir kez)"]
+        N3["3. Kod: DefaultAzureCredential<br/>ile Graph token alır<br/>(UAMI otomatik algılanır)"]
+        N4["✅ Secret YOK<br/>✅ Expire YOK<br/>✅ Rotation YOK<br/>✅ Leak riski YOK<br/>✅ App Registration GEREKMİYOR"]
+        N1 --> N2 --> N3 --> N4
+    end
+
+    OLD -.->|"migration"| NEW
+
+    style O5 fill:#f8cecc,stroke:#b85450
+    style N4 fill:#d5e8d4,stroke:#82b366

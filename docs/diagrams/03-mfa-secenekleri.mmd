@@ -1,0 +1,43 @@
+%% Sayfa 3 — 2FA / MFA Seçenekleri: Ne yapılabiliyor?
+%% draw.io: Arrange > Insert > Advanced > Mermaid
+
+flowchart TB
+    TITLE["<b>Kullanıcı şifresi sızdı — MFA ile ne yapabiliriz?</b>"]
+
+    subgraph A["<b>A: Force MFA Re-registration ✅ BİZDE VAR</b>"]
+        A1["Tüm MFA yöntemlerini sil<br/>(Authenticator, telefon, FIDO2,<br/>software OATH, Windows Hello,<br/>email, TAP)"]
+        A2["Kullanıcı sonraki login'de<br/>sıfırdan MFA kayıt olmak ZORUNDA"]
+        A3["Lisans: Free dahil HERKESİN<br/>Permission: UserAuthenticationMethod.ReadWrite.All<br/>Graph: v1.0 stable"]
+        A4["Etki: YÜKSEK — kullanıcı<br/>tüm MFA'yı kaybeder"]
+    end
+
+    subgraph C["<b>C: Confirm Risky ✅ BİZDE VAR</b>"]
+        C1["Kullanıcıyı 'compromised'<br/>olarak işaretle"]
+        C2["Müşterinin Conditional Access<br/>policy'si devreye girer"]
+        C3["Lisans: P1/P2 GEREKLİ<br/>Permission: IdentityRiskyUser.ReadWrite.All<br/>Graph: v1.0 stable"]
+        C4["Etki: DÜŞÜK — müşterinin<br/>CA policy'sine bağlı"]
+    end
+
+    subgraph B["<b>B: perUserMfaState ❌ REDDETTİK</b>"]
+        B1["User'a direkt 'MFA enforced'<br/>durumu yaz"]
+        B2["Her login'de MFA zorunlu"]
+        B3["Lisans: Free<br/>Graph: BETA endpoint<br/>MS önermiyor (legacy)"]
+        B4["Neden REDDETTİK:<br/>Beta = breaking change riski<br/>Legacy = MS kaldırabilir"]
+    end
+
+    subgraph D["<b>D: Programmatic CA Policy 📋 KARAR BEKLİYOR</b>"]
+        D1["User'a özel geçici CA kuralı yaz:<br/>'bu user sign-in ederse MFA iste'"]
+        D2["Normal MFA prompt gösterir,<br/>MFA'yı silmez"]
+        D3["Lisans: P1/P2 GEREKLİ<br/>Permission: Policy.ReadWrite.ConditionalAccess<br/>Graph: v1.0 stable"]
+        D4["Avantaj: A'dan daha hafif,<br/>geri alınabilir (policy sil)"]
+    end
+
+    TITLE --> A
+    TITLE --> C
+    TITLE --> B
+    TITLE --> D
+
+    style A fill:#d5e8d4,stroke:#82b366
+    style C fill:#d5e8d4,stroke:#82b366
+    style B fill:#f8cecc,stroke:#b85450
+    style D fill:#fff2cc,stroke:#d6b656

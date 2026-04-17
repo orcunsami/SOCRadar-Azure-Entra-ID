@@ -1,0 +1,47 @@
+%% Sayfa 4 — 16 Toggle: Uygulamanın yapabildiği her şey
+%% draw.io: Arrange > Insert > Advanced > Mermaid
+
+flowchart TB
+    TITLE["<b>SOCRadar Entra ID — 16 Özellik Toggle'ı</b><br/>Her biri ARM deploy sırasında veya Function App config'inden açılıp kapatılabilir"]
+
+    subgraph SRC["① SOURCES — SOCRadar'dan ne çekilecek"]
+        S1["1. BOTNET_SOURCE ✅ açık<br/>Stealer malware log'ları"]
+        S2["2. PII_SOURCE ✅ açık<br/>Dark web / breach dump'ları"]
+        S3["3. VIP_SOURCE ⚠ kapalı<br/>VIP/exec leakleri (unverified API)"]
+    end
+
+    subgraph GATE["② MASTER GATE — Entra'ya dokunulsun mu"]
+        G1["4. USER_LOOKUP ✅ açık<br/>Kapalıysa: sadece veri topla, Entra'ya bakma<br/>Perm: User.Read.All"]
+    end
+
+    subgraph ACT["③ ACTIONS — Bulunan kullanıcıya ne yapılacak"]
+        A1["5. REVOKE_SESSION ✅ açık<br/>Tüm oturumları kapat"]
+        A2["6. ADD_TO_GROUP ✅ açık<br/>Karantina grubuna at"]
+        A3["7. REMOVE_FROM_GROUP kapalı<br/>Gruptan çıkar"]
+        A4["8. PASSWORD_CHANGE kapalı<br/>Şifre değişikliği zorla"]
+        A5["9. DISABLE_ACCOUNT kapalı<br/>Hesabı devre dışı bırak ⚠ SERT"]
+        A6["10. ENABLE_ACCOUNT kapalı<br/>Hesabı geri aç"]
+        A7["11. CONFIRM_RISKY kapalı<br/>Compromised işaretle (P1/P2)"]
+        A8["12. FORCE_MFA_REREGISTRATION kapalı<br/>Tüm MFA sil, yeniden register ⭐ YENİ"]
+        A9["13. ROPC kapalı<br/>Şifre geçerli mi test et (MS önermiyor)"]
+    end
+
+    subgraph OUT["④ OUTPUT — Bildirimler nereye"]
+        O1["14. CREATE_INCIDENT kapalı<br/>Sentinel'de incident aç"]
+        O2["15. RESOLVE_ALARM kapalı<br/>SOCRadar alarmını otomatik kapat"]
+    end
+
+    subgraph POL["⑤ POLICY — Güvenlik davranışı"]
+        P1["16. LOG_PLAINTEXT_PASSWORD kapalı<br/>Şifreyi log'a yaz (TEHLİKELİ)"]
+    end
+
+    TITLE --> SRC
+    TITLE --> GATE
+    TITLE --> ACT
+    TITLE --> OUT
+    TITLE --> POL
+
+    style G1 fill:#ffe6cc,stroke:#d79b00
+    style A8 fill:#e1d5e7,stroke:#9673a6
+    style A5 fill:#f8cecc,stroke:#b85450
+    style P1 fill:#f8cecc,stroke:#b85450

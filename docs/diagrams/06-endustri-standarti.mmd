@@ -1,0 +1,42 @@
+%% Sayfa 6 — Endüstri Standardı: Kim ne yapıyor
+%% draw.io: Arrange > Insert > Advanced > Mermaid
+
+flowchart TB
+    TITLE["<b>Leak Response Endüstri Standardı</b><br/>Leak tespit edildiğinde hangi aksiyonlar alınıyor"]
+
+    subgraph STD["✅ Standart (herkes yapıyor)"]
+        S1["Session kill (oturum iptal)"]
+        S2["Force password change"]
+        S3["Disable account (opsiyonel)"]
+        S4["LAW + Sentinel logging"]
+        S5["Secretless auth (MI)"]
+    end
+
+    subgraph ADV["⭐ İleri (biz + az sayıda rakip)"]
+        A1["Confirm risky → CA trigger"]
+        A2["Checkpoint-based dedup"]
+        A3["Auto-resolve source alarm"]
+    end
+
+    subgraph UNIQUE["🏆 Sadece biz"]
+        U1["Force MFA re-registration"]
+        U2["Quarantine group automation"]
+        U3["ROPC password validation"]
+        U4["Data-ingest-only mode"]
+        U5["16 granular toggles"]
+    end
+
+    subgraph GAP["❌ Bizde eksik"]
+        G1["Content Hub marketplace listing"]
+        G2["MSSP multi-tenant (tasarım hazır)"]
+    end
+
+    TITLE --> STD
+    TITLE --> ADV
+    TITLE --> UNIQUE
+    TITLE --> GAP
+
+    style STD fill:#d5e8d4,stroke:#82b366
+    style ADV fill:#dae8fc,stroke:#6c8ebf
+    style UNIQUE fill:#e1d5e7,stroke:#9673a6
+    style GAP fill:#f8cecc,stroke:#b85450

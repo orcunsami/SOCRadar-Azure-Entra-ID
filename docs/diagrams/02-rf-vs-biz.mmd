@@ -1,0 +1,53 @@
+%% Sayfa 2 — Recorded Future vs Biz: Karşılaştırma
+%% draw.io: Arrange > Insert > Advanced > Mermaid
+
+flowchart LR
+    subgraph RF["Recorded Future Identity"]
+        RF1["Logic App (playbook)"]
+        RF2["Managed Identity ✅"]
+        RF3["Disable account ✅"]
+        RF4["Revoke sessions ✅"]
+        RF5["Confirm risky ✅"]
+        RF6["Force password change ✅"]
+        RF7["Force MFA re-reg ❌"]
+        RF8["Quarantine group ❌"]
+        RF9["ROPC validation ❌"]
+        RF10["Auto-resolve alarm ❌"]
+        RF11["Data-ingest-only ❌"]
+        RF12["Content Hub ✅ YAYINDA"]
+    end
+
+    subgraph BIZ["SOCRadar Entra ID"]
+        B1["Function App (Python)"]
+        B2["Managed Identity ✅"]
+        B3["Disable account ✅"]
+        B4["Revoke sessions ✅"]
+        B5["Confirm risky ✅"]
+        B6["Force password change ✅"]
+        B7["Force MFA re-reg ✅ ⭐"]
+        B8["Quarantine group ✅ ⭐"]
+        B9["ROPC validation ✅ ⭐"]
+        B10["Auto-resolve alarm ✅ ⭐"]
+        B11["Data-ingest-only ✅ ⭐"]
+        B12["Content Hub ❌ HENÜz YOK"]
+    end
+
+    RF1 ---|aynı| B1
+    RF2 ---|aynı| B2
+    RF3 ---|aynı| B3
+    RF4 ---|aynı| B4
+    RF5 ---|aynı| B5
+    RF6 ---|aynı| B6
+
+    style RF7 fill:#f8cecc,stroke:#b85450
+    style RF8 fill:#f8cecc,stroke:#b85450
+    style RF9 fill:#f8cecc,stroke:#b85450
+    style RF10 fill:#f8cecc,stroke:#b85450
+    style RF11 fill:#f8cecc,stroke:#b85450
+    style B7 fill:#d5e8d4,stroke:#82b366
+    style B8 fill:#d5e8d4,stroke:#82b366
+    style B9 fill:#d5e8d4,stroke:#82b366
+    style B10 fill:#d5e8d4,stroke:#82b366
+    style B11 fill:#d5e8d4,stroke:#82b366
+    style RF12 fill:#d5e8d4,stroke:#82b366
+    style B12 fill:#f8cecc,stroke:#b85450
