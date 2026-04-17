@@ -24,9 +24,9 @@ SOCRADAR_COMPANY_ID=330
 # - User-PasswordProfile.ReadWrite.All for ENABLE_PASSWORD_CHANGE
 # - User.EnableDisableAccount.All for ENABLE_DISABLE_ACCOUNT / ENABLE_ENABLE_ACCOUNT
 # - IdentityRiskyUser.ReadWrite.All for ENABLE_CONFIRM_RISKY
-ENTRA_TENANT_ID=your-tenant-id
-ENTRA_CLIENT_ID=your-client-id
-ENTRA_CLIENT_SECRET=your-client-secret
+# Graph auth uses Managed Identity — no secret. These only for ROPC (optional).
+# ENTRA_TENANT_ID=your-tenant-id
+# ENTRA_CLIENT_ID=your-public-client-app-id
 
 # Entra ID Security Group (quarantine group for compromised users)
 SECURITY_GROUP_ID=

@@ -36,20 +36,16 @@
         },
         "EntraIdTenantId": {
             "type": "string",
+            "defaultValue": "",
             "metadata": {
-                "description": "Microsoft Entra ID Tenant ID"
+                "description": "Optional. Only needed if ENABLE_ROPC=true. Graph API auth uses Managed Identity (no secret)."
             }
         },
         "EntraIdClientId": {
             "type": "string",
+            "defaultValue": "",
             "metadata": {
-                "description": "App Registration Client ID. Grant only the Microsoft Graph application permissions required by the features you enable below."
-            }
-        },
-        "EntraIdClientSecret": {
-            "type": "securestring",
-            "metadata": {
-                "description": "App Registration Client Secret"
+                "description": "Optional. Only needed if ENABLE_ROPC=true (public client app registration). Graph API auth uses Managed Identity (no secret)."
             }
         },
         "SecurityGroupId": {
@@ -358,10 +354,6 @@
                         {
                             "name": "ENTRA_CLIENT_ID",
                             "value": "[parameters('EntraIdClientId')]"
-                        },
-                        {
-                            "name": "ENTRA_CLIENT_SECRET",
-                            "value": "[parameters('EntraIdClientSecret')]"
                         },
                         {
                             "name": "SECURITY_GROUP_ID",

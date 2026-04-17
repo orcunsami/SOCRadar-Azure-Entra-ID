@@ -12,12 +12,6 @@ from unittest.mock import patch, Mock
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "production" / "FunctionApp"))
 
-if "msal" not in sys.modules:
-    msal_stub = type(sys)("msal")
-    msal_stub.ConfidentialClientApplication = object
-    msal_stub.PublicClientApplication = object
-    sys.modules["msal"] = msal_stub
-
 from actions import entra_id  # noqa: E402
 
 

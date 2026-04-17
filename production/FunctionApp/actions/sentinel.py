@@ -17,23 +17,13 @@ INCIDENTS_URL = (
 )
 
 
-def _get_mgmt_token(tenant_id: str, client_id: str, client_secret: str) -> str:
-    """Acquire management API token via client credentials."""
-    from msal import ConfidentialClientApplication
-    app = ConfidentialClientApplication(
-        client_id=client_id,
-        client_credential=client_secret,
-        authority=f"https://login.microsoftonline.com/{tenant_id}"
-    )
-    result = app.acquire_token_for_client(
-        scopes=["https://management.azure.com/.default"]
-    )
-    if "access_token" not in result:
-        raise RuntimeError(f"Failed to acquire management token: {result.get('error_description')}")
-    return result["access_token"]
+def _get_mgmt_token(credential) -> str:
+    """Acquire management API token via Managed Identity (secretless)."""
+    token = credential.get_token("https://management.azure.com/.default")
+    return token.token
 
 
-def create_incident(conf: dict, email: str, source: str, severity: str):
+def create_incident(conf: dict, email: str, source: str, severity: str, credential=None):
     """
     Create a Microsoft Sentinel incident for a compromised employee credential.
 
@@ -48,12 +38,12 @@ def create_incident(conf: dict, email: str, source: str, severity: str):
         logger.warning("[SENTINEL] Incident creation skipped — workspace config incomplete")
         return
 
+    if not credential:
+        logger.warning("[SENTINEL] Incident creation skipped — no credential provided")
+        return
+
     try:
-        token = _get_mgmt_token(
-            tenant_id=conf["tenant_id"],
-            client_id=conf["client_id"],
-            client_secret=conf["client_secret"]
-        )
+        token = _get_mgmt_token(credential)
     except Exception as e:
         logger.error("[SENTINEL] Token error: %s", e)
         return

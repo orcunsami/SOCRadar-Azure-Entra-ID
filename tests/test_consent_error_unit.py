@@ -11,12 +11,6 @@ from unittest.mock import patch, MagicMock
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "production" / "FunctionApp"))
 
-if "msal" not in sys.modules:
-    msal_stub = type(sys)("msal")
-    msal_stub.ConfidentialClientApplication = MagicMock
-    msal_stub.PublicClientApplication = MagicMock
-    sys.modules["msal"] = msal_stub
-
 from actions import entra_id  # noqa: E402
 
 
@@ -56,46 +50,41 @@ class TestClassifyTokenError(unittest.TestCase):
         self.assertIsNone(entra_id._classify_token_error(None))
 
 
-class TestGetGraphTokenRaisesConsentRevoked(unittest.TestCase):
-    TENANT = "01a14909-9a97-4ded-9af3-7ea42ea99b2f"
-    CLIENT_ID = "b0afca82-a991-4fea-ad87-94ec348b2e68"
-    SECRET = "dummy-secret"
+class TestGetGraphTokenWithManagedIdentity(unittest.TestCase):
 
-    def _mock_msal_with_result(self, result: dict):
-        mock_app = MagicMock()
-        mock_app.acquire_token_for_client.return_value = result
-        return mock_app
+    def _mock_credential_success(self, token_value="eyJ0eXAi...fake"):
+        """Mock credential where get_token returns a token object."""
+        cred = MagicMock()
+        token_obj = MagicMock()
+        token_obj.token = token_value
+        cred.get_token.return_value = token_obj
+        return cred
+
+    def _mock_credential_auth_error(self, message):
+        """Mock credential where get_token raises ClientAuthenticationError."""
+        cred = MagicMock()
+        cred.get_token.side_effect = entra_id.ClientAuthenticationError(message)
+        return cred
 
     def test_consent_code_raises_consent_revoked(self):
-        mock_app = self._mock_msal_with_result({
-            "error": "invalid_client",
-            "error_description": "AADSTS700016: Application not found in directory /01a14909"
-        })
-        with patch("actions.entra_id.ConfidentialClientApplication", return_value=mock_app):
-            with self.assertRaises(entra_id.ConsentRevokedError) as ctx:
-                entra_id.get_graph_token(self.TENANT, self.CLIENT_ID, self.SECRET)
-        self.assertEqual(ctx.exception.tenant_id, self.TENANT)
+        cred = self._mock_credential_auth_error(
+            "AADSTS700016: Application not found in directory /01a14909"
+        )
+        with self.assertRaises(entra_id.ConsentRevokedError) as ctx:
+            entra_id.get_graph_token(cred)
         self.assertEqual(ctx.exception.aadsts_code, "AADSTS700016")
 
     def test_non_consent_error_raises_runtime_error(self):
-        mock_app = self._mock_msal_with_result({
-            "error": "temporarily_unavailable",
-            "error_description": "Service unavailable, please retry"
-        })
-        with patch("actions.entra_id.ConfidentialClientApplication", return_value=mock_app):
-            with self.assertRaises(RuntimeError) as ctx:
-                entra_id.get_graph_token(self.TENANT, self.CLIENT_ID, self.SECRET)
-        # Must be the generic RuntimeError, NOT ConsentRevokedError
+        cred = self._mock_credential_auth_error(
+            "Service unavailable, please retry"
+        )
+        with self.assertRaises(RuntimeError) as ctx:
+            entra_id.get_graph_token(cred)
         self.assertNotIsInstance(ctx.exception, entra_id.ConsentRevokedError)
 
     def test_successful_token_acquisition(self):
-        mock_app = self._mock_msal_with_result({
-            "access_token": "eyJ0eXAi...fake",
-            "token_type": "Bearer",
-            "expires_in": 3599,
-        })
-        with patch("actions.entra_id.ConfidentialClientApplication", return_value=mock_app):
-            token = entra_id.get_graph_token(self.TENANT, self.CLIENT_ID, self.SECRET)
+        cred = self._mock_credential_success("eyJ0eXAi...fake")
+        token = entra_id.get_graph_token(cred)
         self.assertEqual(token, "eyJ0eXAi...fake")
 
 

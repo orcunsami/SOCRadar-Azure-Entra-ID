@@ -1,13 +1,17 @@
 """
 Microsoft Entra ID actions via Microsoft Graph API.
-All actions use Application permissions with client credentials flow (MSAL).
-ROPC is optional and requires "Allow public client flows" enabled on App Registration.
+Graph auth uses User-Assigned Managed Identity (secretless).
+ROPC is optional and requires a separate public-client App Registration.
 """
 
 import logging
 import time
 import requests
-from msal import ConfidentialClientApplication, PublicClientApplication
+
+try:
+    from azure.core.exceptions import ClientAuthenticationError
+except ImportError:
+    ClientAuthenticationError = Exception
 
 logger = logging.getLogger("socradar.entra.graph")
 
@@ -82,26 +86,24 @@ def _classify_token_error(err_description: str) -> str | None:
     return None
 
 
-def get_graph_token(tenant_id: str, client_id: str, client_secret: str) -> str:
+def get_graph_token(credential) -> str:
     """
-    Acquire access token for Microsoft Graph using client credentials (app permissions).
-    Raises ConsentRevokedError when the AADSTS error code signals a consent problem;
-    otherwise raises RuntimeError for transient or generic failures.
+    Acquire access token for Microsoft Graph using Managed Identity (secretless).
+    The credential param is a DefaultAzureCredential instance (already created for Storage).
+    Raises ConsentRevokedError on permission/consent errors, RuntimeError on others.
     """
-    app = ConfidentialClientApplication(
-        client_id=client_id,
-        client_credential=client_secret,
-        authority=f"https://login.microsoftonline.com/{tenant_id}"
-    )
-    result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
-    if "access_token" not in result:
-        err = result.get("error_description", "Unknown error")
-        consent_code = _classify_token_error(err)
+    try:
+        token = credential.get_token("https://graph.microsoft.com/.default")
+        logger.info("[ENTRA] Graph token acquired via Managed Identity")
+        return token.token
+    except ClientAuthenticationError as e:
+        err_str = str(e)
+        consent_code = _classify_token_error(err_str)
         if consent_code:
-            raise ConsentRevokedError(tenant_id, consent_code, f"Consent issue ({consent_code}): {err}")
-        raise RuntimeError(f"Failed to acquire Graph token: {err}")
-    logger.info("[ENTRA] Graph token acquired")
-    return result["access_token"]
+            raise ConsentRevokedError("", consent_code, f"Consent issue ({consent_code}): {err_str}")
+        raise RuntimeError(f"Graph token acquisition failed: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Managed Identity token error: {e}")
 
 
 _last_status = 0  # Track last HTTP status for permission detection

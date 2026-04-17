@@ -44,10 +44,10 @@ def load() -> dict:
         "enable_pii_source":      _bool("ENABLE_PII_SOURCE", True),
         "enable_vip_source":      _bool("ENABLE_VIP_SOURCE", False),
 
-        # Entra ID (required only when user lookup is enabled)
-        "tenant_id":     _get("ENTRA_TENANT_ID", required=user_lookup),
-        "client_id":     _get("ENTRA_CLIENT_ID", required=user_lookup),
-        "client_secret": _get("ENTRA_CLIENT_SECRET", required=user_lookup),
+        # Entra ID — Graph auth now uses Managed Identity (no secret).
+        # ENTRA_TENANT_ID and ENTRA_CLIENT_ID only needed for ROPC (optional).
+        "tenant_id":     _get("ENTRA_TENANT_ID", default=""),
+        "client_id":     _get("ENTRA_CLIENT_ID", default=""),
 
         # Action toggles
         "enable_user_lookup":       user_lookup,

@@ -92,11 +92,7 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
             logger.warning("[ENTRA] One or more Entra action toggles are enabled, but they cannot run while EnableUserLookup=false")
     else:
         try:
-            graph_token = entra.get_graph_token(
-                tenant_id=conf["tenant_id"],
-                client_id=conf["client_id"],
-                client_secret=conf["client_secret"]
-            )
+            graph_token = entra.get_graph_token(credential)
             graph_headers = {
                 "Authorization": f"Bearer {graph_token}",
                 "Content-Type": "application/json"
@@ -323,7 +319,7 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
                 actions += 1
 
             if conf["enable_create_incident"]:
-                sent.create_incident(conf, email, source_name, emp.get("severity", "MEDIUM"))
+                sent.create_incident(conf, email, source_name, emp.get("severity", "MEDIUM"), credential=credential)
 
             # Resolve SOCRadar alarm if user found in Entra ID
             alarm_id = emp.get("alarm_id")
