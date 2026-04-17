@@ -168,9 +168,18 @@ python3 e2e_test.py                     # full E2E with writes
 python3 e2e_test.py --source botnet     # single source
 ```
 
+## Prerequisites
+
+- Azure subscription with a Log Analytics workspace (Microsoft Sentinel optional)
+- SOCRadar Platform API key + Company ID
+- Admin privileges to assign Graph roles to the Managed Identity (one-time, via `scripts/assign_graph_roles.sh`)
+- **Outbound HTTPS access** from Function App to `platform.socradar.com` and `graph.microsoft.com`. If your network uses a proxy or firewall, whitelist these domains.
+
 ## Notes
 
 - **Password handling**: Passwords are sanitized immediately on fetch. By default only `password_present` (bool) and `password_masked` are logged. Set `EnableLogPlaintextPassword=true` to write plaintext passwords to LAW (customer decision — not recommended).
 - **ROPC**: Microsoft discourages ROPC for production use. It is disabled by default and only works with accounts that do not have MFA enforced.
 - **VIP endpoint**: Not in official SOCRadar API documentation. Verified working but may change without notice. Disabled by default.
 - **Checkpoint**: Each source stores its last processed date in Azure Table Storage. Subsequent runs only fetch new records from that date forward.
+- **Field truncation**: Long strings (>30KB) from SOCRadar are automatically truncated before writing to Log Analytics to stay within field limits.
+- **Workspace soft-delete**: If you delete and recreate a Log Analytics workspace with the same name within 14 days, old data reappears. Use a different name or wait 14 days. See [workspace soft-delete](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/delete-workspace).

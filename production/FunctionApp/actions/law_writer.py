@@ -62,16 +62,19 @@ def _post(workspace_id: str, workspace_key: str, log_type: str, records: list) -
         return False
 
 
+MAX_FIELD_LEN = 30000  # LAW string field limit ~32KB; leave margin
+
 def _clean_record(rec: dict, enable_log_plaintext: bool) -> dict:
-    """Remove internal-only fields and enforce password policy."""
+    """Remove internal-only fields, enforce password policy, truncate long strings."""
     out = {}
     skip_keys = {"_checkpoint_update", "sanitized", "entra_user_id"}
     for k, v in rec.items():
         if k in skip_keys:
             continue
-        # Strip raw password if customer did not opt in
         if k == "password" and not enable_log_plaintext:
             continue
+        if isinstance(v, str) and len(v) > MAX_FIELD_LEN:
+            v = v[:MAX_FIELD_LEN] + "...[truncated]"
         out[k] = v
     return out
 
