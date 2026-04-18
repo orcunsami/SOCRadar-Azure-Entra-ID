@@ -92,7 +92,10 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
             logger.warning("[ENTRA] One or more Entra action toggles are enabled, but they cannot run while EnableUserLookup=false")
     else:
         try:
-            graph_token = entra.get_graph_token(credential)
+            graph_token = entra.get_graph_token(
+                tenant_id=conf["tenant_id"],
+                client_id=conf["client_id"]
+            )
             graph_headers = {
                 "Authorization": f"Bearer {graph_token}",
                 "Content-Type": "application/json"

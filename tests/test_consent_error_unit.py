@@ -50,41 +50,45 @@ class TestClassifyTokenError(unittest.TestCase):
         self.assertIsNone(entra_id._classify_token_error(None))
 
 
-class TestGetGraphTokenWithManagedIdentity(unittest.TestCase):
+class TestGetGraphTokenWithFIC(unittest.TestCase):
+    TENANT = "01a14909-test"
+    CLIENT = "b0afca82-test"
 
-    def _mock_credential_success(self, token_value="eyJ0eXAi...fake"):
-        """Mock credential where get_token returns a token object."""
-        cred = MagicMock()
-        token_obj = MagicMock()
-        token_obj.token = token_value
-        cred.get_token.return_value = token_obj
-        return cred
+    def setUp(self):
+        entra_id._graph_credential = None
 
-    def _mock_credential_auth_error(self, message):
-        """Mock credential where get_token raises ClientAuthenticationError."""
-        cred = MagicMock()
-        cred.get_token.side_effect = entra_id.ClientAuthenticationError(message)
-        return cred
+    def _mock_fic_credential(self, token_value=None, error=None):
+        mock_cred = MagicMock()
+        if error:
+            mock_cred.get_token.side_effect = error
+        else:
+            tok = MagicMock()
+            tok.token = token_value
+            mock_cred.get_token.return_value = tok
+        return mock_cred
 
     def test_consent_code_raises_consent_revoked(self):
-        cred = self._mock_credential_auth_error(
-            "AADSTS700016: Application not found in directory /01a14909"
+        mock_cred = self._mock_fic_credential(
+            error=entra_id.ClientAuthenticationError("AADSTS700016: App not found")
         )
-        with self.assertRaises(entra_id.ConsentRevokedError) as ctx:
-            entra_id.get_graph_token(cred)
+        with patch("actions.entra_id._build_graph_credential", return_value=mock_cred):
+            with self.assertRaises(entra_id.ConsentRevokedError) as ctx:
+                entra_id.get_graph_token(self.TENANT, self.CLIENT)
         self.assertEqual(ctx.exception.aadsts_code, "AADSTS700016")
 
     def test_non_consent_error_raises_runtime_error(self):
-        cred = self._mock_credential_auth_error(
-            "Service unavailable, please retry"
+        mock_cred = self._mock_fic_credential(
+            error=entra_id.ClientAuthenticationError("Service unavailable")
         )
-        with self.assertRaises(RuntimeError) as ctx:
-            entra_id.get_graph_token(cred)
+        with patch("actions.entra_id._build_graph_credential", return_value=mock_cred):
+            with self.assertRaises(RuntimeError) as ctx:
+                entra_id.get_graph_token(self.TENANT, self.CLIENT)
         self.assertNotIsInstance(ctx.exception, entra_id.ConsentRevokedError)
 
     def test_successful_token_acquisition(self):
-        cred = self._mock_credential_success("eyJ0eXAi...fake")
-        token = entra_id.get_graph_token(cred)
+        mock_cred = self._mock_fic_credential(token_value="eyJ0eXAi...fake")
+        with patch("actions.entra_id._build_graph_credential", return_value=mock_cred):
+            token = entra_id.get_graph_token(self.TENANT, self.CLIENT)
         self.assertEqual(token, "eyJ0eXAi...fake")
 
 

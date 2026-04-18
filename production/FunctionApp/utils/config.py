@@ -44,10 +44,11 @@ def load() -> dict:
         "enable_pii_source":      _bool("ENABLE_PII_SOURCE", True),
         "enable_vip_source":      _bool("ENABLE_VIP_SOURCE", False),
 
-        # Entra ID — Graph auth now uses Managed Identity (no secret).
-        # ENTRA_TENANT_ID and ENTRA_CLIENT_ID only needed for ROPC (optional).
-        "tenant_id":     _get("ENTRA_TENANT_ID", default=""),
-        "client_id":     _get("ENTRA_CLIENT_ID", default=""),
+        # Entra ID — identifiers only, NO secret.
+        # Graph auth uses Workload Identity Federation: UAMI → App Registration.
+        # Permissions managed in portal (App Registration → API permissions).
+        "tenant_id":     _get("ENTRA_TENANT_ID", required=user_lookup),
+        "client_id":     _get("ENTRA_CLIENT_ID", required=user_lookup),
 
         # Action toggles
         "enable_user_lookup":       user_lookup,

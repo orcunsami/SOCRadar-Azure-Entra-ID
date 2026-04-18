@@ -1,17 +1,23 @@
 """
 Microsoft Entra ID actions via Microsoft Graph API.
-Graph auth uses User-Assigned Managed Identity (secretless).
+Graph auth uses Workload Identity Federation: UAMI → App Registration (secretless).
+UAMI provides the identity, App Registration provides the Graph permissions.
+Permissions are managed in the portal — no CLI script needed.
 ROPC is optional and requires a separate public-client App Registration.
 """
 
 import logging
+import os
 import time
 import requests
 
 try:
+    from azure.identity import ManagedIdentityCredential, ClientAssertionCredential
     from azure.core.exceptions import ClientAuthenticationError
 except ImportError:
     ClientAuthenticationError = Exception
+    ManagedIdentityCredential = None
+    ClientAssertionCredential = None
 
 logger = logging.getLogger("socradar.entra.graph")
 
@@ -86,24 +92,54 @@ def _classify_token_error(err_description: str) -> str | None:
     return None
 
 
-def get_graph_token(credential) -> str:
+_graph_credential = None
+
+
+def _build_graph_credential(tenant_id: str, client_id: str):
     """
-    Acquire access token for Microsoft Graph using Managed Identity (secretless).
-    The credential param is a DefaultAzureCredential instance (already created for Storage).
-    Raises ConsentRevokedError on permission/consent errors, RuntimeError on others.
+    Build a credential that uses UAMI → FIC → App Registration for Graph.
+    UAMI provides secretless auth. App Registration provides Graph permissions.
+    Permissions managed in portal (App Registration → API permissions).
     """
+    uami_client_id = os.environ.get("AZURE_CLIENT_ID", "")
+    if not uami_client_id or ManagedIdentityCredential is None:
+        raise RuntimeError("AZURE_CLIENT_ID not set or azure-identity not installed")
+
+    mi = ManagedIdentityCredential(client_id=uami_client_id)
+
+    def _get_assertion():
+        return mi.get_token("api://AzureADTokenExchange").token
+
+    return ClientAssertionCredential(
+        tenant_id=tenant_id,
+        client_id=client_id,
+        func=_get_assertion,
+    )
+
+
+def get_graph_token(tenant_id: str, client_id: str) -> str:
+    """
+    Acquire Graph token via Workload Identity Federation (secretless).
+    UAMI authenticates → gets exchange token → used as assertion for App Registration.
+    App Registration's Graph permissions (portal-managed) apply.
+    No client_secret needed.
+    """
+    global _graph_credential
+    if _graph_credential is None:
+        _graph_credential = _build_graph_credential(tenant_id, client_id)
+
     try:
-        token = credential.get_token("https://graph.microsoft.com/.default")
-        logger.info("[ENTRA] Graph token acquired via Managed Identity")
+        token = _graph_credential.get_token("https://graph.microsoft.com/.default")
+        logger.info("[ENTRA] Graph token acquired via Workload Identity Federation")
         return token.token
     except ClientAuthenticationError as e:
         err_str = str(e)
         consent_code = _classify_token_error(err_str)
         if consent_code:
-            raise ConsentRevokedError("", consent_code, f"Consent issue ({consent_code}): {err_str}")
+            raise ConsentRevokedError(tenant_id, consent_code, f"Consent issue ({consent_code}): {err_str}")
         raise RuntimeError(f"Graph token acquisition failed: {e}")
     except Exception as e:
-        raise RuntimeError(f"Managed Identity token error: {e}")
+        raise RuntimeError(f"Workload Identity Federation error: {e}")
 
 
 _last_status = 0  # Track last HTTP status for permission detection

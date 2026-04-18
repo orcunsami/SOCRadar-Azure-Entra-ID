@@ -36,16 +36,14 @@
         },
         "EntraIdTenantId": {
             "type": "string",
-            "defaultValue": "",
             "metadata": {
-                "description": "Optional. Only needed if ENABLE_ROPC=true. Graph API auth uses Managed Identity (no secret)."
+                "description": "Microsoft Entra ID Tenant ID. Used for Workload Identity Federation (UAMI → App Registration). No secret needed."
             }
         },
         "EntraIdClientId": {
             "type": "string",
-            "defaultValue": "",
             "metadata": {
-                "description": "Optional. Only needed if ENABLE_ROPC=true (public client app registration). Graph API auth uses Managed Identity (no secret)."
+                "description": "App Registration Client ID (the one with Graph permissions configured in portal). Auth is secretless via Managed Identity + Federated Identity Credential."
             }
         },
         "SecurityGroupId": {
