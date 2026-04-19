@@ -327,7 +327,7 @@
                         },
                         {
                             "name": "WEBSITE_RUN_FROM_PACKAGE",
-                            "value": "https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.2.0/FunctionApp.zip"
+                            "value": "https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.3.0/FunctionApp.zip"
                         },
                         {
                             "name": "POLLING_SCHEDULE",
