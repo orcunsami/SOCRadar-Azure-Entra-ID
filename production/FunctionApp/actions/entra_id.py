@@ -93,6 +93,7 @@ def _classify_token_error(err_description: str) -> str | None:
 
 
 _graph_credential = None
+_graph_credential_key: tuple = ("", "")
 
 
 def _build_graph_credential(tenant_id: str, client_id: str):
@@ -124,9 +125,11 @@ def get_graph_token(tenant_id: str, client_id: str) -> str:
     App Registration's Graph permissions (portal-managed) apply.
     No client_secret needed.
     """
-    global _graph_credential
-    if _graph_credential is None:
+    global _graph_credential, _graph_credential_key
+    key = (tenant_id, client_id)
+    if _graph_credential is None or _graph_credential_key != key:
         _graph_credential = _build_graph_credential(tenant_id, client_id)
+        _graph_credential_key = key
 
     try:
         token = _graph_credential.get_token("https://graph.microsoft.com/.default")

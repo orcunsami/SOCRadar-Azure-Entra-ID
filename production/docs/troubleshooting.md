@@ -31,7 +31,7 @@ Scan the symptom first. If none match, the last section lists how to collect dia
 
 | AADSTS code | Meaning | Fix |
 |-------------|---------|-----|
-| `AADSTS7000215` | Invalid client secret | Secret expired or wrong. Generate new secret, update `ENTRA_CLIENT_SECRET` app setting, restart Function App. |
+| `AADSTS7000215` | Invalid client credential | FIC misconfiguration. Verify: (1) FIC exists on app registration linking to UAMI, (2) AZURE_CLIENT_ID matches the UAMI's client ID, (3) ENTRA_CLIENT_ID matches the app registration's client ID. |
 | `AADSTS700016` | App not found in tenant | App registration deleted, or wrong `ENTRA_TENANT_ID`. Verify `appId` exists via `az ad app show --id <appId>`. |
 | `AADSTS7000112` | App disabled | Enable the app registration in the Entra admin portal. |
 | `AADSTS65001` / `AADSTS700022` | Admin has not consented | Admin must click the consent URL: `https://login.microsoftonline.com/{tenant}/adminconsent?client_id={appId}`. |
@@ -68,7 +68,7 @@ SOCRadar_EntraID_Audit_CL
 
 **Diagnosis**: `ENABLE_USER_LOOKUP` app setting is `false`. This is intentional for **data-ingest-only mode** (fetch SOCRadar leaks, write to LAW, skip Entra).
 
-**Fix**: Set `ENABLE_USER_LOOKUP=true` in Function App configuration → Save → Restart. Entra credentials (`ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`) must be populated.
+**Fix**: Set `ENABLE_USER_LOOKUP=true` in Function App configuration → Save → Restart. `ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID` must be populated (no secret — auth is secretless via UAMI + FIC).
 
 ---
 
@@ -125,19 +125,20 @@ SOCRadar_EntraID_Audit_CL
 
 ---
 
-## 8. `ENTRA_CLIENT_SECRET` expired or about to expire
+## 8. FIC / Workload Identity Federation errors
 
-**Symptom**: AADSTS7000215 errors appear suddenly across all runs, audit log shows `event_type=token_acquisition_failed` with this code.
+**Symptom**: AADSTS7000215 or `token_acquisition_failed` errors appear.
 
-**Diagnosis**: Client secrets have a max 2-year lifetime. Check expiry: `az ad app credential list --id <appId> --query "[].endDateTime"`.
+**Diagnosis**: The Federated Identity Credential (FIC) linking the UAMI to the App Registration may be misconfigured.
 
 **Fix**:
-1. Create new secret: `az ad app credential reset --id <appId> --years 2 --append`.
-2. Update Function App setting `ENTRA_CLIENT_SECRET`.
-3. Restart Function App.
-4. Remove old secret after confirming new one works.
+1. Verify FIC exists: `az ad app federated-credential list --id <appId>` — should show `uami-federation` entry.
+2. Verify `AZURE_CLIENT_ID` app setting matches the UAMI's client ID.
+3. Verify `ENTRA_CLIENT_ID` app setting matches the App Registration's client ID.
+4. Verify `ENTRA_TENANT_ID` app setting matches the tenant ID.
+5. If FIC is missing, recreate it (see deployment docs).
 
-Long-term: consider migrating to Federated Identity Credential + Managed Identity (planned as G1).
+No secret rotation needed — auth is fully secretless via Managed Identity.
 
 ---
 
@@ -205,7 +206,7 @@ az monitor app-insights query \
 # 3. Current app settings (redact secrets!)
 az functionapp config appsettings list \
   --name <FA_NAME> --resource-group <RG> \
-  --query "[?name!='ENTRA_CLIENT_SECRET' && name!='SOCRADAR_API_KEY' && name!='WORKSPACE_KEY'].{name:name, value:value}" -o table
+  --query "[?name!='SOCRADAR_API_KEY' && name!='WORKSPACE_KEY'].{name:name, value:value}" -o table
 
 # 4. Lifecycle events
 # In Log Analytics, run:
