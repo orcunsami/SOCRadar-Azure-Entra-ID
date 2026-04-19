@@ -27,13 +27,23 @@ az deployment group create \
     SocradarCompanyId="your-company-id" \
     EntraIdTenantId="your-tenant-id" \
     EntraIdClientId="your-app-client-id" \
-    EntraIdClientSecret="your-app-secret" \
     SecurityGroupId="your-security-group-object-id"
 ```
 
-## Entra ID App Registration
+## Authentication (Secretless)
 
-Create an App Registration with only the Microsoft Graph Application permissions required by the features you enable (admin consent required).
+This integration uses **Workload Identity Federation** — no client secret, no password rotation:
+
+1. ARM template creates a **User-Assigned Managed Identity** (UAMI) automatically
+2. UAMI is linked to the App Registration via **Federated Identity Credential** (FIC)
+3. Graph permissions are managed through the portal: App Registration → API permissions → Grant admin consent
+4. No `ENTRA_CLIENT_SECRET` is needed — auth is fully secretless
+
+**What you provide**: `ENTRA_TENANT_ID` (your tenant) + `ENTRA_CLIENT_ID` (your App Registration's Client ID). These are identifiers, not secrets.
+
+## App Registration Permissions
+
+Create an App Registration and add only the Microsoft Graph Application permissions required by the features you enable (Grant admin consent after adding).
 
 | Permission | Required For |
 |------------|-------------|

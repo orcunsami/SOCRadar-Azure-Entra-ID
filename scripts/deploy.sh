@@ -27,10 +27,9 @@ fi
 : "${WORKSPACE_NAME:?WORKSPACE_NAME is required}"
 : "${SOCRADAR_API_KEY:?SOCRADAR_API_KEY is required}"
 : "${SOCRADAR_COMPANY_ID:?SOCRADAR_COMPANY_ID is required}"
-# ENTRA_TENANT_ID and ENTRA_CLIENT_ID only needed for ROPC (optional)
-ENTRA_TENANT_ID="${ENTRA_TENANT_ID:-}"
-ENTRA_CLIENT_ID="${ENTRA_CLIENT_ID:-}"
-# ENTRA_CLIENT_SECRET removed — Graph auth uses Managed Identity (secretless)
+# Entra ID identifiers (NO secret — auth is secretless via UAMI + FIC)
+: "${ENTRA_TENANT_ID:?ENTRA_TENANT_ID is required}"
+: "${ENTRA_CLIENT_ID:?ENTRA_CLIENT_ID is required}"
 
 # ---- Optional variables with defaults ----
 WORKSPACE_LOCATION="${WORKSPACE_LOCATION:-$LOCATION}"
