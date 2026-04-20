@@ -153,7 +153,7 @@ No secret rotation needed — auth is fully secretless via Managed Identity.
   ```
   grep WEBSITE_RUN_FROM_PACKAGE production/azuredeploy.json
   ```
-  Should show the latest release tag (currently v1.1.0 or later).
+  Should show the latest release tag.
 - Customer can force re-pull by re-running ARM deployment (idempotent) or by running `func azure functionapp publish <FA_NAME> --python --remote-build` from a clone at master.
 - From 2026-04 onward, auto-release workflow builds zip on every tag push. Admins can pin to `.../releases/latest/download/FunctionApp.zip` for always-current.
 

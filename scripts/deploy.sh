@@ -159,6 +159,7 @@ DEPLOY_OUTPUT=$(az deployment group create \
         EnableLogPlaintextPassword="$ENABLE_LOG_PLAINTEXT" \
         PollingIntervalHours="$POLLING_INTERVAL_HOURS" \
         InitialLookbackMinutes="$INITIAL_LOOKBACK_MINUTES" \
+        InitialStartDate="${INITIAL_START_DATE:-}" \
     --query "properties.outputs" -o json 2>&1)
 
 echo "$DEPLOY_OUTPUT" | python3 -m json.tool 2>/dev/null || echo "$DEPLOY_OUTPUT"

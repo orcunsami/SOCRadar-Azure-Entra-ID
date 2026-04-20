@@ -79,7 +79,6 @@ The deployment is designed so that each Entra action is configurable independent
 | `SocradarCompanyId` | SOCRadar company ID |
 | `EntraIdTenantId` | Microsoft Entra tenant ID |
 | `EntraIdClientId` | App Registration client ID |
-| `EntraIdClientSecret` | App Registration client secret |
 
 ### Sources
 
@@ -102,6 +101,7 @@ The deployment is designed so that each Entra action is configurable independent
 | `EnableEnableAccount` | `false` | Re-enable a previously disabled account. Requires `User.EnableDisableAccount.All`. |
 | `EnablePasswordChange` | `false` | Force password change on next sign-in. Requires `User-PasswordProfile.ReadWrite.All`. |
 | `EnableConfirmRisky` | `false` | Mark user as confirmed compromised in Identity Protection. Requires `IdentityRiskyUser.ReadWrite.All` and P1/P2 licensing. |
+| `EnableForceMfaReregistration` | `false` | Delete all non-password MFA methods to force re-registration. Requires `UserAuthenticationMethod.ReadWrite.All`. HIGH IMPACT. |
 | `EnableCreateIncident` | `false` | Create Microsoft Sentinel incident |
 | `EnableROPC` | `false` | Validate password via ROPC (only for plaintext passwords) |
 | `EnableResolveAlarm` | `false` | Resolve the SOCRadar alarm when a matched user is found in Entra ID |
@@ -182,7 +182,7 @@ python3 e2e_test.py --source botnet     # single source
 
 - Azure subscription with a Log Analytics workspace (Microsoft Sentinel optional)
 - SOCRadar Platform API key + Company ID
-- Admin privileges to assign Graph roles to the Managed Identity (one-time, via `scripts/assign_graph_roles.sh`)
+- App Registration with Graph permissions configured (portal: API permissions → Grant admin consent)
 - **Outbound HTTPS access** from Function App to `platform.socradar.com` and `graph.microsoft.com`. If your network uses a proxy or firewall, whitelist these domains.
 
 ## Notes

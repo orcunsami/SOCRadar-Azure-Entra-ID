@@ -220,7 +220,32 @@ else
     warn "No SOCRadar workbooks found (deploy with: ./deploy_workbooks.sh)"
 fi
 
-# ---- 9. Function App Logs (last run) ----
+# ---- 9. FIC (Federated Identity Credential) ----
+echo ""
+echo "[9/9] Federated Identity Credential..."
+ENTRA_CLIENT_ID_VAL=$(echo "$SETTINGS_JSON" | python3 -c "import sys,json; items=json.load(sys.stdin); vals=[i['value'] for i in items if i['name']=='ENTRA_CLIENT_ID']; print(vals[0] if vals else '')" 2>/dev/null || echo "")
+if [[ -n "$ENTRA_CLIENT_ID_VAL" ]]; then
+    FIC_COUNT=$(az ad app federated-credential list --id "$ENTRA_CLIENT_ID_VAL" --query "length([?name=='uami-federation'])" -o tsv 2>/dev/null || echo "0")
+    if [[ "$FIC_COUNT" -gt 0 ]]; then
+        FIC_SUBJECT=$(az ad app federated-credential list --id "$ENTRA_CLIENT_ID_VAL" --query "[?name=='uami-federation'].subject | [0]" -o tsv 2>/dev/null || echo "?")
+        pass "FIC 'uami-federation' exists (subject=$FIC_SUBJECT)"
+        # Check if it matches UAMI
+        if [[ -n "$FA_NAME" ]]; then
+            UAMI_PRINCIPAL=$(az identity show --name "SOCRadar-EntraID-MI" --resource-group "$RESOURCE_GROUP" --query "principalId" -o tsv 2>/dev/null || echo "")
+            if [[ "$UAMI_PRINCIPAL" == "$FIC_SUBJECT" ]]; then
+                pass "FIC subject matches current UAMI"
+            elif [[ -n "$UAMI_PRINCIPAL" ]]; then
+                fail "FIC subject MISMATCH! FIC=$FIC_SUBJECT UAMI=$UAMI_PRINCIPAL — run deploy.sh to fix"
+            fi
+        fi
+    else
+        fail "FIC 'uami-federation' NOT FOUND on App Registration $ENTRA_CLIENT_ID_VAL — Graph auth will fail"
+    fi
+else
+    warn "ENTRA_CLIENT_ID not set — skipping FIC check"
+fi
+
+# ---- 10. Function App Logs (last run) ----
 echo ""
 echo "[BONUS] Recent Function App Activity..."
 if [[ -n "$FA_NAME" ]]; then

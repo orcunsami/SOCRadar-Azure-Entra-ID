@@ -60,3 +60,4 @@ POLLING_INTERVAL_HOURS=6
 
 # Lookback: 216000 min = ~150 days = ~5 months
 INITIAL_LOOKBACK_MINUTES=216000
+INITIAL_START_DATE=                  # YYYY-MM-DD, overrides lookback if set
