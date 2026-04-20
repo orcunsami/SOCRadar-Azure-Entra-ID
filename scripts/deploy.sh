@@ -246,9 +246,41 @@ deploy_workbook "$WORKBOOKS_DIR/SOCRadar-EntraID-PII-Workbook.json"      "socrad
 deploy_workbook "$WORKBOOKS_DIR/SOCRadar-EntraID-VIP-Workbook.json"      "socradar-entraid-vip"      "SOCRadar Entra ID — VIP Protection"
 deploy_workbook "$WORKBOOKS_DIR/SOCRadar-EntraID-Combined-Workbook.json" "socradar-entraid-combined" "SOCRadar Entra ID — Combined Dashboard"
 
+# ---- Update FIC (Federated Identity Credential) ----
+echo ""
+echo "[6/7] Updating Federated Identity Credential..."
+
+UAMI_PRINCIPAL=$(az identity show --name "SOCRadar-EntraID-MI" --resource-group "$RESOURCE_GROUP" --query "principalId" -o tsv 2>/dev/null || echo "")
+TENANT_ID_VAL=$(az account show --query tenantId -o tsv)
+
+if [[ -z "$UAMI_PRINCIPAL" ]]; then
+    echo "  WARN: Could not get UAMI principal ID — FIC not updated"
+else
+    EXISTING_FIC=$(az ad app federated-credential list --id "$ENTRA_CLIENT_ID" --query "[?name=='uami-federation'].subject | [0]" -o tsv 2>/dev/null || echo "")
+
+    if [[ "$EXISTING_FIC" == "$UAMI_PRINCIPAL" ]]; then
+        echo "  FIC already matches UAMI ($UAMI_PRINCIPAL) — no update needed"
+    else
+        if [[ -n "$EXISTING_FIC" ]]; then
+            echo "  Deleting old FIC (subject=$EXISTING_FIC)..."
+            az ad app federated-credential delete --id "$ENTRA_CLIENT_ID" --federated-credential-id "uami-federation" 2>/dev/null || true
+        fi
+        echo "  Creating FIC: UAMI $UAMI_PRINCIPAL → App Registration $ENTRA_CLIENT_ID"
+        az ad app federated-credential create \
+            --id "$ENTRA_CLIENT_ID" \
+            --parameters "{
+                \"name\": \"uami-federation\",
+                \"issuer\": \"https://login.microsoftonline.com/$TENANT_ID_VAL/v2.0\",
+                \"subject\": \"$UAMI_PRINCIPAL\",
+                \"audiences\": [\"api://AzureADTokenExchange\"],
+                \"description\": \"UAMI to App Registration federation for secretless Graph access\"
+            }" -o none 2>/dev/null && echo "  FIC created successfully" || echo "  WARN: FIC creation failed — may need admin privileges"
+    fi
+fi
+
 # ---- Verify Deployment ----
 echo ""
-echo "[6/6] Verifying deployment..."
+echo "[7/7] Verifying deployment..."
 
 # Check function app
 echo "  Function App:"
