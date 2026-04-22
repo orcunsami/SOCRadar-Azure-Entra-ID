@@ -21,6 +21,7 @@ import hmac
 import base64
 import hashlib
 import argparse
+import subprocess
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -46,7 +47,8 @@ for cfg in [SCRIPT_DIR / "test_env.config", SCRIPT_DIR / "test.env", SCRIPT_DIR 
 
 TENANT_ID = os.environ.get("ENTRA_TENANT_ID", "01a14909-9a97-4ded-9af3-7ea42ea99b2f")
 CLIENT_ID = os.environ.get("ENTRA_CLIENT_ID", "")
-CLIENT_SECRET = os.environ.get("ENTRA_CLIENT_SECRET", "")
+# CLIENT_SECRET removed — Graph auth is now secretless (FIC).
+# test_actions.py uses az CLI token for local testing.
 DOMAIN = os.environ.get("TENANT_DOMAIN", "SOCRadarCyberIntelligenceIn.onmicrosoft.com")
 
 TEST1_UPN = os.environ.get("TEST1_UPN", f"socradar.test1@{DOMAIN}")
@@ -154,35 +156,31 @@ def graph_delete(url, headers, name):
 # ---------------------------------------------------------------------------
 
 def test_01_graph_token():
-    section(1, "Graph Token Acquisition")
-    url = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-    data = urllib.parse.urlencode({
-        "grant_type": "client_credentials",
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "scope": "https://graph.microsoft.com/.default",
-    }).encode()
-
-    req_info = {"method": "POST", "url": url, "timestamp": datetime.now(timezone.utc).isoformat()}
+    section(1, "Graph Token Acquisition (az CLI)")
+    req_info = {"method": "az CLI", "timestamp": datetime.now(timezone.utc).isoformat()}
     start = time.time()
     try:
-        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            body = json.loads(resp.read())
-            elapsed = round(time.time() - start, 3)
-            resp_info = {"status": resp.status, "elapsed": elapsed,
-                         "has_token": "access_token" in body,
-                         "expires_in": body.get("expires_in")}
+        result = subprocess.run(
+            ["az", "account", "get-access-token", "--resource", "https://graph.microsoft.com", "--query", "accessToken", "-o", "tsv"],
+            capture_output=True, text=True, timeout=15
+        )
+        elapsed = round(time.time() - start, 3)
+        token = result.stdout.strip()
+        if token and len(token) > 50:
+            resp_info = {"status": 200, "elapsed": elapsed, "has_token": True}
+        else:
+            resp_info = {"status": 0, "error": result.stderr.strip()[:200] or "empty token"}
     except Exception as e:
         resp_info = {"status": 0, "error": str(e)}
         elapsed = round(time.time() - start, 3)
+        token = ""
 
     save_pair("01-graph-token", req_info, resp_info)
 
     if resp_info.get("has_token"):
-        ok(f"Token acquired ({elapsed}s, expires_in={resp_info.get('expires_in')})")
+        ok(f"Token acquired via az CLI ({elapsed}s)")
         test_results.append({"test": 1, "name": "graph_token", "passed": True})
-        return body["access_token"]
+        return token
     else:
         fail(f"Token failed: {resp_info}")
         test_results.append({"test": 1, "name": "graph_token", "passed": False})
@@ -541,9 +539,7 @@ def main():
 {'=' * 60}
 """)
 
-    if not CLIENT_ID or not CLIENT_SECRET:
-        fail("ENTRA_CLIENT_ID/SECRET not set")
-        return 1
+    # Token acquired via az CLI — no CLIENT_SECRET needed
 
     # Test 1: Get token (required for all other tests)
     token = test_01_graph_token()
