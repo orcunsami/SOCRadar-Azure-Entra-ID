@@ -802,11 +802,9 @@ def test_full_pipeline(start_date, dry_run=False):
 
         ok(f"Entra lookup: {found} found, {not_found} not found (of {min(5, len(employees))})")
         results["passed"] += 1
-            results["details"].append({"entra_found": found, "entra_not_found": not_found})
-        else:
-            warn("Graph token failed — skipping Entra lookup")
+        results["details"].append({"entra_found": found, "entra_not_found": not_found})
     else:
-        info("[3/5] Entra ID credentials not set — skipping lookup")
+        info("[3/5] az CLI token not available — skipping Entra lookup")
 
     # Step 4: Password sanitization
     info("[4/5] Password sanitization...")
