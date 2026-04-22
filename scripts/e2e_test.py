@@ -59,7 +59,7 @@ API_KEY = os.environ.get("SOCRADAR_API_KEY", "")
 COMPANY_ID = os.environ.get("SOCRADAR_COMPANY_ID", "330")
 TENANT_ID = os.environ.get("ENTRA_TENANT_ID", "")
 CLIENT_ID = os.environ.get("ENTRA_CLIENT_ID", "")
-CLIENT_SECRET = os.environ.get("ENTRA_CLIENT_SECRET", "")
+# CLIENT_SECRET removed — Graph auth is secretless (FIC). Tests use az CLI token.
 WORKSPACE_ID = os.environ.get("WORKSPACE_ID", "")
 WORKSPACE_KEY = os.environ.get("WORKSPACE_KEY", "")
 SECURITY_GROUP_ID = os.environ.get("SECURITY_GROUP_ID", "")
@@ -271,33 +271,27 @@ def test_entra_id_graph():
     section("TEST 3: Microsoft Entra ID (Graph API)")
     results = {"test": "entra_id_graph", "passed": 0, "failed": 0, "details": []}
 
-    if not all([TENANT_ID, CLIENT_ID, CLIENT_SECRET]):
-        warn("Entra ID credentials not set — skipping Graph API tests")
-        results["details"].append({"skipped": True, "reason": "no_credentials"})
+    # Acquire token via az CLI (secretless)
+    info("Acquiring Graph API token via az CLI...")
+    import subprocess
+    try:
+        az_result = subprocess.run(
+            ["az", "account", "get-access-token", "--resource", "https://graph.microsoft.com", "--query", "accessToken", "-o", "tsv"],
+            capture_output=True, text=True, timeout=15
+        )
+        token = az_result.stdout.strip()
+        if not token or len(token) < 50:
+            warn(f"az CLI token failed: {az_result.stderr.strip()[:200]}")
+            results["details"].append({"skipped": True, "reason": "az_cli_no_token"})
+            return results
+    except Exception as e:
+        warn(f"az CLI error: {e}")
+        results["details"].append({"skipped": True, "reason": str(e)})
         return results
 
-    # Acquire token via MSAL-like direct call
-    info("Acquiring Graph API token...")
-    token_url = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-    token_data = {
-        "grant_type": "client_credentials",
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "scope": "https://graph.microsoft.com/.default",
-    }
-    status, body, ms = http_post(token_url, {}, data=token_data)
-
-    if status != 200 or "access_token" not in body:
-        fail(f"Token acquisition failed: HTTP {status} ({ms}ms)")
-        if "error_description" in body:
-            info(f"Error: {body['error_description'][:200]}")
-        results["failed"] += 1
-        return results
-
-    ok(f"Token acquired ({ms}ms)")
+    ok("Graph token acquired via az CLI")
     results["passed"] += 1
 
-    token = body["access_token"]
     graph_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     # Test: List users (verify permissions)
@@ -779,37 +773,35 @@ def test_full_pipeline(start_date, dry_run=False):
         results["passed"] += 1
         return results
 
-    # Step 3: Entra ID lookup (if credentials available)
-    if all([TENANT_ID, CLIENT_ID, CLIENT_SECRET]):
-        info("[3/5] Entra ID lookup...")
+    # Step 3: Entra ID lookup (via az CLI token)
+    info("[3/5] Entra ID lookup...")
+    try:
+        az_r = subprocess.run(
+            ["az", "account", "get-access-token", "--resource", "https://graph.microsoft.com", "--query", "accessToken", "-o", "tsv"],
+            capture_output=True, text=True, timeout=15
+        )
+        e2e_token = az_r.stdout.strip()
+    except Exception:
+        e2e_token = ""
 
-        token_url = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-        token_data = {
-            "grant_type": "client_credentials",
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
-            "scope": "https://graph.microsoft.com/.default",
-        }
-        t_status, t_body, t_ms = http_post(token_url, {}, data=token_data)
+    if e2e_token and len(e2e_token) > 50:
+        graph_headers = {"Authorization": f"Bearer {e2e_token}", "Content-Type": "application/json"}
 
-        if t_status == 200 and "access_token" in t_body:
-            graph_headers = {"Authorization": f"Bearer {t_body['access_token']}", "Content-Type": "application/json"}
+        found = 0
+        not_found = 0
+        for emp in employees[:5]:  # test first 5 only
+            email = emp.get("user", emp.get("email", ""))
+            if not email:
+                continue
+            s, b, m = http_get(f"{GRAPH_BASE}/users/{email}", graph_headers)
+            if s == 200:
+                found += 1
+            elif s == 404:
+                not_found += 1
+            time.sleep(0.2)
 
-            found = 0
-            not_found = 0
-            for emp in employees[:5]:  # test first 5 only
-                email = emp.get("user", emp.get("email", ""))
-                if not email:
-                    continue
-                s, b, m = http_get(f"{GRAPH_BASE}/users/{email}", graph_headers)
-                if s == 200:
-                    found += 1
-                elif s == 404:
-                    not_found += 1
-                time.sleep(0.2)
-
-            ok(f"Entra lookup: {found} found, {not_found} not found (of {min(5, len(employees))})")
-            results["passed"] += 1
+        ok(f"Entra lookup: {found} found, {not_found} not found (of {min(5, len(employees))})")
+        results["passed"] += 1
             results["details"].append({"entra_found": found, "entra_not_found": not_found})
         else:
             warn("Graph token failed — skipping Entra lookup")
