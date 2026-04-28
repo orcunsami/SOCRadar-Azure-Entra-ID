@@ -72,7 +72,8 @@ print(raw)
 ")
 
     # Try create, fall back to update
-    if az workbook create \
+    # Use monitor app-insights workbook (legacy `az workbook` was removed)
+    if az monitor app-insights workbook create \
         --resource-group "$RESOURCE_GROUP" \
         --name "$wb_id" \
         --display-name "$wb_display" \
@@ -80,22 +81,19 @@ print(raw)
         --kind "shared" \
         --source-id "$WORKSPACE_ID" \
         --serialized-data "$serialized" \
-        -o none 2>/dev/null; then
+        -o none 2>/tmp/wb_err; then
         echo "CREATED"
         DEPLOYED=$((DEPLOYED + 1))
-    elif az workbook update \
+    elif az monitor app-insights workbook update \
         --resource-group "$RESOURCE_GROUP" \
         --name "$wb_id" \
         --display-name "$wb_display" \
-        --category "sentinel" \
-        --kind "shared" \
-        --source-id "$WORKSPACE_ID" \
         --serialized-data "$serialized" \
-        -o none 2>/dev/null; then
+        -o none 2>/tmp/wb_err; then
         echo "UPDATED"
         DEPLOYED=$((DEPLOYED + 1))
     else
-        echo "FAILED"
+        echo "FAILED ($(tail -1 /tmp/wb_err 2>/dev/null | head -c 100))"
         FAILED=$((FAILED + 1))
     fi
 done
