@@ -140,7 +140,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| where is_notempty(breach_date)\n| summarize Count=count() by breach_date\n| order by breach_date asc",
+        "query": "SOCRadar_PII_CL\n| where isnotempty(breach_date)\n| summarize Count=count() by breach_date\n| order by breach_date asc",
         "size": 0,
         "title": "Records by Breach Date",
         "queryType": 0,

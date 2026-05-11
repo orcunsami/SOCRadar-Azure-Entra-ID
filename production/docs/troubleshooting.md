@@ -48,8 +48,8 @@ Since the 2026-04 refactor, token acquisition failures are written to `SOCRadar_
 
 ```kql
 SOCRadar_EntraID_Audit_CL
-| where event_type_s in ("consent_revoked", "token_acquisition_failed")
-| project TimeGenerated, event_type_s, tenant_id_s, aadsts_code_s, details_s
+| where event_type in ("consent_revoked", "token_acquisition_failed")
+| project TimeGenerated, event_type, tenant_id, aadsts_code, details
 | order by TimeGenerated desc
 ```
 
@@ -218,7 +218,7 @@ az functionapp config appsettings list \
 # In Log Analytics, run:
 SOCRadar_EntraID_Audit_CL
 | where TimeGenerated > ago(7d)
-| project TimeGenerated, event_type_s, tenant_id_s, aadsts_code_s, details_s
+| project TimeGenerated, event_type, tenant_id, aadsts_code, details
 | order by TimeGenerated desc
 ```
 
