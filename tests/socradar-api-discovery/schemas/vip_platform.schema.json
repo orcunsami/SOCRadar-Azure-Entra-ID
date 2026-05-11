@@ -1,0 +1,70 @@
+{
+  "envelope": {
+    "is_success": true,
+    "message": "Success",
+    "envelope_keys": [
+      "data",
+      "is_success",
+      "message",
+      "response_code"
+    ]
+  },
+  "data_keys": [
+    "data",
+    "total_data_count"
+  ],
+  "total_data_count": 2,
+  "records_in_response": 2,
+  "record_schema": {
+    "alarmId": {
+      "type": "int",
+      "null_pct": 0.0,
+      "example": 53685709
+    },
+    "discoveryDate": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "2025-03-20"
+    },
+    "history": {
+      "type": "list[object]",
+      "null_pct": 0.0,
+      "example": "<list, len=1>"
+    },
+    "keyword": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "<email>"
+    },
+    "notificationId": {
+      "type": "int",
+      "null_pct": 0.0,
+      "example": 4587759
+    },
+    "relatedAlarm": {
+      "type": "object",
+      "null_pct": 0.0,
+      "example": "<object, keys=['status', 'type', 'url']>"
+    },
+    "source": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "Telegram"
+    },
+    "status": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "Open"
+    },
+    "statusReason": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "Open"
+    },
+    "vipName": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "Emma Taylor"
+    }
+  }
+}

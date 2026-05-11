@@ -1,0 +1,100 @@
+{
+  "envelope": {
+    "is_success": true,
+    "message": "Success",
+    "envelope_keys": [
+      "data",
+      "is_success",
+      "message",
+      "response_code"
+    ]
+  },
+  "data_keys": [
+    "data",
+    "total_data_count"
+  ],
+  "total_data_count": 5,
+  "records_in_response": 5,
+  "record_schema": {
+    "alarmId": {
+      "type": "int",
+      "null_pct": 0.0,
+      "example": 92528632
+    },
+    "botnetId": {
+      "type": "int",
+      "null_pct": 0.0,
+      "example": 217782872
+    },
+    "country": {
+      "type": "null",
+      "null_pct": 100.0,
+      "example": null
+    },
+    "deviceIP": {
+      "type": "null",
+      "null_pct": 100.0,
+      "example": null
+    },
+    "deviceOS": {
+      "type": "null",
+      "null_pct": 100.0,
+      "example": null
+    },
+    "discoveryDate": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "2026-04-30 17:11:23"
+    },
+    "history": {
+      "type": "list[object]",
+      "null_pct": 0.0,
+      "example": "<list, len=1>"
+    },
+    "isEmployee": {
+      "type": "bool",
+      "null_pct": 0.0,
+      "example": true
+    },
+    "logDate": {
+      "type": "null",
+      "null_pct": 100.0,
+      "example": null
+    },
+    "notificationId": {
+      "type": "int",
+      "null_pct": 0.0,
+      "example": 9416225
+    },
+    "password": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "S****!"
+    },
+    "relatedAlarm": {
+      "type": "object",
+      "null_pct": 0.0,
+      "example": "<object, keys=['status', 'url']>"
+    },
+    "status": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "Open"
+    },
+    "statusReason": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": " Open"
+    },
+    "url": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "<string, len=40>"
+    },
+    "user": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "<email>"
+    }
+  }
+}

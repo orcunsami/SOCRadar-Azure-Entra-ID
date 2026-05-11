@@ -1,0 +1,831 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "metadata": {
+        "title": "SOCRadar Entra ID Integration for Microsoft Sentinel",
+        "description": "Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
+        "version": "1.0.0",
+        "author": "SOCRadar",
+        "lastUpdateTime": "2026-03-26T00:00:00.000Z"
+    },
+    "parameters": {
+        "WorkspaceName": {
+            "type": "string",
+            "metadata": {
+                "description": "Microsoft Sentinel Log Analytics Workspace Name"
+            }
+        },
+        "WorkspaceLocation": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location/region of the Log Analytics workspace"
+            }
+        },
+        "SocradarApiKey": {
+            "type": "securestring",
+            "metadata": {
+                "description": "SOCRadar Platform API Key (used for Botnet, PII Exposure, VIP Protection sources)"
+            }
+        },
+        "SocradarCompanyId": {
+            "type": "string",
+            "metadata": {
+                "description": "SOCRadar Company ID"
+            }
+        },
+        "SocradarBaseUrl": {
+            "type": "string",
+            "defaultValue": "https://platform.socradar.com",
+            "metadata": {
+                "description": "SOCRadar Platform Base URL"
+            }
+        },
+        "EntraIdTenantId": {
+            "type": "string",
+            "metadata": {
+                "description": "Microsoft Entra ID Tenant ID. Used for Workload Identity Federation (UAMI → App Registration). No secret needed."
+            }
+        },
+        "EntraIdClientId": {
+            "type": "string",
+            "metadata": {
+                "description": "App Registration Client ID (the one with Graph permissions configured in portal). Auth is secretless via Managed Identity + Federated Identity Credential."
+            }
+        },
+        "SecurityGroupId": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Entra ID Security Group ID for compromised users (required if EnableAddToGroup=true)"
+            }
+        },
+        "EnableBotnetSource": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Enable Botnet Data v2 source"
+            }
+        },
+        "EnablePiiSource": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Enable PII Exposure v2 source"
+            }
+        },
+        "EnableVipSource": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Enable VIP Protection v2 source (UNVERIFIED: endpoint not in official API documentation)"
+            }
+        },
+        "EnableUserLookup": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Look up each leaked identity in Microsoft Entra ID before taking actions. Requires User.Read.All. If false, User.Read.All becomes optional and the app only fetches SOCRadar data and writes to Log Analytics."
+            }
+        },
+        "EnableRevokeSession": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Revoke all active sign-in sessions for matched users. Requires EnableUserLookup=true and User.RevokeSessions.All."
+            }
+        },
+        "EnableAddToGroup": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Add matched users to a security/quarantine group. Requires EnableUserLookup=true, GroupMember.ReadWrite.All, and SecurityGroupId."
+            }
+        },
+        "EnableRemoveFromGroup": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Remove matched users from the security group. Requires EnableUserLookup=true, GroupMember.ReadWrite.All, and SecurityGroupId."
+            }
+        },
+        "EnablePasswordChange": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Force password change at next sign-in for matched users. Requires EnableUserLookup=true and User-PasswordProfile.ReadWrite.All."
+            }
+        },
+        "EnableDisableAccount": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Disable matched user accounts. Requires EnableUserLookup=true and User.EnableDisableAccount.All. High impact; use with caution."
+            }
+        },
+        "EnableEnableAccount": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Re-enable previously disabled accounts. Requires EnableUserLookup=true and User.EnableDisableAccount.All."
+            }
+        },
+        "EnableConfirmRisky": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Confirm matched users as compromised in Identity Protection. Requires EnableUserLookup=true, IdentityRiskyUser.ReadWrite.All, and Entra ID P1/P2 licensing."
+            }
+        },
+        "EnableForceMfaReregistration": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Delete all non-password authentication methods (Microsoft Authenticator, phone, FIDO2, software OATH, Windows Hello, email, TAP) to force MFA re-registration at next sign-in. Works on all Entra ID tiers. Requires EnableUserLookup=true and UserAuthenticationMethod.ReadWrite.All. HIGH IMPACT — off by default."
+            }
+        },
+        "EnableROPC": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Validate leaked credentials via ROPC (Resource Owner Password Credentials). Only possible with plaintext passwords. Requires Allow public client flows on the App Registration. Microsoft discourages ROPC in production."
+            }
+        },
+        "EnableCreateIncident": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Create Microsoft Sentinel incidents for compromised accounts"
+            }
+        },
+        "EnableResolveAlarm": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Automatically resolve SOCRadar alarms when compromised user is found in Entra ID"
+            }
+        },
+        "EnableLogPlaintextPassword": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Write plaintext passwords to Log Analytics tables. By default only password_present/masked fields are stored. Enable only if your security policy requires it."
+            }
+        },
+        "PollingIntervalHours": {
+            "type": "int",
+            "defaultValue": 6,
+            "minValue": 1,
+            "maxValue": 24,
+            "metadata": {
+                "description": "How often to check for new leaked credentials (1-24 hours)"
+            }
+        },
+        "InitialLookbackMinutes": {
+            "type": "int",
+            "defaultValue": 43200,
+            "minValue": 0,
+            "maxValue": 525600,
+            "metadata": {
+                "description": "Fallback: minutes of history to fetch on first run if InitialStartDate is empty. Default 43200 = 30 days."
+            }
+        },
+        "InitialStartDate": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Start date for first run (YYYY-MM-DD, e.g. 2025-06-15). Takes priority over InitialLookbackMinutes. Leave empty to use lookback."
+            }
+        },
+        "WorkspaceResourceGroup": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Resource group of the Log Analytics workspace (for cross-RG deployments). Leave empty if same as deployment RG."
+            }
+        }
+    },
+    "variables": {
+        "functionAppName": "[concat('socradar-entraid-', uniqueString(resourceGroup().id))]",
+        "managedIdentityName": "SOCRadar-EntraID-MI",
+        "hostingPlanName": "SOCRadar-EntraID-Plan",
+        "storageAccountName": "[take(concat('srentraid', uniqueString(resourceGroup().id)), 24)]",
+        "tableName": "EntraIDState",
+        "appInsightsName": "[concat('socradar-entraid-ai-', uniqueString(resourceGroup().id))]",
+        "StorageTableDataContributorRoleId": "0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
+        "WebsiteContributorRoleId": "de139f84-1756-47ae-9be6-808fbbe84772",
+        "MonitoringMetricsPublisherRoleId": "3913510d-42f4-4e42-8a64-420c390055eb",
+        "workspaceResourceId": "[if(empty(parameters('WorkspaceResourceGroup')), resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')), resourceId(parameters('WorkspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')))]",
+        "pollingSchedule": "[concat('0 0 */', string(parameters('PollingIntervalHours')), ' * * *')]",
+        "dcrName": "[concat('socradar-ei-dcr-', uniqueString(resourceGroup().id))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2023-05-01",
+            "name": "[variables('storageAccountName')]",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "kind": "StorageV2",
+            "properties": {
+                "supportsHttpsTrafficOnly": true,
+                "minimumTlsVersion": "TLS1_2"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/tableServices",
+            "apiVersion": "2023-05-01",
+            "name": "[concat(variables('storageAccountName'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+            "apiVersion": "2023-05-01",
+            "name": "[concat(variables('storageAccountName'), '/default/', variables('tableName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', variables('storageAccountName'), 'default')]"
+            ]
+        },
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+            "apiVersion": "2023-01-31",
+            "name": "[variables('managedIdentityName')]",
+            "location": "[resourceGroup().location]"
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2023-12-01",
+            "name": "[variables('hostingPlanName')]",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Y1",
+                "tier": "Dynamic"
+            },
+            "kind": "functionapp",
+            "properties": {
+                "reserved": true
+            }
+        },
+        {
+            "type": "Microsoft.Insights/components",
+            "apiVersion": "2020-02-02",
+            "name": "[variables('appInsightsName')]",
+            "location": "[resourceGroup().location]",
+            "kind": "web",
+            "properties": {
+                "Application_Type": "web",
+                "RetentionInDays": 30
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2023-12-01",
+            "name": "[variables('functionAppName')]",
+            "location": "[resourceGroup().location]",
+            "kind": "functionapp,linux",
+            "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName'))]": {}
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName'))]",
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices/tables', variables('storageAccountName'), 'default', variables('tableName'))]",
+                "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
+                "[resourceId('Microsoft.Insights/dataCollectionRules', variables('dcrName'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "httpsOnly": true,
+                "siteConfig": {
+                    "linuxFxVersion": "Python|3.11",
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-05-01').keys[0].value, ';EndpointSuffix=core.windows.net')]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-05-01').keys[0].value, ';EndpointSuffix=core.windows.net')]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[variables('functionAppName')]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~4"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "python"
+                        },
+                        {
+                            "name": "AzureWebJobsFeatureFlags",
+                            "value": "EnableWorkerIndexing"
+                        },
+                        {
+                            "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                            "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString]"
+                        },
+                        {
+                            "name": "WEBSITE_RUN_FROM_PACKAGE",
+                            "value": "https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/latest/download/FunctionApp.zip"
+                        },
+                        {
+                            "name": "POLLING_SCHEDULE",
+                            "value": "[variables('pollingSchedule')]"
+                        },
+                        {
+                            "name": "SOCRADAR_BASE_URL",
+                            "value": "[parameters('SocradarBaseUrl')]"
+                        },
+                        {
+                            "name": "SOCRADAR_API_KEY",
+                            "value": "[parameters('SocradarApiKey')]"
+                        },
+                        {
+                            "name": "SOCRADAR_COMPANY_ID",
+                            "value": "[parameters('SocradarCompanyId')]"
+                        },
+                        {
+                            "name": "ENTRA_TENANT_ID",
+                            "value": "[parameters('EntraIdTenantId')]"
+                        },
+                        {
+                            "name": "ENTRA_CLIENT_ID",
+                            "value": "[parameters('EntraIdClientId')]"
+                        },
+                        {
+                            "name": "SECURITY_GROUP_ID",
+                            "value": "[parameters('SecurityGroupId')]"
+                        },
+                        {
+                            "name": "ENABLE_BOTNET_SOURCE",
+                            "value": "[string(parameters('EnableBotnetSource'))]"
+                        },
+                        {
+                            "name": "ENABLE_PII_SOURCE",
+                            "value": "[string(parameters('EnablePiiSource'))]"
+                        },
+                        {
+                            "name": "ENABLE_VIP_SOURCE",
+                            "value": "[string(parameters('EnableVipSource'))]"
+                        },
+                        {
+                            "name": "ENABLE_USER_LOOKUP",
+                            "value": "[string(parameters('EnableUserLookup'))]"
+                        },
+                        {
+                            "name": "ENABLE_REVOKE_SESSION",
+                            "value": "[string(parameters('EnableRevokeSession'))]"
+                        },
+                        {
+                            "name": "ENABLE_ADD_TO_GROUP",
+                            "value": "[string(parameters('EnableAddToGroup'))]"
+                        },
+                        {
+                            "name": "ENABLE_REMOVE_FROM_GROUP",
+                            "value": "[string(parameters('EnableRemoveFromGroup'))]"
+                        },
+                        {
+                            "name": "ENABLE_PASSWORD_CHANGE",
+                            "value": "[string(parameters('EnablePasswordChange'))]"
+                        },
+                        {
+                            "name": "ENABLE_DISABLE_ACCOUNT",
+                            "value": "[string(parameters('EnableDisableAccount'))]"
+                        },
+                        {
+                            "name": "ENABLE_ENABLE_ACCOUNT",
+                            "value": "[string(parameters('EnableEnableAccount'))]"
+                        },
+                        {
+                            "name": "ENABLE_CONFIRM_RISKY",
+                            "value": "[string(parameters('EnableConfirmRisky'))]"
+                        },
+                        {
+                            "name": "ENABLE_FORCE_MFA_REREGISTRATION",
+                            "value": "[string(parameters('EnableForceMfaReregistration'))]"
+                        },
+                        {
+                            "name": "ENABLE_ROPC",
+                            "value": "[string(parameters('EnableROPC'))]"
+                        },
+                        {
+                            "name": "ENABLE_CREATE_INCIDENT",
+                            "value": "[string(parameters('EnableCreateIncident'))]"
+                        },
+                        {
+                            "name": "ENABLE_RESOLVE_ALARM",
+                            "value": "[string(parameters('EnableResolveAlarm'))]"
+                        },
+                        {
+                            "name": "ENABLE_LOG_PLAINTEXT_PASSWORD",
+                            "value": "[string(parameters('EnableLogPlaintextPassword'))]"
+                        },
+                        {
+                            "name": "INITIAL_LOOKBACK_MINUTES",
+                            "value": "[string(parameters('InitialLookbackMinutes'))]"
+                        },
+                        {
+                            "name": "INITIAL_START_DATE",
+                            "value": "[parameters('InitialStartDate')]"
+                        },
+                        {
+                            "name": "WORKSPACE_ID",
+                            "value": "[reference(variables('workspaceResourceId'), '2023-09-01').customerId]"
+                        },
+                        {
+                            "name": "DCR_IMMUTABLE_ID",
+                            "value": "[reference(resourceId('Microsoft.Insights/dataCollectionRules', variables('dcrName')), '2023-03-11').immutableId]"
+                        },
+                        {
+                            "name": "DCR_ENDPOINT",
+                            "value": "[reference(resourceId('Microsoft.Insights/dataCollectionRules', variables('dcrName')), '2023-03-11').endpoints.logsIngestion]"
+                        },
+                        {
+                            "name": "WORKSPACE_NAME",
+                            "value": "[parameters('WorkspaceName')]"
+                        },
+                        {
+                            "name": "WORKSPACE_LOCATION",
+                            "value": "[parameters('WorkspaceLocation')]"
+                        },
+                        {
+                            "name": "WORKSPACE_RESOURCE_GROUP",
+                            "value": "[if(empty(parameters('WorkspaceResourceGroup')), resourceGroup().name, parameters('WorkspaceResourceGroup'))]"
+                        },
+                        {
+                            "name": "SUBSCRIPTION_ID",
+                            "value": "[subscription().subscriptionId]"
+                        },
+                        {
+                            "name": "STORAGE_ACCOUNT_NAME",
+                            "value": "[variables('storageAccountName')]"
+                        },
+                        {
+                            "name": "AZURE_CLIENT_ID",
+                            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31').clientId]"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2022-04-01",
+            "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), variables('managedIdentityName'), variables('StorageTableDataContributorRoleId'))]",
+            "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+            ],
+            "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('StorageTableDataContributorRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2022-04-01",
+            "name": "[guid(resourceId('Microsoft.Web/sites', variables('functionAppName')), variables('managedIdentityName'), variables('WebsiteContributorRoleId'))]",
+            "scope": "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName'))]",
+                "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
+            ],
+            "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('WebsiteContributorRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+            }
+        },
+        {
+            "type": "Microsoft.OperationalInsights/workspaces/tables",
+            "apiVersion": "2022-10-01",
+            "name": "[concat(parameters('WorkspaceName'), '/SOCRadar_Botnet_CL')]",
+            "properties": {
+                "schema": {
+                    "name": "SOCRadar_Botnet_CL",
+                    "columns": [
+                        {"name": "TimeGenerated", "type": "dateTime"},
+                        {"name": "email", "type": "string"},
+                        {"name": "url", "type": "string"},
+                        {"name": "device_ip", "type": "string"},
+                        {"name": "device_os", "type": "string"},
+                        {"name": "country", "type": "string"},
+                        {"name": "log_date", "type": "string"},
+                        {"name": "is_employee", "type": "boolean"},
+                        {"name": "source", "type": "string"},
+                        {"name": "alarm_id", "type": "int"},
+                        {"name": "password_present", "type": "boolean"},
+                        {"name": "password_masked", "type": "string"},
+                        {"name": "is_plaintext", "type": "boolean"},
+                        {"name": "password", "type": "string"},
+                        {"name": "entra_status", "type": "string"},
+                        {"name": "entra_account_enabled", "type": "boolean"},
+                        {"name": "severity", "type": "string"},
+                        {"name": "actions_taken", "type": "dynamic"},
+                        {"name": "mfa_methods_deleted", "type": "int"},
+                        {"name": "mfa_methods_skipped", "type": "int"}
+                    ]
+                },
+                "retentionInDays": 30,
+                "plan": "Analytics"
+            }
+        },
+        {
+            "type": "Microsoft.OperationalInsights/workspaces/tables",
+            "apiVersion": "2022-10-01",
+            "name": "[concat(parameters('WorkspaceName'), '/SOCRadar_PII_CL')]",
+            "properties": {
+                "schema": {
+                    "name": "SOCRadar_PII_CL",
+                    "columns": [
+                        {"name": "TimeGenerated", "type": "dateTime"},
+                        {"name": "email", "type": "string"},
+                        {"name": "source_name", "type": "string"},
+                        {"name": "breach_date", "type": "string"},
+                        {"name": "discovery_date", "type": "string"},
+                        {"name": "is_employee", "type": "boolean"},
+                        {"name": "source", "type": "string"},
+                        {"name": "alarm_id", "type": "int"},
+                        {"name": "password_present", "type": "boolean"},
+                        {"name": "password_masked", "type": "string"},
+                        {"name": "is_plaintext", "type": "boolean"},
+                        {"name": "password", "type": "string"},
+                        {"name": "entra_status", "type": "string"},
+                        {"name": "entra_account_enabled", "type": "boolean"},
+                        {"name": "severity", "type": "string"},
+                        {"name": "actions_taken", "type": "dynamic"},
+                        {"name": "mfa_methods_deleted", "type": "int"},
+                        {"name": "mfa_methods_skipped", "type": "int"}
+                    ]
+                },
+                "retentionInDays": 30,
+                "plan": "Analytics"
+            }
+        },
+        {
+            "type": "Microsoft.OperationalInsights/workspaces/tables",
+            "apiVersion": "2022-10-01",
+            "name": "[concat(parameters('WorkspaceName'), '/SOCRadar_VIP_CL')]",
+            "properties": {
+                "schema": {
+                    "name": "SOCRadar_VIP_CL",
+                    "columns": [
+                        {"name": "TimeGenerated", "type": "dateTime"},
+                        {"name": "email", "type": "string"},
+                        {"name": "keyword", "type": "string"},
+                        {"name": "vip_name", "type": "string"},
+                        {"name": "status", "type": "string"},
+                        {"name": "discovery_date", "type": "string"},
+                        {"name": "source_name", "type": "string"},
+                        {"name": "is_employee", "type": "boolean"},
+                        {"name": "source", "type": "string"},
+                        {"name": "alarm_id", "type": "int"},
+                        {"name": "password_present", "type": "boolean"},
+                        {"name": "password_masked", "type": "string"},
+                        {"name": "is_plaintext", "type": "boolean"},
+                        {"name": "entra_status", "type": "string"},
+                        {"name": "entra_account_enabled", "type": "boolean"},
+                        {"name": "severity", "type": "string"},
+                        {"name": "actions_taken", "type": "dynamic"}
+                    ]
+                },
+                "retentionInDays": 30,
+                "plan": "Analytics"
+            }
+        },
+        {
+            "type": "Microsoft.OperationalInsights/workspaces/tables",
+            "apiVersion": "2022-10-01",
+            "name": "[concat(parameters('WorkspaceName'), '/SOCRadar_EntraID_Audit_CL')]",
+            "properties": {
+                "schema": {
+                    "name": "SOCRadar_EntraID_Audit_CL",
+                    "columns": [
+                        {"name": "TimeGenerated", "type": "dateTime"},
+                        {"name": "source", "type": "string"},
+                        {"name": "total_records", "type": "int"},
+                        {"name": "employee_records", "type": "int"},
+                        {"name": "found_count", "type": "int"},
+                        {"name": "not_found_count", "type": "int"},
+                        {"name": "actions_taken", "type": "int"},
+                        {"name": "error_count", "type": "int"},
+                        {"name": "duration_sec", "type": "real"},
+                        {"name": "event_type", "type": "string"},
+                        {"name": "tenant_id", "type": "string"},
+                        {"name": "details", "type": "string"},
+                        {"name": "aadsts_code", "type": "string"}
+                    ]
+                },
+                "retentionInDays": 30,
+                "plan": "Analytics"
+            }
+        },
+        {
+            "type": "Microsoft.Insights/dataCollectionRules",
+            "apiVersion": "2023-03-11",
+            "name": "[variables('dcrName')]",
+            "location": "[parameters('WorkspaceLocation')]",
+            "kind": "Direct",
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_Botnet_CL')]",
+                "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_PII_CL')]",
+                "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_VIP_CL')]",
+                "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_EntraID_Audit_CL')]"
+            ],
+            "properties": {
+                "description": "SOCRadar Entra ID Integration — Logs Ingestion API",
+                "streamDeclarations": {
+                    "Custom-SOCRadar_Botnet_CL": {
+                        "columns": [
+                            {"name": "TimeGenerated", "type": "datetime"},
+                            {"name": "email", "type": "string"},
+                            {"name": "url", "type": "string"},
+                            {"name": "device_ip", "type": "string"},
+                            {"name": "device_os", "type": "string"},
+                            {"name": "country", "type": "string"},
+                            {"name": "log_date", "type": "string"},
+                            {"name": "is_employee", "type": "boolean"},
+                            {"name": "source", "type": "string"},
+                            {"name": "alarm_id", "type": "int"},
+                            {"name": "password_present", "type": "boolean"},
+                            {"name": "password_masked", "type": "string"},
+                            {"name": "is_plaintext", "type": "boolean"},
+                            {"name": "password", "type": "string"},
+                            {"name": "entra_status", "type": "string"},
+                            {"name": "entra_account_enabled", "type": "boolean"},
+                            {"name": "severity", "type": "string"},
+                            {"name": "actions_taken", "type": "dynamic"},
+                            {"name": "mfa_methods_deleted", "type": "int"},
+                            {"name": "mfa_methods_skipped", "type": "int"}
+                        ]
+                    },
+                    "Custom-SOCRadar_PII_CL": {
+                        "columns": [
+                            {"name": "TimeGenerated", "type": "datetime"},
+                            {"name": "email", "type": "string"},
+                            {"name": "source_name", "type": "string"},
+                            {"name": "breach_date", "type": "string"},
+                            {"name": "discovery_date", "type": "string"},
+                            {"name": "is_employee", "type": "boolean"},
+                            {"name": "source", "type": "string"},
+                            {"name": "alarm_id", "type": "int"},
+                            {"name": "password_present", "type": "boolean"},
+                            {"name": "password_masked", "type": "string"},
+                            {"name": "is_plaintext", "type": "boolean"},
+                            {"name": "password", "type": "string"},
+                            {"name": "entra_status", "type": "string"},
+                            {"name": "entra_account_enabled", "type": "boolean"},
+                            {"name": "severity", "type": "string"},
+                            {"name": "actions_taken", "type": "dynamic"},
+                            {"name": "mfa_methods_deleted", "type": "int"},
+                            {"name": "mfa_methods_skipped", "type": "int"}
+                        ]
+                    },
+                    "Custom-SOCRadar_VIP_CL": {
+                        "columns": [
+                            {"name": "TimeGenerated", "type": "datetime"},
+                            {"name": "email", "type": "string"},
+                            {"name": "keyword", "type": "string"},
+                            {"name": "vip_name", "type": "string"},
+                            {"name": "status", "type": "string"},
+                            {"name": "discovery_date", "type": "string"},
+                            {"name": "source_name", "type": "string"},
+                            {"name": "is_employee", "type": "boolean"},
+                            {"name": "source", "type": "string"},
+                            {"name": "alarm_id", "type": "int"},
+                            {"name": "password_present", "type": "boolean"},
+                            {"name": "password_masked", "type": "string"},
+                            {"name": "is_plaintext", "type": "boolean"},
+                            {"name": "entra_status", "type": "string"},
+                            {"name": "entra_account_enabled", "type": "boolean"},
+                            {"name": "severity", "type": "string"},
+                            {"name": "actions_taken", "type": "dynamic"}
+                        ]
+                    },
+                    "Custom-SOCRadar_EntraID_Audit_CL": {
+                        "columns": [
+                            {"name": "TimeGenerated", "type": "datetime"},
+                            {"name": "source", "type": "string"},
+                            {"name": "total_records", "type": "int"},
+                            {"name": "employee_records", "type": "int"},
+                            {"name": "found_count", "type": "int"},
+                            {"name": "not_found_count", "type": "int"},
+                            {"name": "actions_taken", "type": "int"},
+                            {"name": "error_count", "type": "int"},
+                            {"name": "duration_sec", "type": "real"},
+                            {"name": "event_type", "type": "string"},
+                            {"name": "tenant_id", "type": "string"},
+                            {"name": "details", "type": "string"},
+                            {"name": "aadsts_code", "type": "string"}
+                        ]
+                    }
+                },
+                "destinations": {
+                    "logAnalytics": [
+                        {
+                            "name": "lawDest",
+                            "workspaceResourceId": "[variables('workspaceResourceId')]"
+                        }
+                    ]
+                },
+                "dataFlows": [
+                    {
+                        "streams": ["Custom-SOCRadar_Botnet_CL"],
+                        "destinations": ["lawDest"],
+                        "outputStream": "Custom-SOCRadar_Botnet_CL"
+                    },
+                    {
+                        "streams": ["Custom-SOCRadar_PII_CL"],
+                        "destinations": ["lawDest"],
+                        "outputStream": "Custom-SOCRadar_PII_CL"
+                    },
+                    {
+                        "streams": ["Custom-SOCRadar_VIP_CL"],
+                        "destinations": ["lawDest"],
+                        "outputStream": "Custom-SOCRadar_VIP_CL"
+                    },
+                    {
+                        "streams": ["Custom-SOCRadar_EntraID_Audit_CL"],
+                        "destinations": ["lawDest"],
+                        "outputStream": "Custom-SOCRadar_EntraID_Audit_CL"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2022-04-01",
+            "name": "[guid(resourceId('Microsoft.Insights/dataCollectionRules', variables('dcrName')), variables('managedIdentityName'), variables('MonitoringMetricsPublisherRoleId'))]",
+            "scope": "[concat('Microsoft.Insights/dataCollectionRules/', variables('dcrName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName'))]",
+                "[resourceId('Microsoft.Insights/dataCollectionRules', variables('dcrName'))]"
+            ],
+            "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('MonitoringMetricsPublisherRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deploymentScripts",
+            "apiVersion": "2020-10-01",
+            "name": "[concat('triggerFirstRun-', uniqueString(resourceGroup().id))]",
+            "location": "[resourceGroup().location]",
+            "kind": "AzureCLI",
+            "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName'))]": {}
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
+                "[guid(resourceId('Microsoft.Web/sites', variables('functionAppName')), variables('managedIdentityName'), variables('WebsiteContributorRoleId'))]"
+            ],
+            "properties": {
+                "azCliVersion": "2.50.0",
+                "retentionInterval": "PT1H",
+                "timeout": "PT5M",
+                "scriptContent": "sleep 30 && az functionapp restart --name $FA_NAME --resource-group $RG_NAME && echo 'Function App restarted'",
+                "environmentVariables": [
+                    {
+                        "name": "FA_NAME",
+                        "value": "[variables('functionAppName')]"
+                    },
+                    {
+                        "name": "RG_NAME",
+                        "value": "[resourceGroup().name]"
+                    }
+                ]
+            }
+        }
+    ],
+    "outputs": {
+        "functionAppName": {
+            "type": "string",
+            "value": "[variables('functionAppName')]"
+        },
+        "storageAccountName": {
+            "type": "string",
+            "value": "[variables('storageAccountName')]"
+        },
+        "pollingSchedule": {
+            "type": "string",
+            "value": "[variables('pollingSchedule')]"
+        }
+    }
+}

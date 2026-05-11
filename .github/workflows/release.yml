@@ -1,0 +1,66 @@
+name: Release on tag
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build FunctionApp.zip (deps bundled) and attach to release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps to .python_packages (Linux x86_64)
+        run: |
+          cd production/FunctionApp
+          rm -rf .python_packages
+          python -m pip install --target=.python_packages/lib/site-packages \
+            --implementation cp --python-version 3.11 \
+            --platform manylinux2014_x86_64 \
+            --only-binary=:all: \
+            -r requirements.txt
+          du -sh .python_packages
+
+      - name: Build FunctionApp.zip (code + deps)
+        run: |
+          cd production/FunctionApp
+          zip -qr "$GITHUB_WORKSPACE/FunctionApp.zip" . \
+            -x "__pycache__/*" \
+            -x "**/__pycache__/*" \
+            -x "*.pyc" \
+            -x ".pytest_cache/*" \
+            -x ".DS_Store" \
+            -x "**/.DS_Store"
+          ls -la "$GITHUB_WORKSPACE/FunctionApp.zip"
+          du -sh "$GITHUB_WORKSPACE/FunctionApp.zip"
+
+      - name: Create GitHub release with zip asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          NOTES="Automated release from tag ${TAG_NAME}.
+
+          Install URL for ARM:
+          https://github.com/${REPO}/releases/download/${TAG_NAME}/FunctionApp.zip
+
+          FunctionApp.zip bundles production code + Python deps (Linux x86_64 manylinux2014).
+          ARM template installs without requiring 'func publish' (zero customer setup).
+          "
+
+          gh release create "$TAG_NAME" \
+            "$GITHUB_WORKSPACE/FunctionApp.zip" \
+            --repo "$REPO" \
+            --title "$TAG_NAME" \
+            --notes "$NOTES"

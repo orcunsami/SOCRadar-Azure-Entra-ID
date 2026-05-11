@@ -1,0 +1,63 @@
+# =============================================================================
+# SOCRadar Entra ID Integration — Deployment Configuration
+# Copy to deploy.config and fill in values
+# =============================================================================
+
+# Azure Resource Group & Location
+RESOURCE_GROUP=rg-socradar-entraid
+LOCATION=northeurope
+
+# Log Analytics / Sentinel Workspace
+WORKSPACE_NAME=your-sentinel-workspace
+WORKSPACE_LOCATION=northeurope
+WORKSPACE_RESOURCE_GROUP=          # leave empty if same RG as deployment
+
+# SOCRadar Platform API
+SOCRADAR_API_KEY=your-platform-api-key
+SOCRADAR_COMPANY_ID=330
+
+# Entra ID App Registration
+# Grant only the permissions required by the features you enable:
+# - User.Read.All for ENABLE_USER_LOOKUP
+# - User.RevokeSessions.All for ENABLE_REVOKE_SESSION
+# - GroupMember.ReadWrite.All for ENABLE_ADD_TO_GROUP / ENABLE_REMOVE_FROM_GROUP
+# - User-PasswordProfile.ReadWrite.All for ENABLE_PASSWORD_CHANGE
+# - User.EnableDisableAccount.All for ENABLE_DISABLE_ACCOUNT / ENABLE_ENABLE_ACCOUNT
+# - IdentityRiskyUser.ReadWrite.All for ENABLE_CONFIRM_RISKY
+# Entra ID App Registration (identifiers only — NO secret)
+# Graph auth uses Workload Identity Federation: UAMI → FIC → App Registration
+# Permissions managed in portal (App Registration → API permissions)
+ENTRA_TENANT_ID=your-tenant-id
+ENTRA_CLIENT_ID=your-app-registration-client-id
+
+# Entra ID Security Group (quarantine group for compromised users)
+SECURITY_GROUP_ID=
+
+# Source toggles
+ENABLE_BOTNET=true
+ENABLE_PII=true
+ENABLE_VIP=false                   # UNVERIFIED endpoint
+
+# Action toggles
+ENABLE_USER_LOOKUP=true            # if false, User.Read.All is not required and Entra actions are skipped
+ENABLE_REVOKE_SESSION=true
+ENABLE_ADD_TO_GROUP=true
+ENABLE_REMOVE_FROM_GROUP=false
+ENABLE_PASSWORD_CHANGE=false
+ENABLE_DISABLE_ACCOUNT=false
+ENABLE_ENABLE_ACCOUNT=false
+ENABLE_CONFIRM_RISKY=false         # requires P1/P2
+ENABLE_FORCE_MFA_REREGISTRATION=false   # HIGH IMPACT — deletes all non-password auth methods
+ENABLE_ROPC=false                  # Microsoft discourages this
+ENABLE_CREATE_INCIDENT=false
+ENABLE_RESOLVE_ALARM=false
+
+# Password logging (false = only masked/present fields stored)
+ENABLE_LOG_PLAINTEXT=false
+
+# Schedule
+POLLING_INTERVAL_HOURS=6
+
+# Lookback: 216000 min = ~150 days = ~5 months
+INITIAL_LOOKBACK_MINUTES=216000
+INITIAL_START_DATE=                  # YYYY-MM-DD, overrides lookback if set

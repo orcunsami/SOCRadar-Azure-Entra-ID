@@ -1,0 +1,80 @@
+{
+  "envelope": {
+    "is_success": true,
+    "message": "Success",
+    "envelope_keys": [
+      "data",
+      "is_success",
+      "message",
+      "response_code"
+    ]
+  },
+  "data_keys": [
+    "data",
+    "total_data_count"
+  ],
+  "total_data_count": 17,
+  "records_in_response": 10,
+  "record_schema": {
+    "alarmId": {
+      "type": "int",
+      "null_pct": 0.0,
+      "example": 89151980
+    },
+    "breachDate": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "2024-01-01 00:00:00"
+    },
+    "discoveryDate": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "2026-04-06 06:40:31"
+    },
+    "email": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "<email>"
+    },
+    "history": {
+      "type": "list[object]",
+      "null_pct": 0.0,
+      "example": "<list, len=1>"
+    },
+    "isEmployee": {
+      "type": "bool",
+      "null_pct": 0.0,
+      "example": true
+    },
+    "notificationId": {
+      "type": "int",
+      "null_pct": 0.0,
+      "example": 6179490
+    },
+    "password": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "Wagu246469"
+    },
+    "relatedAlarm": {
+      "type": "object",
+      "null_pct": 0.0,
+      "example": "<object, keys=['status', 'url']>"
+    },
+    "source": {
+      "type": "list[string]|string",
+      "null_pct": 0.0,
+      "example": "<list, len=1>"
+    },
+    "status": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": "Open"
+    },
+    "statusReason": {
+      "type": "string",
+      "null_pct": 0.0,
+      "example": " Open"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+# Secrets
+.env
+*.env
+!.env.example
+
+# Test results — may contain real credentials
+tests/results/
+tests/historical-data/
+tests/.env
+scripts/results/
+scripts/deploy.config
+scripts/test.env
+scripts/test_env.config
+
+# AI agent reference (local-only)
+AI_KIMI.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Azure Functions local
+local.settings.json
+.azure/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Test parameter files with real credentials
+parameters.test.json
+parameters.*.json
+
+# Internal development artifacts (not for public repo)
+.claude/
+development/
+docs/comparison.md
+docs/mimari.txt
+docs/recorded-future-identity-analysis.md
+docs/diagrams/
+
+# Turkish / internal docs (not for public)
+docs/socradar-entra-id-integration.md
+docs/socradar-identity-api.md
+soru-cevap.txt
+production/docs/demo-runbook.md
