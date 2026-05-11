@@ -37,7 +37,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_Botnet_CL\n| where entra_status_s == \"found\"\n| count\n| project Count",
+        "query": "SOCRadar_Botnet_CL\n| where entra_status == \"found\"\n| count\n| project Count",
         "size": 4,
         "title": "Found in Entra ID",
         "queryType": 0,
@@ -55,7 +55,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_Botnet_CL\n| where entra_status_s == \"compromised\"\n| count\n| project Count",
+        "query": "SOCRadar_Botnet_CL\n| where entra_status == \"compromised\"\n| count\n| project Count",
         "size": 4,
         "title": "Confirmed Compromised",
         "queryType": 0,
@@ -73,7 +73,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_Botnet_CL\n| where password_present_b == true\n| count\n| project Count",
+        "query": "SOCRadar_Botnet_CL\n| where password_present == true\n| count\n| project Count",
         "size": 4,
         "title": "With Password",
         "queryType": 0,
@@ -98,7 +98,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_Botnet_CL\n| summarize Count=count() by entra_status_s\n| order by Count desc",
+        "query": "SOCRadar_Botnet_CL\n| summarize Count=count() by entra_status\n| order by Count desc",
         "size": 2,
         "title": "Entra ID Status",
         "queryType": 0,
@@ -112,7 +112,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_Botnet_CL\n| where password_present_b == true\n| summarize Count=count() by is_plaintext_b\n| extend PasswordType = iff(is_plaintext_b == true, \"Plaintext\", \"Masked\")\n| project PasswordType, Count",
+        "query": "SOCRadar_Botnet_CL\n| where password_present == true\n| summarize Count=count() by is_plaintext\n| extend PasswordType = iff(is_plaintext == true, \"Plaintext\", \"Masked\")\n| project PasswordType, Count",
         "size": 2,
         "title": "Password Type Distribution",
         "queryType": 0,
@@ -126,7 +126,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_Botnet_CL\n| summarize Count=count() by country_s\n| order by Count desc\n| take 10",
+        "query": "SOCRadar_Botnet_CL\n| summarize Count=count() by country\n| order by Count desc\n| take 10",
         "size": 2,
         "title": "Top Countries",
         "queryType": 0,
@@ -140,7 +140,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_Botnet_CL\n| summarize Count=count() by device_os_s\n| order by Count desc\n| take 10",
+        "query": "SOCRadar_Botnet_CL\n| summarize Count=count() by device_os\n| order by Count desc\n| take 10",
         "size": 2,
         "title": "Device OS Distribution",
         "queryType": 0,
@@ -174,7 +174,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_Botnet_CL\n| project TimeGenerated, email_s, entra_status_s, password_present_b, is_plaintext_b, country_s, device_os_s, actions_taken_s\n| order by TimeGenerated desc\n| take 50",
+        "query": "SOCRadar_Botnet_CL\n| project TimeGenerated, email, entra_status, password_present, is_plaintext, country, device_os, actions_taken\n| order by TimeGenerated desc\n| take 50",
         "size": 0,
         "title": "Recent Botnet Records",
         "queryType": 0,

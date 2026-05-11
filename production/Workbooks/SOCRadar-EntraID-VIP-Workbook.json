@@ -37,7 +37,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_VIP_CL\n| where entra_status_s == \"found\"\n| count\n| project Count",
+        "query": "SOCRadar_VIP_CL\n| where entra_status == \"found\"\n| count\n| project Count",
         "size": 4,
         "title": "Found in Entra ID",
         "queryType": 0,
@@ -80,7 +80,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_VIP_CL\n| summarize Count=count() by entra_status_s\n| order by Count desc",
+        "query": "SOCRadar_VIP_CL\n| summarize Count=count() by entra_status\n| order by Count desc",
         "size": 2,
         "title": "Entra ID Status",
         "queryType": 0,
@@ -94,7 +94,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_VIP_CL\n| summarize Count=count() by status_s\n| order by Count desc",
+        "query": "SOCRadar_VIP_CL\n| summarize Count=count() by status\n| order by Count desc",
         "size": 2,
         "title": "Record Status",
         "queryType": 0,
@@ -108,7 +108,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_VIP_CL\n| summarize Count=count() by keyword_s\n| order by Count desc\n| take 10",
+        "query": "SOCRadar_VIP_CL\n| summarize Count=count() by keyword\n| order by Count desc\n| take 10",
         "size": 2,
         "title": "Top Keywords",
         "queryType": 0,
@@ -141,7 +141,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_VIP_CL\n| project TimeGenerated, email_s, vip_name_s, keyword_s, status_s, discovery_date_s, entra_status_s\n| order by TimeGenerated desc\n| take 50",
+        "query": "SOCRadar_VIP_CL\n| project TimeGenerated, email, vip_name, keyword, status, discovery_date, entra_status\n| order by TimeGenerated desc\n| take 50",
         "size": 0,
         "title": "Recent VIP Records",
         "queryType": 0,
