@@ -11,7 +11,7 @@ echo "========================================"
 PASS=0
 FAIL=0
 
-for test in test_botnet_data.py test_pii_exposure.py test_vip_protection.py test_alarm_resolve.py test_identity_intelligence.py; do
+for test in botnet/test_botnet.py pii/test_pii.py vip/test_vip.py test_alarm_resolve.py test_identity_intelligence.py; do
     echo ""
     echo "--- Running $test ---"
     if python3 "$test"; then
@@ -23,9 +23,25 @@ for test in test_botnet_data.py test_pii_exposure.py test_vip_protection.py test
     sleep 1  # rate limit
 done
 
+echo ""
+echo "--- Edge-case + date-filter tests per source ---"
+for src in botnet pii vip; do
+    edge="$src/test_${src}_edge_cases.py"
+    if [ -f "$edge" ]; then
+        echo ""
+        echo "--- Running $edge ---"
+        if python3 "$edge"; then
+            PASS=$((PASS + 1))
+        else
+            FAIL=$((FAIL + 1))
+        fi
+        sleep 1
+    fi
+done
+
 echo "========================================"
 echo " DONE: $PASS passed, $FAIL failed"
 echo "========================================"
 echo ""
-echo "Results:"
-ls -la results/*.json 2>/dev/null
+echo "Per-source results:"
+ls -la botnet/results/*.json pii/results/*.json vip/results/*.json results/*.json 2>/dev/null

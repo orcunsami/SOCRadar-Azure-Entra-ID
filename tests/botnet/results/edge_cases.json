@@ -1,0 +1,115 @@
+{
+  "endpoint": "botnet-data/v2",
+  "company_id": "132",
+  "tested_at": "2026-05-11T08:18:49.341353+00:00",
+  "cases": {
+    "01_default_no_date": {
+      "status": 200,
+      "elapsed_sec": 1.59,
+      "is_success": true,
+      "total_data_count": 126335,
+      "page_count": 1,
+      "employees_in_page": 0,
+      "non_employees_in_page": 1,
+      "error": null
+    },
+    "02_today_only": {
+      "status": 200,
+      "elapsed_sec": 0.58,
+      "is_success": true,
+      "total_data_count": 0,
+      "page_count": 0,
+      "employees_in_page": 0,
+      "non_employees_in_page": 0,
+      "error": null
+    },
+    "03_epoch_all_history": {
+      "status": 200,
+      "elapsed_sec": 0.75,
+      "is_success": true,
+      "total_data_count": 126335,
+      "page_count": 1,
+      "employees_in_page": 0,
+      "non_employees_in_page": 1,
+      "error": null
+    },
+    "04_last_7_days": {
+      "status": 200,
+      "elapsed_sec": 0.69,
+      "is_success": true,
+      "total_data_count": 0,
+      "page_count": 0,
+      "employees_in_page": 0,
+      "non_employees_in_page": 0,
+      "error": null
+    },
+    "05_last_30_days": {
+      "status": 200,
+      "elapsed_sec": 0.67,
+      "is_success": true,
+      "total_data_count": 0,
+      "page_count": 0,
+      "employees_in_page": 0,
+      "non_employees_in_page": 0,
+      "error": null
+    },
+    "06_last_365_days": {
+      "status": 200,
+      "elapsed_sec": 0.72,
+      "is_success": true,
+      "total_data_count": 126312,
+      "page_count": 10,
+      "employees_in_page": 5,
+      "non_employees_in_page": 5,
+      "error": null
+    },
+    "07_invalid_date_string": {
+      "status": 200,
+      "elapsed_sec": 0.45,
+      "is_success": false,
+      "total_data_count": null,
+      "page_count": 0,
+      "employees_in_page": 0,
+      "non_employees_in_page": 0,
+      "error": null
+    },
+    "08_wrong_company_id": {
+      "status": 401,
+      "elapsed_sec": 0.48,
+      "is_success": false,
+      "error": "HTTP Error 401: Unauthorized",
+      "body": "{\"error\":\"Unauthorized Access to use API! Check your company information!\"}\n"
+    },
+    "09_invalid_api_key": {
+      "status": 401,
+      "elapsed_sec": 0.45,
+      "is_success": false,
+      "error": "HTTP Error 401: Unauthorized",
+      "body": "{\"error\":\"Unauthorized Access to use API! Check your api key!\"}\n"
+    },
+    "10_page_too_large": {
+      "status": 200,
+      "elapsed_sec": 0.89,
+      "is_success": true,
+      "total_data_count": 126335,
+      "page_count": 1,
+      "employees_in_page": 0,
+      "non_employees_in_page": 1,
+      "error": null
+    },
+    "11_no_user_agent": {
+      "status": 403,
+      "elapsed_sec": 0.14,
+      "is_success": false,
+      "error": "HTTP Error 403: Forbidden",
+      "body": "error code: 1010"
+    },
+    "12_python_default_ua": {
+      "status": 403,
+      "elapsed_sec": 0.13,
+      "is_success": false,
+      "error": "HTTP Error 403: Forbidden",
+      "body": "error code: 1010"
+    }
+  }
+}

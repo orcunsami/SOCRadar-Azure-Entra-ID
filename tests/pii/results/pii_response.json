@@ -1,0 +1,367 @@
+{
+  "api": "PII Exposure v2",
+  "company_id": "132",
+  "results": [
+    {
+      "endpoint": "/company/132/dark-web-monitoring/pii-exposure/v2",
+      "page": 1,
+      "limit": 10,
+      "start_date": null,
+      "status": 200,
+      "is_success": true,
+      "elapsed_seconds": 1.71,
+      "response_size_bytes": 8182,
+      "total_data_count": 32,
+      "page_count": 10,
+      "sample": [
+        {
+          "alarmId": 89151980,
+          "breachDate": "2024-01-01 00:00:00",
+          "discoveryDate": "2026-04-06 06:40:31",
+          "email": "testradar3@SOCRadarCyberIntelligenceIn.onmicrosoft.com",
+          "history": [
+            {
+              "date": "2026-04-06 06:40",
+              "detail": "PII Exposure was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "notificationId": 6179490,
+          "password": "Wagu246469",
+          "relatedAlarm": {
+            "status": "Open",
+            "url": "https://platform.socradar.com/app/company/132/alarm-management?tab=approved&alarmId=89151980"
+          },
+          "source": [
+            "Test VIP Leak Source"
+          ],
+          "status": "Open",
+          "statusReason": " Open"
+        },
+        {
+          "alarmId": 89151979,
+          "breachDate": "2024-01-01 00:00:00",
+          "discoveryDate": "2026-04-06 06:35:05",
+          "email": "testradar2@SOCRadarCyberIntelligenceIn.onmicrosoft.com",
+          "history": [
+            {
+              "date": "2026-04-06 06:35",
+              "detail": "PII Exposure was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "notificationId": 6179489,
+          "password": "Hucu975301",
+          "relatedAlarm": {
+            "status": "Closed",
+            "url": "https://platform.socradar.com/app/company/132/alarm-management?tab=approved&alarmId=89151979"
+          },
+          "source": [
+            "Test Leak Source"
+          ],
+          "status": "Open",
+          "statusReason": " Open"
+        },
+        {
+          "alarmId": 54075589,
+          "breachDate": "2025-03-24 00:00:00",
+          "discoveryDate": "2025-03-24 22:22:32",
+          "email": "joh.bakolor@greenanimalsbank.com",
+          "history": [
+            {
+              "date": "2025-03-24 22:22",
+              "detail": "PII Exposure was discovered",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-04-02 07:05",
+              "detail": "PII Exposure status was set to Closed (Reason: Resolved)",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-04-02 21:42",
+              "detail": "PII Exposure status was set to Open (Reason: Open)",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-10-08 12:31",
+              "detail": "PII Exposure status was set to On Hold (Reason: Pending Info)",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "notificationId": 4633176,
+          "password": "Lq!Xgsff3424Z",
+          "relatedAlarm": {
+            "status": "On Hold",
+            "url": "https://platform.socradar.com/app/company/132/alarm-management?tab=approved&alarmId=54075589"
+          },
+          "source": "Hacker Forum",
+          "status": "On Hold",
+          "statusReason": " Pending Info"
+        }
+      ],
+      "fields": [
+        "alarmId",
+        "breachDate",
+        "discoveryDate",
+        "email",
+        "history",
+        "isEmployee",
+        "notificationId",
+        "password",
+        "relatedAlarm",
+        "source",
+        "status",
+        "statusReason"
+      ],
+      "password_masked": false,
+      "employee_count": 10,
+      "sources": [
+        "Test Leak Source",
+        "Hacker Forum",
+        "Test VIP Leak Source"
+      ],
+      "error": null
+    },
+    {
+      "endpoint": "/company/132/dark-web-monitoring/pii-exposure/v2",
+      "page": 2,
+      "limit": 5,
+      "start_date": null,
+      "status": 200,
+      "is_success": true,
+      "elapsed_seconds": 0.58,
+      "response_size_bytes": 4499,
+      "total_data_count": 32,
+      "page_count": 5,
+      "sample": [
+        {
+          "alarmId": 52974493,
+          "breachDate": "2025-02-27 00:00:00",
+          "discoveryDate": "2025-03-12 22:22:18",
+          "email": "charlotte.rodriguez@greenanimalsbank.com",
+          "history": [
+            {
+              "date": "2025-03-12 22:22",
+              "detail": "PII Exposure was discovered",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-04-02 07:05",
+              "detail": "PII Exposure status was set to Closed (Reason: Resolved)",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-04-02 21:42",
+              "detail": "PII Exposure status was set to Open (Reason: Open)",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-10-08 12:31",
+              "detail": "PII Exposure status was set to Closed (Reason: False Positive)",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "notificationId": 4518590,
+          "password": "k9Q!b3X",
+          "relatedAlarm": {
+            "status": "Closed",
+            "url": "https://platform.socradar.com/app/company/132/alarm-management?tab=approved&alarmId=52974493"
+          },
+          "source": "Hacker Forum",
+          "status": "Closed",
+          "statusReason": " False Positive"
+        },
+        {
+          "alarmId": 52017939,
+          "breachDate": "2025-02-26 10:01:34",
+          "discoveryDate": "2025-02-26 10:01:34",
+          "email": "charlotte.rodriguez@greenanimalsbank.com",
+          "history": [
+            {
+              "date": "2025-02-26 10:01",
+              "detail": "PII Exposure was discovered",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-04-02 07:05",
+              "detail": "PII Exposure status was set to Closed (Reason: Resolved)",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-04-02 21:42",
+              "detail": "PII Exposure status was set to Open (Reason: Open)",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-10-08 12:32",
+              "detail": "PII Exposure status was set to Closed (Reason: Processed Internally)",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "notificationId": 4431459,
+          "password": "k9Q!b3X^7sM4GzL2",
+          "relatedAlarm": {
+            "status": "Closed",
+            "url": "https://platform.socradar.com/app/company/132/alarm-management?tab=approved&alarmId=52017939"
+          },
+          "source": "Hacker Forum",
+          "status": "Closed",
+          "statusReason": " Processed Internally"
+        },
+        {
+          "alarmId": 52017939,
+          "breachDate": "2025-02-26 10:01:34",
+          "discoveryDate": "2025-02-26 10:01:34",
+          "email": "noah.rodriguez@greenanimalsbank.com",
+          "history": [
+            {
+              "date": "2025-02-26 10:01",
+              "detail": "PII Exposure was discovered",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-04-02 07:05",
+              "detail": "PII Exposure status was set to Closed (Reason: Resolved)",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-04-02 21:42",
+              "detail": "PII Exposure status was set to Open (Reason: Open)",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2025-10-08 12:32",
+              "detail": "PII Exposure status was set to Closed (Reason: Processed Internally)",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "notificationId": 4431459,
+          "password": "G7eLx@#4iY6B!z3q",
+          "relatedAlarm": {
+            "status": "Closed",
+            "url": "https://platform.socradar.com/app/company/132/alarm-management?tab=approved&alarmId=52017939"
+          },
+          "source": "Hacker Forum",
+          "status": "Closed",
+          "statusReason": " Processed Internally"
+        }
+      ],
+      "fields": [
+        "alarmId",
+        "breachDate",
+        "discoveryDate",
+        "email",
+        "history",
+        "isEmployee",
+        "notificationId",
+        "password",
+        "relatedAlarm",
+        "source",
+        "status",
+        "statusReason"
+      ],
+      "password_masked": false,
+      "employee_count": 5,
+      "sources": [
+        "Hacker Forum"
+      ],
+      "error": null
+    },
+    {
+      "endpoint": "/company/132/dark-web-monitoring/pii-exposure/v2",
+      "page": 1,
+      "limit": 10,
+      "start_date": "2026-03-01",
+      "status": 200,
+      "is_success": true,
+      "elapsed_seconds": 0.54,
+      "response_size_bytes": 1165,
+      "total_data_count": 2,
+      "page_count": 2,
+      "sample": [
+        {
+          "alarmId": 89151980,
+          "breachDate": "2024-01-01 00:00:00",
+          "discoveryDate": "2026-04-06 06:40:31",
+          "email": "testradar3@SOCRadarCyberIntelligenceIn.onmicrosoft.com",
+          "history": [
+            {
+              "date": "2026-04-06 06:40",
+              "detail": "PII Exposure was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "notificationId": 6179490,
+          "password": "Wagu246469",
+          "relatedAlarm": {
+            "status": "Open",
+            "url": "https://platform.socradar.com/app/company/132/alarm-management?tab=approved&alarmId=89151980"
+          },
+          "source": [
+            "Test VIP Leak Source"
+          ],
+          "status": "Open",
+          "statusReason": " Open"
+        },
+        {
+          "alarmId": 89151979,
+          "breachDate": "2024-01-01 00:00:00",
+          "discoveryDate": "2026-04-06 06:35:05",
+          "email": "testradar2@SOCRadarCyberIntelligenceIn.onmicrosoft.com",
+          "history": [
+            {
+              "date": "2026-04-06 06:35",
+              "detail": "PII Exposure was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "notificationId": 6179489,
+          "password": "Hucu975301",
+          "relatedAlarm": {
+            "status": "Closed",
+            "url": "https://platform.socradar.com/app/company/132/alarm-management?tab=approved&alarmId=89151979"
+          },
+          "source": [
+            "Test Leak Source"
+          ],
+          "status": "Open",
+          "statusReason": " Open"
+        }
+      ],
+      "fields": [
+        "alarmId",
+        "breachDate",
+        "discoveryDate",
+        "email",
+        "history",
+        "isEmployee",
+        "notificationId",
+        "password",
+        "relatedAlarm",
+        "source",
+        "status",
+        "statusReason"
+      ],
+      "password_masked": false,
+      "employee_count": 2,
+      "sources": [
+        "Test Leak Source",
+        "Test VIP Leak Source"
+      ],
+      "error": null
+    },
+    {
+      "status": 403,
+      "error": null
+    }
+  ]
+}

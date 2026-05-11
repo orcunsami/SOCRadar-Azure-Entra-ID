@@ -1,0 +1,61 @@
+{
+  "api": "VIP Protection v2",
+  "company_id": "132",
+  "results": [
+    {
+      "endpoint": "/company/132/vip-protection/v2",
+      "page": 1,
+      "limit": 10,
+      "start_date": null,
+      "status": 200,
+      "is_success": true,
+      "elapsed_seconds": 1.58,
+      "response_size_bytes": 100,
+      "total_data_count": 0,
+      "page_count": 0,
+      "sample": [],
+      "fields": [],
+      "statuses": [],
+      "sources": [],
+      "error": null
+    },
+    {
+      "endpoint": "/company/132/vip-protection/v2",
+      "page": 2,
+      "limit": 5,
+      "start_date": null,
+      "status": 200,
+      "is_success": true,
+      "elapsed_seconds": 0.52,
+      "response_size_bytes": 100,
+      "total_data_count": 0,
+      "page_count": 0,
+      "sample": [],
+      "fields": [],
+      "statuses": [],
+      "sources": [],
+      "error": null
+    },
+    {
+      "endpoint": "/company/132/vip-protection/v2",
+      "page": 1,
+      "limit": 10,
+      "start_date": "2026-03-01",
+      "status": 200,
+      "is_success": true,
+      "elapsed_seconds": 0.52,
+      "response_size_bytes": 100,
+      "total_data_count": 0,
+      "page_count": 0,
+      "sample": [],
+      "fields": [],
+      "statuses": [],
+      "sources": [],
+      "error": null
+    },
+    {
+      "status": 403,
+      "error": null
+    }
+  ]
+}
