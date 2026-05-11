@@ -191,10 +191,37 @@ done
 echo ""
 echo "[5/7] Deploying Function Code (func publish --remote-build)..."
 
+# ARM template sets WEBSITE_RUN_FROM_PACKAGE for customer "Deploy to Azure" flow.
+# `func publish` cannot coexist with WEBSITE_RUN_FROM_PACKAGE pointing to a remote URL
+# (Azure returns HTTP 409 Conflict). Clear it explicitly + wait for propagation BEFORE
+# func publish. The setting will be left empty after publish — that's fine for the dev
+# flow. Customer-facing ARM deploy (Deploy to Azure button) still sets it correctly.
+echo "  Clearing WEBSITE_RUN_FROM_PACKAGE to allow func publish (Azure 409 prevention)..."
+az functionapp config appsettings delete \
+    --name "$FUNCTION_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+    --setting-names WEBSITE_RUN_FROM_PACKAGE WEBSITE_USE_ZIP \
+    -o none 2>/dev/null || true
+echo "  Waiting 15s for Azure state propagation..."
+sleep 15
+
 echo "  Publishing with remote build (dependencies auto-installed)..."
 cd "$PRODUCTION_DIR/FunctionApp"
-func azure functionapp publish "$FUNCTION_APP_NAME" --python --build remote 2>&1 | tail -20
+PUBLISH_LOG=$(func azure functionapp publish "$FUNCTION_APP_NAME" --python --build remote 2>&1)
+echo "$PUBLISH_LOG" | tail -20
 cd - >/dev/null
+
+# Retry once if Conflict slipped through (rare race condition)
+if echo "$PUBLISH_LOG" | grep -q "Conflict\|409"; then
+    echo "  WARN: publish hit Conflict — clearing settings again + retry..."
+    az functionapp config appsettings delete \
+        --name "$FUNCTION_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+        --setting-names WEBSITE_RUN_FROM_PACKAGE WEBSITE_USE_ZIP \
+        -o none 2>/dev/null || true
+    sleep 25
+    cd "$PRODUCTION_DIR/FunctionApp"
+    func azure functionapp publish "$FUNCTION_APP_NAME" --python --build remote 2>&1 | tail -10
+    cd - >/dev/null
+fi
 
 echo "  Restarting Function App..."
 az functionapp restart --name "$FUNCTION_APP_NAME" --resource-group "$RESOURCE_GROUP" -o none 2>/dev/null
