@@ -37,7 +37,11 @@ def fetch(conf: dict, checkpoint: dict) -> list:
 
     base = conf.get("socradar_base_url", "https://platform.socradar.com")
     url = base + ENDPOINT.format(company_id=company_id)
-    headers = {"API-Key": api_key, "Content-Type": "application/json"}
+    headers = {
+        "API-Key": api_key,
+        "Content-Type": "application/json",
+        "User-Agent": "SOCRadar-EntraID/1.0",
+    }
 
     start_date = get_start_date(checkpoint, initial_lookback, initial_start_date)
     resume_page = checkpoint.get("last_page", 0)

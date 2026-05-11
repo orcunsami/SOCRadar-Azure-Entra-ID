@@ -215,6 +215,42 @@ The function is **timeout-safe**: it tracks elapsed time and exits gracefully ~2
 
 ---
 
+## 🔄 Re-deploying onto an Existing Workspace
+
+The function tracks ingestion progress per source in a **checkpoint table** inside the deployed Storage Account (table name: `EntraIDState`). If you re-deploy on top of a previous installation (same Resource Group + same workspace), the old checkpoint persists. The function will resume from where the previous install left off — which is usually what you want.
+
+But if you have **deleted and recreated the Log Analytics workspace**, or if you want the function to **re-fetch the full backlog** (e.g. for a new demo / staging environment), the stale checkpoint will make it look like there's nothing new to ingest. Symptom: function runs successfully but `total_records=0` for hours or days.
+
+**To reset the checkpoint** (use only when you want a full re-ingest):
+
+```bash
+# Find the storage account in the deployed RG
+STORAGE=$(az storage account list --resource-group <RG> --query "[?starts_with(name,'srentraid')].name | [0]" -o tsv)
+KEY=$(az storage account keys list --account-name "$STORAGE" --resource-group <RG> --query "[0].value" -o tsv)
+
+# Delete all rows in the checkpoint table
+az storage entity query \
+  --account-name "$STORAGE" \
+  --account-key "$KEY" \
+  --table-name EntraIDState \
+  --query "items[].{p:PartitionKey,r:RowKey}" -o tsv | \
+while IFS=$'\t' read -r pk rk; do
+  az storage entity delete \
+    --account-name "$STORAGE" --account-key "$KEY" \
+    --table-name EntraIDState \
+    --partition-key "$pk" --row-key "$rk"
+done
+
+# Restart the function to force fresh pickup
+az functionapp restart --name <FunctionAppName> --resource-group <RG>
+```
+
+The next run will use `InitialLookbackMinutes` (or `InitialStartDate` if set) as if it were a first install.
+
+> ⚠️ Resetting the checkpoint causes the next run to fetch the entire lookback window again. For a large window this can take many runs to drain — see **Heavy Backlog Tuning** above to speed it up.
+
+---
+
 ## 📊 Microsoft Sentinel Tables
 
 | Table | Source | Schema |
