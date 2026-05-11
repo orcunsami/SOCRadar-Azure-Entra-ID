@@ -47,7 +47,12 @@ def fetch(conf: dict, checkpoint: dict) -> list:
 
     all_records = []
     page = resume_page + 1 if resume_page else 1
-    total_pages = 1
+    # Init total_pages so the first loop iteration always runs (real value
+    # comes from the first API response). Using 1 here breaks resume: if
+    # resume_page=100 then page=101 and `page <= total_pages` is False, the
+    # loop never executes, and `finished_all` becomes True erroneously —
+    # checkpoint advances to today and the remaining backlog is lost.
+    total_pages = page
     total_data_count = None
     pages_this_run = 0
 
