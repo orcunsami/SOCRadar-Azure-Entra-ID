@@ -153,7 +153,7 @@ def main():
             not_found = 0
             for rec in fake_botnet:
                 email = rec.get("user", rec.get("email", ""))
-                user = lookup_user(email, graph_headers)
+                user, _status = lookup_user(email, graph_headers)
                 if user:
                     found += 1
                     info(f"  {email} → FOUND (enabled={user.get('accountEnabled')})")

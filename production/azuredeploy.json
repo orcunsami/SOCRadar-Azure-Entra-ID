@@ -203,6 +203,22 @@
             "metadata": {
                 "description": "Resource group of the Log Analytics workspace (for cross-RG deployments). Leave empty if same as deployment RG."
             }
+        },
+        "MaxPagesPerRun": {
+            "type": "int",
+            "defaultValue": 50,
+            "minValue": 1,
+            "maxValue": 1000,
+            "metadata": {
+                "description": "Max pages fetched per source per timer run (page size 100). Default 50 covers most customers. Raise to 100-200 for large backlog imports; keep 50 for steady-state low-volume."
+            }
+        },
+        "RunOnStartup": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Run function immediately on Function App start, in addition to the timer schedule. Default true (recommended for first deploy verification). Set false if you only want scheduled runs."
+            }
         }
     },
     "variables": {
@@ -474,6 +490,14 @@
                         {
                             "name": "AZURE_CLIENT_ID",
                             "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31').clientId]"
+                        },
+                        {
+                            "name": "MAX_PAGES_PER_RUN",
+                            "value": "[string(parameters('MaxPagesPerRun'))]"
+                        },
+                        {
+                            "name": "RUN_ON_STARTUP",
+                            "value": "[string(parameters('RunOnStartup'))]"
                         }
                     ]
                 }
@@ -799,7 +823,7 @@
             "properties": {
                 "azCliVersion": "2.50.0",
                 "retentionInterval": "PT1H",
-                "timeout": "PT5M",
+                "timeout": "PT15M",
                 "scriptContent": "sleep 30 && az functionapp restart --name $FA_NAME --resource-group $RG_NAME && echo 'Function App restarted'",
                 "environmentVariables": [
                     {

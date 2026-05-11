@@ -193,6 +193,28 @@ See [`production/README.md`](production/README.md#parameters) for the full param
 
 ---
 
+## 🏋️ Heavy Backlog Tuning (initial import of months of leaked credentials)
+
+Default settings work for steady-state daily ingestion (~tens to hundreds of new records per day per source). For an **initial deploy with a 3-6 month backlog** (potentially tens of thousands of records), you can speed up backlog ingestion:
+
+| Setting | Default | Heavy backlog value | Effect |
+|---------|---------|---------------------|--------|
+| `PollingIntervalHours` | `6` | **`1`** | Function runs 6× more often → 6× faster backlog drain |
+| `MaxPagesPerRun` | `50` | **`100`** | More pages per run (Function timeout is 10 min — about 24 pages fit per run for slow sources, so 100 is a soft cap; the real cap is the function timeout, which we exit gracefully before reaching) |
+
+After the backlog is caught up (the audit table's `total_records` per run drops to your steady-state volume), restore the defaults:
+
+```bash
+az functionapp config appsettings set \
+  --name <FA> --resource-group <RG> \
+  --settings "POLLING_SCHEDULE=0 0 */6 * * *" "MAX_PAGES_PER_RUN=50"
+az functionapp restart --name <FA> --resource-group <RG>
+```
+
+The function is **timeout-safe**: it tracks elapsed time and exits gracefully ~2 minutes before the function timeout, saving the checkpoint so the next run resumes from where it left off. No record is lost.
+
+---
+
 ## 📊 Microsoft Sentinel Tables
 
 | Table | Source | Schema |

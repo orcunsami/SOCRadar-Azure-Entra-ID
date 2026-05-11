@@ -4,6 +4,7 @@ Uses page + limit pagination with YYYY-MM-DD startDate (date string, not epoch).
 Mixed passwords (some masked, some plaintext) — always sanitize.
 """
 
+import os
 import time
 import logging
 import requests
@@ -18,8 +19,7 @@ logger = get_logger("pii")
 ENDPOINT = "/api/company/{company_id}/dark-web-monitoring/pii-exposure/v2"
 PAGE_SIZE = 100
 
-
-MAX_PAGES_PER_RUN = 50  # Process at most 50 pages per timer run to stay within 10min timeout
+MAX_PAGES_PER_RUN = int(os.environ.get("MAX_PAGES_PER_RUN", "50"))
 
 
 def fetch(conf: dict, checkpoint: dict) -> list:

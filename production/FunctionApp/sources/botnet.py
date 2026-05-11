@@ -5,6 +5,7 @@ Plaintext passwords expected — sanitized immediately.
 Client-side isEmployee filter (server-side not available).
 """
 
+import os
 import time
 import logging
 import requests
@@ -19,8 +20,10 @@ logger = get_logger("botnet")
 ENDPOINT = "/api/company/{company_id}/dark-web-monitoring/botnet-data/v2"
 PAGE_SIZE = 100
 
-
-MAX_PAGES_PER_RUN = 50  # Process at most 50 pages per timer run to stay within 10min timeout
+# Max pages per timer run. Configurable via ARM `MaxPagesPerRun` env var.
+# Function timeout is 10 min (Y1 Consumption hard cap). At ~25s/page, ~24 pages fit.
+# Default 50 is a soft cap; real cap is the function timeout. Raise for heavy backlogs.
+MAX_PAGES_PER_RUN = int(os.environ.get("MAX_PAGES_PER_RUN", "50"))
 
 
 def fetch(conf: dict, checkpoint: dict) -> list:

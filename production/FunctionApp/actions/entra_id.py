@@ -145,32 +145,29 @@ def get_graph_token(tenant_id: str, client_id: str) -> str:
         raise RuntimeError(f"Workload Identity Federation error: {e}")
 
 
-_last_status = 0  # Track last HTTP status for permission detection
-
-
-def lookup_user(email: str, graph_headers: dict) -> dict | None:
+def lookup_user(email: str, graph_headers: dict) -> tuple:
     """
     Look up a user in Entra ID by email (UPN).
-    Returns user dict or None if not found.
-    Sets _last_status for caller to detect 403 (permission denied).
+
+    Returns a tuple (user_dict_or_none, http_status).
+    Status is 0 if the request itself failed (network/timeout).
+    Caller uses status to distinguish 404 (not found) from 403 (permission denied)
+    without relying on module-level state (thread-safe for future MSSP concurrency).
     """
-    global _last_status
     url = f"{GRAPH_BASE}/users/{email}"
     try:
         resp = _graph_request("GET", url, graph_headers, timeout=15)
-        _last_status = resp.status_code
         if resp.status_code == 200:
             logger.debug("[ENTRA] lookup %s → found", email)
-            return resp.json()
+            return resp.json(), 200
         if resp.status_code == 404:
             logger.debug("[ENTRA] lookup %s → not_found", email)
-            return None
+            return None, 404
         logger.warning("[ENTRA] lookup %s → HTTP %d", email, resp.status_code)
-        return None
+        return None, resp.status_code
     except requests.RequestException as e:
         logger.error("[ENTRA] lookup %s → error: %s", email, e)
-        _last_status = 0
-        return None
+        return None, 0
 
 
 def revoke_sessions(user_id: str, graph_headers: dict) -> bool:

@@ -9,6 +9,7 @@ Sources:
   - VIP Protection v2 (UNVERIFIED — no official API docs)
 """
 
+import os
 import time
 import logging
 import azure.functions as func
@@ -29,6 +30,13 @@ from actions import socradar as socradar_api
 
 logger = logging.getLogger(__name__)
 app = func.FunctionApp()
+
+# Time budget per run. Function timeout is 10 min (Y1 Consumption hard cap).
+# Leave ~2 min headroom for cleanup (LAW write + checkpoint save).
+TIME_BUDGET_SECONDS = 8 * 60
+
+# Honour RUN_ON_STARTUP env var (ARM parameter). Default true.
+_RUN_ON_STARTUP = os.environ.get("RUN_ON_STARTUP", "true").strip().lower() in ("true", "1", "yes")
 
 
 def _required_graph_permissions(conf: dict) -> list[tuple[str, str]]:
@@ -56,7 +64,7 @@ def _required_graph_permissions(conf: dict) -> list[tuple[str, str]]:
 @app.timer_trigger(
     schedule="%POLLING_SCHEDULE%",
     arg_name="timer",
-    run_on_startup=True
+    run_on_startup=_RUN_ON_STARTUP
 )
 def socradar_entra_id_import(timer: func.TimerRequest) -> None:
     start_time = time.time()
@@ -135,13 +143,29 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
     audit_results = []
 
     for source_name in sources_to_run:
+        # Per-source time budget gate. If function-level elapsed time already
+        # exceeded the budget, skip remaining sources so cleanup (LAW write,
+        # checkpoint save) can finish within the 10 min function timeout.
+        if time.time() - start_time > TIME_BUDGET_SECONDS:
+            logger.warning(
+                "[%s] Skipped — function time budget (%ds) exhausted before source ran. Will run next timer cycle.",
+                source_name.upper(), TIME_BUDGET_SECONDS
+            )
+            audit_results.append({
+                "source": source_name, "total": 0, "employees": 0,
+                "found": 0, "not_found": 0, "actions": 0, "errors": 0,
+                "duration": 0.0
+            })
+            continue
+
         src_start = time.time()
         try:
             result = _process_source(
                 source_name=source_name,
                 conf=conf,
                 credential=credential,
-                graph_headers=graph_headers
+                graph_headers=graph_headers,
+                function_start_time=start_time
             )
             result["duration"] = round(time.time() - src_start, 1)
             audit_results.append(result)
@@ -168,8 +192,13 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
     logger.info("=== SOCRadar Entra ID Integration finished in %.1fs ===", total_duration)
 
 
-def _process_source(source_name: str, conf: dict, credential, graph_headers: dict) -> dict:
-    """Fetch one source, process each employee credential, return audit dict."""
+def _process_source(source_name: str, conf: dict, credential, graph_headers: dict,
+                    function_start_time: float) -> dict:
+    """Fetch one source, process each employee credential, return audit dict.
+
+    `function_start_time` is the function invocation start time (used for the
+    per-employee time budget check — exits gracefully before function timeout).
+    """
 
     chk = cp.load(conf["storage_account_name"], credential, source_name)
 
@@ -195,6 +224,15 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
     new_checkpoint = employees[-1].get("_checkpoint_update", {}) if employees else {}
 
     for emp in employees:
+        # Per-employee time budget check — graceful exit so LAW write +
+        # checkpoint save finish within the 10 min function timeout.
+        if time.time() - function_start_time > TIME_BUDGET_SECONDS:
+            logger.warning(
+                "[%s] Time budget (%ds) exhausted mid-source. Stopping early — %d records processed so far. Remaining will resume next run.",
+                source_name.upper(), TIME_BUDGET_SECONDS, len(records)
+            )
+            break
+
         try:
             email = emp.get("email") or emp.get("user", "")
             if not email:
@@ -215,10 +253,10 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
                 records.append(emp)
                 continue
 
-            user_info = entra.lookup_user(email, graph_headers)
+            user_info, lookup_status = entra.lookup_user(email, graph_headers)
 
             # Detect permission denied — stop wasting API calls
-            if user_info is None and hasattr(entra, '_last_status') and entra._last_status == 403:
+            if user_info is None and lookup_status == 403:
                 consecutive_403 += 1
                 if consecutive_403 >= 3:
                     logger.warning("[%s] 3 consecutive 403s — disabling Graph lookups for this run (admin consent needed)",

@@ -4,6 +4,7 @@ UNVERIFIED: endpoint not in official API documentation.
 No password field in responses. Entra ID actions limited to lookup + incident.
 """
 
+import os
 import time
 import logging
 import requests
@@ -16,7 +17,7 @@ logger = get_logger("vip")
 
 ENDPOINT = "/api/company/{company_id}/vip-protection/v2"
 PAGE_SIZE = 100
-MAX_PAGES_PER_RUN = 50
+MAX_PAGES_PER_RUN = int(os.environ.get("MAX_PAGES_PER_RUN", "50"))
 
 
 def fetch(conf: dict, checkpoint: dict) -> list:
