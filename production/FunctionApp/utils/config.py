@@ -29,9 +29,42 @@ def _int(key: str, default: int = 0) -> int:
         return default
 
 
+def _list(key: str, default: str = "") -> list:
+    """Parse a comma-separated env value into a list of stripped non-empty strings."""
+    raw = os.environ.get(key, default).strip()
+    if not raw:
+        return []
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+
+def resolve_tenants(conf: dict) -> list:
+    """Return ordered list of tenant IDs to query for Graph lookups.
+
+    Priority:
+      1. ENTRA_TENANT_IDS (CSV)       — multi-tenant mode
+      2. ENTRA_TENANT_ID (single)     — single-tenant backward compat
+      3. []                           — Graph lookups disabled
+    """
+    if conf.get("tenant_ids"):
+        return list(conf["tenant_ids"])
+    if conf.get("tenant_id"):
+        return [conf["tenant_id"]]
+    return []
+
+
 def load() -> dict:
     """Load and validate all configuration. Raises EnvironmentError on missing required settings."""
     user_lookup = _bool("ENABLE_USER_LOOKUP", True)
+
+    # Validate tenant config when user_lookup is enabled: at least one of
+    # ENTRA_TENANT_IDS (CSV) or ENTRA_TENANT_ID (single) must be set.
+    if user_lookup:
+        tenant_ids_raw = os.environ.get("ENTRA_TENANT_IDS", "").strip()
+        tenant_id_raw = os.environ.get("ENTRA_TENANT_ID", "").strip()
+        if not tenant_ids_raw and not tenant_id_raw:
+            raise EnvironmentError(
+                "Required App Setting missing: ENTRA_TENANT_IDS (or legacy ENTRA_TENANT_ID)"
+            )
 
     return {
         # SOCRadar API
@@ -47,7 +80,14 @@ def load() -> dict:
         # Entra ID — identifiers only, NO secret.
         # Graph auth uses Workload Identity Federation: UAMI → App Registration.
         # Permissions managed in portal (App Registration → API permissions).
-        "tenant_id":     _get("ENTRA_TENANT_ID", required=user_lookup),
+        #
+        # Multi-tenant: ENTRA_TENANT_IDS (CSV) is the primary path; the customer's
+        # multi-tenant App Registration lives in the first ("primary") tenant and
+        # is consented in the others. Each lookup tries tenants in order, first
+        # match wins. ENTRA_TENANT_ID (single) is retained for backward compat —
+        # see resolve_tenants() in this module.
+        "tenant_ids":    _list("ENTRA_TENANT_IDS"),
+        "tenant_id":     _get("ENTRA_TENANT_ID", default=""),
         "client_id":     _get("ENTRA_CLIENT_ID", required=user_lookup),
 
         # Action toggles

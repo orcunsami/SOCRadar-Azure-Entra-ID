@@ -41,16 +41,24 @@
                 "description": "SOCRadar Platform Base URL"
             }
         },
+        "EntraIdTenantIds": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Comma-separated Microsoft Entra ID Tenant IDs to query for compromised users. The first tenant in the list is the 'primary' — its admin owns the multi-tenant App Registration and the UAMI Federated Identity Credential. Additional tenants must consent the same App Registration (signInAudience=AzureADMultipleOrgs). For single-tenant deployments, leave this empty and set EntraIdTenantId instead."
+            }
+        },
         "EntraIdTenantId": {
             "type": "string",
+            "defaultValue": "",
             "metadata": {
-                "description": "Microsoft Entra ID Tenant ID. Used for Workload Identity Federation (UAMI → App Registration). No secret needed."
+                "description": "Legacy single-tenant ID. Only used when EntraIdTenantIds is empty (backward compat). New deployments should use EntraIdTenantIds."
             }
         },
         "EntraIdClientId": {
             "type": "string",
             "metadata": {
-                "description": "App Registration Client ID (the one with Graph permissions configured in portal). Auth is secretless via Managed Identity + Federated Identity Credential."
+                "description": "App Registration Client ID (multi-tenant App: signInAudience=AzureADMultipleOrgs). Same ID across all tenants. Auth is secretless via Managed Identity + Federated Identity Credential on the primary tenant's app object."
             }
         },
         "SecurityGroupId": {
@@ -372,6 +380,10 @@
                             "value": "[parameters('SocradarCompanyId')]"
                         },
                         {
+                            "name": "ENTRA_TENANT_IDS",
+                            "value": "[parameters('EntraIdTenantIds')]"
+                        },
+                        {
                             "name": "ENTRA_TENANT_ID",
                             "value": "[parameters('EntraIdTenantId')]"
                         },
@@ -556,6 +568,7 @@
                         {"name": "is_plaintext", "type": "boolean"},
                         {"name": "password", "type": "string"},
                         {"name": "entra_status", "type": "string"},
+                        {"name": "entra_tenant_id", "type": "string"},
                         {"name": "entra_account_enabled", "type": "boolean"},
                         {"name": "severity", "type": "string"},
                         {"name": "actions_taken", "type": "dynamic"},
@@ -588,6 +601,7 @@
                         {"name": "is_plaintext", "type": "boolean"},
                         {"name": "password", "type": "string"},
                         {"name": "entra_status", "type": "string"},
+                        {"name": "entra_tenant_id", "type": "string"},
                         {"name": "entra_account_enabled", "type": "boolean"},
                         {"name": "severity", "type": "string"},
                         {"name": "actions_taken", "type": "dynamic"},
@@ -621,6 +635,7 @@
                         {"name": "password_masked", "type": "string"},
                         {"name": "is_plaintext", "type": "boolean"},
                         {"name": "entra_status", "type": "string"},
+                        {"name": "entra_tenant_id", "type": "string"},
                         {"name": "entra_account_enabled", "type": "boolean"},
                         {"name": "severity", "type": "string"},
                         {"name": "actions_taken", "type": "dynamic"}
@@ -689,6 +704,7 @@
                             {"name": "is_plaintext", "type": "boolean"},
                             {"name": "password", "type": "string"},
                             {"name": "entra_status", "type": "string"},
+                            {"name": "entra_tenant_id", "type": "string"},
                             {"name": "entra_account_enabled", "type": "boolean"},
                             {"name": "severity", "type": "string"},
                             {"name": "actions_taken", "type": "dynamic"},
@@ -711,6 +727,7 @@
                             {"name": "is_plaintext", "type": "boolean"},
                             {"name": "password", "type": "string"},
                             {"name": "entra_status", "type": "string"},
+                            {"name": "entra_tenant_id", "type": "string"},
                             {"name": "entra_account_enabled", "type": "boolean"},
                             {"name": "severity", "type": "string"},
                             {"name": "actions_taken", "type": "dynamic"},
@@ -734,6 +751,7 @@
                             {"name": "password_masked", "type": "string"},
                             {"name": "is_plaintext", "type": "boolean"},
                             {"name": "entra_status", "type": "string"},
+                            {"name": "entra_tenant_id", "type": "string"},
                             {"name": "entra_account_enabled", "type": "boolean"},
                             {"name": "severity", "type": "string"},
                             {"name": "actions_taken", "type": "dynamic"}

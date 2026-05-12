@@ -222,4 +222,57 @@ SOCRadar_EntraID_Audit_CL
 | order by TimeGenerated desc
 ```
 
+---
+
+## 13. Multi-tenant errors
+
+This integration can monitor multiple Entra ID tenants from a single
+deployment (see [multi-tenant-setup.md](./multi-tenant-setup.md)). The
+following errors are specific to that mode.
+
+### "Users in tenant X are always reported as not_found"
+
+The admin in tenant X has not consented the multi-tenant App Registration.
+Send them:
+
+```
+https://login.microsoftonline.com/{TENANT_X_ID}/adminconsent?client_id={APP_CLIENT_ID}
+```
+
+After they click **Accept**, a service principal for the app appears in
+tenant X's **Enterprise applications**. Subsequent runs find users there.
+
+### `AADSTS700016` "Application not found in the directory"
+
+Same as above — the admin in that tenant has not consented. If consent
+succeeded but the error persists, verify the App Registration's
+`signInAudience` in the **primary** tenant is `AzureADMultipleOrgs`. A
+single-tenant app cannot be consented elsewhere.
+
+### `AADSTS70001` "Application disabled in tenant"
+
+A tenant admin disabled the service principal in their Enterprise
+applications. Ask them to re-enable it.
+
+### `consent_revoked` event repeating for one tenant
+
+That tenant's admin revoked the app's consent. The integration logs the
+event once per run and stops trying that tenant for the rest of the run,
+but the next run starts fresh. Re-consent the app or remove that tenant ID
+from `EntraIdTenantIds` to stop the noise.
+
+### Workbook `TenantId` dropdown is empty
+
+The dropdown is query-driven — it populates from distinct `entra_tenant_id`
+values in the source tables. If no record has been written yet (fresh
+deployment), the dropdown is empty. Wait for the first poll cycle to
+complete, or query a source table directly to verify ingestion is
+happening.
+
+### Same user found in multiple tenants
+
+The integration takes a "first match wins" approach: tenants are tried in
+the order given in `EntraIdTenantIds`, and only the first tenant where the
+user is found is acted upon. Reorder the CSV to change priority.
+
 Attach all four to the support ticket.

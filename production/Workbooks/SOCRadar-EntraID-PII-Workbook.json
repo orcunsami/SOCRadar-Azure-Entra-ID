@@ -4,9 +4,35 @@
     {
       "type": 1,
       "content": {
-        "json": "## SOCRadar Entra ID — PII Exposure Dashboard\nEmployee credentials found in PII data breaches, enriched with Microsoft Entra ID lookup and remediation actions."
+        "json": "## SOCRadar Entra ID \u2014 PII Exposure Dashboard\nEmployee credentials found in PII data breaches, enriched with Microsoft Entra ID lookup and remediation actions."
       },
       "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "tenant-id-param",
+            "version": "KqlParameterItem/1.0",
+            "name": "TenantId",
+            "label": "Entra ID Tenant",
+            "type": 2,
+            "isRequired": true,
+            "value": "All",
+            "typeSettings": {
+              "additionalResourceOptions": [],
+              "includeAll": false,
+              "showDefault": false
+            },
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "query": "union isfuzzy=true SOCRadar_PII_CL\n| where isnotempty(entra_tenant_id)\n| distinct entra_tenant_id\n| project value = entra_tenant_id, label = entra_tenant_id\n| union (datatable(value:string, label:string)['All','All'])\n| order by label asc"
+          }
+        ]
+      },
+      "name": "parameters - tenant"
     },
     {
       "type": 1,
@@ -19,14 +45,20 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| count\n| project Count",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| count\n| project Count",
         "size": 4,
         "title": "Total Records",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
         "visualization": "tiles",
         "tileSettings": {
-          "titleContent": { "columnMatch": "Count", "formatter": 12, "formatOptions": { "palette": "auto" } },
+          "titleContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "auto"
+            }
+          },
           "showBorder": false
         }
       },
@@ -37,14 +69,20 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| where entra_status == \"found\"\n| count\n| project Count",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where entra_status == \"found\"\n| count\n| project Count",
         "size": 4,
         "title": "Found in Entra ID",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
         "visualization": "tiles",
         "tileSettings": {
-          "titleContent": { "columnMatch": "Count", "formatter": 12, "formatOptions": { "palette": "redBright" } },
+          "titleContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "redBright"
+            }
+          },
           "showBorder": false
         }
       },
@@ -55,14 +93,20 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| where entra_status == \"compromised\"\n| count\n| project Count",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where entra_status == \"compromised\"\n| count\n| project Count",
         "size": 4,
         "title": "Confirmed Compromised",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
         "visualization": "tiles",
         "tileSettings": {
-          "titleContent": { "columnMatch": "Count", "formatter": 12, "formatOptions": { "palette": "red" } },
+          "titleContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "red"
+            }
+          },
           "showBorder": false
         }
       },
@@ -73,14 +117,20 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| where password_present == true\n| count\n| project Count",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where password_present == true\n| count\n| project Count",
         "size": 4,
         "title": "With Password",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
         "visualization": "tiles",
         "tileSettings": {
-          "titleContent": { "columnMatch": "Count", "formatter": 12, "formatOptions": { "palette": "orange" } },
+          "titleContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "orange"
+            }
+          },
           "showBorder": false
         }
       },
@@ -98,7 +148,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| summarize Count=count() by entra_status\n| order by Count desc",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| summarize Count=count() by entra_status\n| order by Count desc",
         "size": 2,
         "title": "Entra ID Status",
         "queryType": 0,
@@ -112,7 +162,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| summarize Count=count() by source_name\n| order by Count desc\n| take 10",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| summarize Count=count() by source_name\n| order by Count desc\n| take 10",
         "size": 2,
         "title": "Top Breach Sources",
         "queryType": 0,
@@ -126,7 +176,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| where password_present == true\n| summarize Count=count() by is_plaintext\n| extend PasswordType = iff(is_plaintext == true, \"Plaintext\", \"Masked\")\n| project PasswordType, Count",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where password_present == true\n| summarize Count=count() by is_plaintext\n| extend PasswordType = iff(is_plaintext == true, \"Plaintext\", \"Masked\")\n| project PasswordType, Count",
         "size": 2,
         "title": "Password Type Distribution",
         "queryType": 0,
@@ -140,7 +190,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| where isnotempty(breach_date)\n| summarize Count=count() by breach_date\n| order by breach_date asc",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where isnotempty(breach_date)\n| summarize Count=count() by breach_date\n| order by breach_date asc",
         "size": 0,
         "title": "Records by Breach Date",
         "queryType": 0,
@@ -154,7 +204,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| summarize Count=count() by bin(TimeGenerated, 1d)\n| order by TimeGenerated asc",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| summarize Count=count() by bin(TimeGenerated, 1d)\n| order by TimeGenerated asc",
         "size": 0,
         "title": "Discovery Over Time",
         "queryType": 0,
@@ -174,7 +224,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SOCRadar_PII_CL\n| project TimeGenerated, email, entra_status, password_present, is_plaintext, source_name, breach_date, actions_taken\n| order by TimeGenerated desc\n| take 50",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| project TimeGenerated, email, entra_status, password_present, is_plaintext, source_name, breach_date, actions_taken\n| order by TimeGenerated desc\n| take 50",
         "size": 0,
         "title": "Recent PII Records",
         "queryType": 0,
@@ -182,6 +232,19 @@
         "visualization": "table"
       },
       "name": "recent-records"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "SOCRadar_PII_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where isnotempty(entra_tenant_id)\n| extend src = case(Type == 'SOCRadar_Botnet_CL', 'Botnet', Type == 'SOCRadar_PII_CL', 'PII', Type == 'SOCRadar_VIP_CL', 'VIP', 'Other')\n| summarize Records=count(), Found=countif(entra_status == 'found'), Compromised=countif(entra_status == 'compromised') by entra_tenant_id, src\n| order by Records desc",
+        "size": 1,
+        "title": "Tenant Breakdown",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table"
+      },
+      "name": "tenant-breakdown"
     }
   ],
   "isLocked": false,

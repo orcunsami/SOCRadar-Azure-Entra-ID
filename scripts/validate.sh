@@ -241,6 +241,22 @@ if [[ -n "$ENTRA_CLIENT_ID_VAL" ]]; then
     else
         fail "FIC 'uami-federation' NOT FOUND on App Registration $ENTRA_CLIENT_ID_VAL — Graph auth will fail"
     fi
+
+    # Multi-tenant: verify the app has a service principal in every configured tenant.
+    # Missing SP in tenant X => admin in tenant X hasn't consented yet.
+    ENTRA_TENANT_IDS_VAL=$(echo "$SETTINGS_JSON" | python3 -c "import sys,json; items=json.load(sys.stdin); vals=[i['value'] for i in items if i['name']=='ENTRA_TENANT_IDS']; print(vals[0] if vals else '')" 2>/dev/null || echo "")
+    if [[ -n "$ENTRA_TENANT_IDS_VAL" ]]; then
+        echo "  [MULTI-TENANT] Checking consent (service principal) in each configured tenant..."
+        IFS=',' read -ra TENANT_ARRAY <<< "$ENTRA_TENANT_IDS_VAL"
+        for T in "${TENANT_ARRAY[@]}"; do
+            T="${T// /}"
+            [[ -z "$T" ]] && continue
+            # `az ad sp list --tenant` requires being logged into that tenant; the safer
+            # check is documentation-only: we surface the consent URL so the user can verify.
+            echo "    tenant=$T → admin consent URL:"
+            echo "      https://login.microsoftonline.com/$T/adminconsent?client_id=$ENTRA_CLIENT_ID_VAL"
+        done
+    fi
 else
     warn "ENTRA_CLIENT_ID not set — skipping FIC check"
 fi

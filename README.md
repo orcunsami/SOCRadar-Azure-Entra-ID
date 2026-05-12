@@ -46,8 +46,9 @@ Click the badge above ↑. Azure Portal opens with the ARM template. Fill in:
 | **WorkspaceLocation** | Same region as your workspace (e.g. `northeurope`) |
 | **SocradarApiKey** | SOCRadar Platform → Settings → API → copy the platform key |
 | **SocradarCompanyId** | SOCRadar Platform → Settings → Company → company ID number |
-| **EntraIdTenantId** | Azure Portal → Microsoft Entra ID → Overview → Tenant ID |
-| **EntraIdClientId** | App Registration's Application (client) ID (see [App Registration setup](#-app-registration-setup) below) |
+| **EntraIdTenantIds** | One or more Entra ID Tenant IDs (comma-separated). The first ID is the "primary" tenant — where the multi-tenant App Registration and its Federated Identity Credential live. Additional IDs are tenants whose admins consent the same app (no extra FIC required). For single-tenant deployments leave empty and use `EntraIdTenantId`. See [Multi-Tenant Setup](docs/multi-tenant-setup.md). |
+| **EntraIdTenantId** | Legacy single-tenant ID. Use only if `EntraIdTenantIds` is empty (backward compat). |
+| **EntraIdClientId** | App Registration's Application (client) ID (see [App Registration setup](#-app-registration-setup) below). For multi-tenant, this is the same ID across every tenant. |
 | **SecurityGroupId** | Optional: quarantine group's Object ID (required only if `EnableAddToGroup=true`) |
 
 Click "Review + create" → "Create". Deployment takes ~3 minutes.
@@ -63,7 +64,7 @@ az deployment group create \
     WorkspaceLocation="northeurope" \
     SocradarApiKey="<platform-key>" \
     SocradarCompanyId="<company-id>" \
-    EntraIdTenantId="<tenant-id>" \
+    EntraIdTenantIds="<primary-tenant-id>,<secondary-tenant-id>" \
     EntraIdClientId="<app-client-id>" \
     SecurityGroupId="<group-id-or-empty>"
 ```
@@ -89,7 +90,9 @@ The integration uses **Workload Identity Federation** — secretless auth. You n
 
 Azure Portal → Microsoft Entra ID → App registrations → **New registration**
 - Name: `SOCRadar Entra ID Integration`
-- Supported account types: **Single tenant**
+- Supported account types:
+  - **Single tenant** — if you only monitor one Entra ID directory.
+  - **Multi-tenant** (`Accounts in any organizational directory`) — if you monitor multiple Entra tenants from one deployment. See [Multi-Tenant Setup](docs/multi-tenant-setup.md) before choosing this.
 - Redirect URI: leave empty
 - Click **Register**
 

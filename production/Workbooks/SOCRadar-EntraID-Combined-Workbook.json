@@ -9,6 +9,32 @@
       "name": "header"
     },
     {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "tenant-id-param",
+            "version": "KqlParameterItem/1.0",
+            "name": "TenantId",
+            "label": "Entra ID Tenant",
+            "type": 2,
+            "isRequired": true,
+            "value": "All",
+            "typeSettings": {
+              "additionalResourceOptions": [],
+              "includeAll": false,
+              "showDefault": false
+            },
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where isnotempty(entra_tenant_id)\n| distinct entra_tenant_id\n| project value = entra_tenant_id, label = entra_tenant_id\n| union (datatable(value:string, label:string)['All','All'])\n| order by label asc"
+          }
+        ]
+      },
+      "name": "parameters - tenant"
+    },
+    {
       "type": 1,
       "content": {
         "json": "---\n### Overall Overview"
@@ -19,7 +45,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| count\n| project Count",
+        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| count\n| project Count",
         "size": 4,
         "title": "Total Records (All Sources)",
         "queryType": 0,
@@ -43,7 +69,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where entra_status == \"found\"\n| count\n| project Count",
+        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where entra_status == \"found\"\n| count\n| project Count",
         "size": 4,
         "title": "Employees Found in Entra ID",
         "queryType": 0,
@@ -67,7 +93,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where entra_status == \"compromised\"\n| count\n| project Count",
+        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where entra_status == \"compromised\"\n| count\n| project Count",
         "size": 4,
         "title": "Confirmed Compromised",
         "queryType": 0,
@@ -226,6 +252,19 @@
         "visualization": "table"
       },
       "name": "high-risk-accounts"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where isnotempty(entra_tenant_id)\n| extend src = case(Type == 'SOCRadar_Botnet_CL', 'Botnet', Type == 'SOCRadar_PII_CL', 'PII', Type == 'SOCRadar_VIP_CL', 'VIP', 'Other')\n| summarize Records=count(), Found=countif(entra_status == 'found'), Compromised=countif(entra_status == 'compromised') by entra_tenant_id, src\n| order by Records desc",
+        "size": 1,
+        "title": "Tenant Breakdown",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table"
+      },
+      "name": "tenant-breakdown"
     }
   ],
   "isLocked": false,

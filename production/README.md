@@ -25,21 +25,23 @@ az deployment group create \
     WorkspaceLocation="northeurope" \
     SocradarApiKey="your-platform-key" \
     SocradarCompanyId="your-company-id" \
-    EntraIdTenantId="your-tenant-id" \
+    EntraIdTenantIds="primary-tenant-id,secondary-tenant-id" \
     EntraIdClientId="your-app-client-id" \
     SecurityGroupId="your-security-group-object-id"
 ```
+
+For single-tenant deployments, set `EntraIdTenantId` (singular) instead and leave `EntraIdTenantIds` empty.
 
 ## Authentication (Secretless)
 
 This integration uses **Workload Identity Federation** — no client secret, no password rotation:
 
 1. ARM template creates a **User-Assigned Managed Identity** (UAMI) automatically
-2. UAMI is linked to the App Registration via **Federated Identity Credential** (FIC)
+2. UAMI is linked to the App Registration via **one Federated Identity Credential** (FIC) on the primary tenant's App Registration
 3. Graph permissions are managed through the portal: App Registration → API permissions → Grant admin consent
 4. No `ENTRA_CLIENT_SECRET` is needed — auth is fully secretless
 
-**What you provide**: `ENTRA_TENANT_ID` (your tenant) + `ENTRA_CLIENT_ID` (your App Registration's Client ID). These are identifiers, not secrets.
+**What you provide**: `ENTRA_TENANT_IDS` (comma-separated list of tenants to monitor) + `ENTRA_CLIENT_ID` (your App Registration's Client ID, marked multi-tenant if monitoring more than one tenant). These are identifiers, not secrets. See [Multi-Tenant Setup](docs/multi-tenant-setup.md) for the consent flow when monitoring more than one Entra directory.
 
 ## App Registration Permissions
 
@@ -77,8 +79,9 @@ The deployment is designed so that each Entra action is configurable independent
 | `WorkspaceLocation` | Workspace region |
 | `SocradarApiKey` | SOCRadar platform API key |
 | `SocradarCompanyId` | SOCRadar company ID |
-| `EntraIdTenantId` | Microsoft Entra tenant ID |
-| `EntraIdClientId` | App Registration client ID |
+| `EntraIdTenantIds` | CSV of Microsoft Entra tenant IDs (primary first). See [multi-tenant-setup.md](docs/multi-tenant-setup.md). |
+| `EntraIdTenantId` | (Legacy) Single Entra tenant ID — used only when `EntraIdTenantIds` is empty. |
+| `EntraIdClientId` | App Registration client ID. For multi-tenant deployments this is the same client ID across every tenant. |
 
 ### Sources
 

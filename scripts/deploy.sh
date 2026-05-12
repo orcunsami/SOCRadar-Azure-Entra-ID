@@ -28,7 +28,21 @@ fi
 : "${SOCRADAR_API_KEY:?SOCRADAR_API_KEY is required}"
 : "${SOCRADAR_COMPANY_ID:?SOCRADAR_COMPANY_ID is required}"
 # Entra ID identifiers (NO secret — auth is secretless via UAMI + FIC)
-: "${ENTRA_TENANT_ID:?ENTRA_TENANT_ID is required}"
+# Multi-tenant: set ENTRA_TENANT_IDS (CSV) for N-tenant lookups; falls back to
+# the legacy single ENTRA_TENANT_ID if ENTRA_TENANT_IDS is empty.
+ENTRA_TENANT_IDS="${ENTRA_TENANT_IDS:-}"
+ENTRA_TENANT_ID="${ENTRA_TENANT_ID:-}"
+if [[ -z "$ENTRA_TENANT_IDS" && -z "$ENTRA_TENANT_ID" ]]; then
+    echo "[!] One of ENTRA_TENANT_IDS (CSV) or ENTRA_TENANT_ID (single) is required" >&2
+    exit 1
+fi
+# Primary tenant = first in CSV (or single ENTRA_TENANT_ID)
+if [[ -n "$ENTRA_TENANT_IDS" ]]; then
+    PRIMARY_TENANT_ID="${ENTRA_TENANT_IDS%%,*}"
+    PRIMARY_TENANT_ID="${PRIMARY_TENANT_ID// /}"
+else
+    PRIMARY_TENANT_ID="$ENTRA_TENANT_ID"
+fi
 : "${ENTRA_CLIENT_ID:?ENTRA_CLIENT_ID is required}"
 
 # ---- Optional variables with defaults ----
@@ -139,6 +153,7 @@ DEPLOY_OUTPUT=$(az deployment group create \
         SocradarApiKey="$SOCRADAR_API_KEY" \
         SocradarCompanyId="$SOCRADAR_COMPANY_ID" \
         SocradarBaseUrl="$SOCRADAR_BASE_URL" \
+        EntraIdTenantIds="$ENTRA_TENANT_IDS" \
         EntraIdTenantId="$ENTRA_TENANT_ID" \
         EntraIdClientId="$ENTRA_CLIENT_ID" \
         SecurityGroupId="$SECURITY_GROUP_ID" \
@@ -299,11 +314,16 @@ deploy_workbook "$WORKBOOKS_DIR/SOCRadar-EntraID-VIP-Workbook.json"      "socrad
 deploy_workbook "$WORKBOOKS_DIR/SOCRadar-EntraID-Combined-Workbook.json" "socradar-entraid-combined" "SOCRadar Entra ID — Combined Dashboard"
 
 # ---- Update FIC (Federated Identity Credential) ----
+# Multi-tenant model: ONE FIC on the primary tenant's App Registration is
+# enough. The FIC trusts the UAMI's token issuer (subscription tenant). When
+# the same app is consented in additional tenants, a service principal is
+# created automatically — those tenants do NOT need their own FIC, because
+# the SP simply represents the same logical app + permissions in that tenant.
 echo ""
-echo "[7/8] Updating Federated Identity Credential..."
+echo "[7/8] Updating Federated Identity Credential (single FIC, primary tenant only)..."
 
 UAMI_PRINCIPAL=$(az identity show --name "SOCRadar-EntraID-MI" --resource-group "$RESOURCE_GROUP" --query "principalId" -o tsv 2>/dev/null || echo "")
-TENANT_ID_VAL=$(az account show --query tenantId -o tsv)
+SUBSCRIPTION_TENANT_ID=$(az account show --query tenantId -o tsv)
 
 if [[ -z "$UAMI_PRINCIPAL" ]]; then
     echo "  WARN: Could not get UAMI principal ID — FIC not updated"
@@ -318,15 +338,35 @@ else
             az ad app federated-credential delete --id "$ENTRA_CLIENT_ID" --federated-credential-id "uami-federation" 2>/dev/null || true
         fi
         echo "  Creating FIC: UAMI $UAMI_PRINCIPAL → App Registration $ENTRA_CLIENT_ID"
+        echo "  Issuer (subscription tenant): $SUBSCRIPTION_TENANT_ID"
         az ad app federated-credential create \
             --id "$ENTRA_CLIENT_ID" \
             --parameters "{
                 \"name\": \"uami-federation\",
-                \"issuer\": \"https://login.microsoftonline.com/$TENANT_ID_VAL/v2.0\",
+                \"issuer\": \"https://login.microsoftonline.com/$SUBSCRIPTION_TENANT_ID/v2.0\",
                 \"subject\": \"$UAMI_PRINCIPAL\",
                 \"audiences\": [\"api://AzureADTokenExchange\"],
                 \"description\": \"UAMI to App Registration federation for secretless Graph access\"
             }" -o none 2>/dev/null && echo "  FIC created successfully" || echo "  WARN: FIC creation failed — may need admin privileges"
+    fi
+fi
+
+# Multi-tenant: warn about consent steps for additional tenants
+if [[ -n "$ENTRA_TENANT_IDS" ]]; then
+    SECONDARY_TENANTS="${ENTRA_TENANT_IDS#*,}"
+    if [[ "$SECONDARY_TENANTS" != "$ENTRA_TENANT_IDS" ]]; then
+        echo ""
+        echo "  [MULTI-TENANT] Additional tenants detected:"
+        IFS=',' read -ra TENANT_ARRAY <<< "$ENTRA_TENANT_IDS"
+        for i in "${!TENANT_ARRAY[@]}"; do
+            T="${TENANT_ARRAY[$i]// /}"
+            if [[ $i -eq 0 ]]; then
+                echo "    [primary] $T  ← FIC + App Registration here"
+            else
+                echo "    [+]       $T  ← admin must consent the app:"
+                echo "              https://login.microsoftonline.com/$T/adminconsent?client_id=$ENTRA_CLIENT_ID"
+            fi
+        done
     fi
 fi
 

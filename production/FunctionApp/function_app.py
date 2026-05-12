@@ -76,8 +76,13 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
     conf = cfg.load()
     credential = DefaultAzureCredential()
 
-    # Get Entra ID token once — shared across all sources
-    graph_headers = None
+    # Get Entra ID tokens — one per configured tenant. The first tenant in the
+    # list owns the multi-tenant App Registration + FIC; the others are
+    # consented by their admins so a service principal exists for our app_id
+    # in each tenant. lookup_user() will try tenants in order, first match wins.
+    tenant_headers_map = {}  # ordered dict: tenant_id -> graph_headers
+    tenants = cfg.resolve_tenants(conf)
+
     for permission, reason in _required_graph_permissions(conf):
         logger.info("[ENTRA] Config requires %s — %s", permission, reason)
 
@@ -99,35 +104,42 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
         )):
             logger.warning("[ENTRA] One or more Entra action toggles are enabled, but they cannot run while EnableUserLookup=false")
     else:
-        try:
-            graph_token = entra.get_graph_token(
-                tenant_id=conf["tenant_id"],
-                client_id=conf["client_id"]
-            )
-            graph_headers = {
-                "Authorization": f"Bearer {graph_token}",
-                "Content-Type": "application/json"
-            }
-        except entra.ConsentRevokedError as e:
-            logger.error(
-                "[ENTRA] Consent issue for tenant %s (%s): %s — Entra ID actions will be skipped",
-                e.tenant_id, e.aadsts_code, e
-            )
-            law.write_lifecycle_event(
-                conf,
-                event_type="consent_revoked",
-                tenant_id=e.tenant_id,
-                details=str(e),
-                extra={"aadsts_code": e.aadsts_code}
-            )
-        except Exception as e:
-            logger.error("[ENTRA] Failed to acquire Graph token — Entra ID actions will be skipped: %s", e)
-            law.write_lifecycle_event(
-                conf,
-                event_type="token_acquisition_failed",
-                tenant_id=conf.get("tenant_id", ""),
-                details=str(e)[:500]
-            )
+        logger.info("[ENTRA] Multi-tenant lookup configured for %d tenant(s): %s",
+                    len(tenants), ", ".join(tenants))
+        for tenant_id in tenants:
+            try:
+                graph_token = entra.get_graph_token(
+                    tenant_id=tenant_id,
+                    client_id=conf["client_id"]
+                )
+                tenant_headers_map[tenant_id] = {
+                    "Authorization": f"Bearer {graph_token}",
+                    "Content-Type": "application/json"
+                }
+            except entra.ConsentRevokedError as e:
+                logger.error(
+                    "[ENTRA] Consent issue for tenant %s (%s): %s — this tenant will be skipped",
+                    e.tenant_id, e.aadsts_code, e
+                )
+                law.write_lifecycle_event(
+                    conf,
+                    event_type="consent_revoked",
+                    tenant_id=e.tenant_id,
+                    details=str(e),
+                    extra={"aadsts_code": e.aadsts_code}
+                )
+            except Exception as e:
+                logger.error("[ENTRA] Failed to acquire Graph token for tenant %s — this tenant will be skipped: %s",
+                             tenant_id, e)
+                law.write_lifecycle_event(
+                    conf,
+                    event_type="token_acquisition_failed",
+                    tenant_id=tenant_id,
+                    details=str(e)[:500]
+                )
+
+        if not tenant_headers_map:
+            logger.error("[ENTRA] No tenant produced a usable token — all Entra ID actions will be skipped this run")
 
     sources_to_run = []
     if conf["enable_botnet_source"]:
@@ -164,7 +176,7 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
                 source_name=source_name,
                 conf=conf,
                 credential=credential,
-                graph_headers=graph_headers,
+                tenant_headers_map=tenant_headers_map,
                 function_start_time=start_time
             )
             result["duration"] = round(time.time() - src_start, 1)
@@ -192,9 +204,14 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
     logger.info("=== SOCRadar Entra ID Integration finished in %.1fs ===", total_duration)
 
 
-def _process_source(source_name: str, conf: dict, credential, graph_headers: dict,
+def _process_source(source_name: str, conf: dict, credential, tenant_headers_map: dict,
                     function_start_time: float) -> dict:
     """Fetch one source, process each employee credential, return audit dict.
+
+    `tenant_headers_map` is an ordered dict {tenant_id: graph_headers}. For each
+    employee, lookup_user is tried against each tenant in order; first match wins
+    and all subsequent actions run against that tenant's headers. The tenant in
+    which the user was found is recorded as `entra_tenant_id` on the record.
 
     `function_start_time` is the function invocation start time (used for the
     per-employee time budget check — exits gracefully before function timeout).
@@ -216,8 +233,10 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
 
     found = not_found = actions = errors = 0
     records = []
-    graph_disabled = graph_headers is None
-    consecutive_403 = 0
+    # Per-tenant 403 counter: if a tenant returns 403 three times in a row,
+    # drop it from the lookup map (admin consent missing — no point retrying).
+    # Healthy tenants in the same map continue to function.
+    tenant_403_counts = {tid: 0 for tid in tenant_headers_map}
 
     # Extract checkpoint before the loop — it sits on the last record and
     # will be popped from emp before appending to LAW records below.
@@ -241,38 +260,59 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
             # User lookup in Entra ID (skipped if Graph token unavailable or permissions missing)
             if not conf["enable_user_lookup"]:
                 emp["entra_status"] = "skipped_user_lookup_disabled"
+                emp["entra_tenant_id"] = ""
                 emp["actions_taken"] = []
                 emp.pop("_checkpoint_update", None)
                 records.append(emp)
                 continue
 
-            if graph_disabled:
+            if not tenant_headers_map:
                 emp["entra_status"] = "skipped_no_token"
+                emp["entra_tenant_id"] = ""
                 emp["actions_taken"] = []
                 emp.pop("_checkpoint_update", None)
                 records.append(emp)
                 continue
 
-            user_info, lookup_status = entra.lookup_user(email, graph_headers)
+            # Multi-tenant lookup: try each tenant in order, first match wins.
+            user_info = None
+            lookup_status = None
+            found_tenant = None
+            for tenant_id in list(tenant_headers_map.keys()):
+                headers = tenant_headers_map[tenant_id]
+                u, status = entra.lookup_user(email, headers)
+                if u is not None:
+                    user_info = u
+                    lookup_status = status
+                    found_tenant = tenant_id
+                    tenant_403_counts[tenant_id] = 0  # reset on any success
+                    break
+                if status == 403:
+                    tenant_403_counts[tenant_id] = tenant_403_counts.get(tenant_id, 0) + 1
+                    if tenant_403_counts[tenant_id] >= 3:
+                        logger.warning(
+                            "[%s] Tenant %s returned 3 consecutive 403s — dropping from lookup map (admin consent likely missing)",
+                            source_name.upper(), tenant_id
+                        )
+                        tenant_headers_map.pop(tenant_id, None)
+                else:
+                    # Non-403 miss (e.g. 404 not_found): tenant is healthy.
+                    tenant_403_counts[tenant_id] = 0
+                lookup_status = status  # last seen status
 
-            # Detect permission denied — stop wasting API calls
-            if user_info is None and lookup_status == 403:
-                consecutive_403 += 1
-                if consecutive_403 >= 3:
-                    logger.warning("[%s] 3 consecutive 403s — disabling Graph lookups for this run (admin consent needed)",
-                                   source_name.upper())
-                    graph_disabled = True
-                    emp["entra_status"] = "skipped_no_permission"
-                    emp["actions_taken"] = []
-                    emp.pop("_checkpoint_update", None)
-                    records.append(emp)
-                    continue
-            else:
-                consecutive_403 = 0
+            # Fully exhausted lookup map (all tenants 403'd out mid-loop)
+            if not tenant_headers_map and user_info is None:
+                emp["entra_status"] = "skipped_no_permission"
+                emp["entra_tenant_id"] = ""
+                emp["actions_taken"] = []
+                emp.pop("_checkpoint_update", None)
+                records.append(emp)
+                continue
 
             if user_info is None:
                 not_found += 1
                 emp["entra_status"] = "not_found"
+                emp["entra_tenant_id"] = ""
                 emp["actions_taken"] = []
                 emp.pop("_checkpoint_update", None)
                 records.append(emp)
@@ -280,8 +320,12 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
 
             found += 1
             emp["entra_status"] = "found"
+            emp["entra_tenant_id"] = found_tenant
             emp["entra_account_enabled"] = user_info.get("accountEnabled", True)
             emp["entra_user_id"] = user_info.get("id", "")
+
+            # All subsequent actions use the headers of the tenant where the user was found.
+            graph_headers = tenant_headers_map[found_tenant]
 
             # ROPC validation (only if plaintext password available)
             ropc_result = None
@@ -291,7 +335,7 @@ def _process_source(source_name: str, conf: dict, credential, graph_headers: dic
                     ropc_result = entra.validate_password_ropc(
                         email=email,
                         password=raw_pw,
-                        tenant_id=conf["tenant_id"],
+                        tenant_id=found_tenant,
                         client_id=conf["client_id"]
                     )
                     del raw_pw  # remove from local scope immediately
