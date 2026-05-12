@@ -275,9 +275,12 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
                 continue
 
             # Multi-tenant lookup: try each tenant in order, first match wins.
+            # Track per-lookup whether any tenant returned 403 — distinguishes
+            # genuine "not found" from "permission denied silently turned into 404".
             user_info = None
             lookup_status = None
             found_tenant = None
+            seen_403_this_lookup = False
             for tenant_id in list(tenant_headers_map.keys()):
                 headers = tenant_headers_map[tenant_id]
                 u, status = entra.lookup_user(email, headers)
@@ -288,6 +291,7 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
                     tenant_403_counts[tenant_id] = 0  # reset on any success
                     break
                 if status == 403:
+                    seen_403_this_lookup = True
                     tenant_403_counts[tenant_id] = tenant_403_counts.get(tenant_id, 0) + 1
                     if tenant_403_counts[tenant_id] >= 3:
                         logger.warning(
@@ -302,7 +306,12 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
 
             # Fully exhausted lookup map (all tenants 403'd out mid-loop)
             if not tenant_headers_map and user_info is None:
-                emp["entra_status"] = "skipped_no_permission"
+                errors += 1
+                logger.warning(
+                    "[%s] %s → all tenants exhausted permission errors (403). Marking as lookup_permission_denied. Admin consent likely missing.",
+                    source_name.upper(), email
+                )
+                emp["entra_status"] = "lookup_permission_denied"
                 emp["entra_tenant_id"] = ""
                 emp["actions_taken"] = []
                 emp.pop("_checkpoint_update", None)
@@ -310,8 +319,19 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
                 continue
 
             if user_info is None:
-                not_found += 1
-                emp["entra_status"] = "not_found"
+                if seen_403_this_lookup:
+                    # User wasn't found in any tenant but at least one tenant returned 403.
+                    # Treat as permission denied, not "not_found" — prevents silent false negatives
+                    # when admin consent has not yet been granted on Path 1.
+                    errors += 1
+                    logger.warning(
+                        "[%s] %s → lookup returned 403 (no 200/404 from any tenant). entra_status=lookup_permission_denied",
+                        source_name.upper(), email
+                    )
+                    emp["entra_status"] = "lookup_permission_denied"
+                else:
+                    not_found += 1
+                    emp["entra_status"] = "not_found"
                 emp["entra_tenant_id"] = ""
                 emp["actions_taken"] = []
                 emp.pop("_checkpoint_update", None)

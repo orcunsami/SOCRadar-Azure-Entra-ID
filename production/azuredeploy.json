@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "1445334933012059632"
+      "templateHash": "1593029321438514164"
     },
     "title": "SOCRadar Entra ID Integration for Microsoft Sentinel",
     "description": "Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
@@ -66,6 +66,13 @@
       "defaultValue": true,
       "metadata": {
         "description": "Create the App Registration inline during deployment (default: true). When true, an App Registration is created with FIC binding to the Function App UAMI — zero manual setup. Set false to use an existing App Registration (provide EntraIdClientId)."
+      }
+    },
+    "GrantAdminConsent": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Grant admin consent to the Microsoft Graph application permissions during deployment (default: false). When true, deployment also grants admin consent — fully zero-touch. REQUIRES the deploying user to hold one of these Microsoft Entra ID directory roles: Cloud Application Administrator, Application Administrator, or Privileged Role Administrator. If the deployer is only a subscription Owner without AAD admin role, leave this false and grant consent via Portal (1-click) after deploy."
       }
     },
     "EntraIdClientId": {
@@ -263,7 +270,16 @@
     "workspaceResourceId": "[if(empty(parameters('WorkspaceResourceGroup')), resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')), resourceId(parameters('WorkspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')))]",
     "pollingSchedule": "[format('0 0 */{0} * * *', string(parameters('PollingIntervalHours')))]",
     "dcrName": "[format('socradar-ei-dcr-{0}', uniqueString(resourceGroup().id))]",
-    "graphUniqueAppName": "[format('socradar-entraid-{0}', uniqueString(resourceGroup().id))]"
+    "graphUniqueAppName": "[format('socradar-entraid-{0}', uniqueString(resourceGroup().id))]",
+    "grantedAppRoleIds": [
+      "df021288-bdef-4463-88db-98f22de89214",
+      "77f3a031-c388-4f99-b373-dc68676a979e",
+      "dbaae8cf-10b5-4b86-a4a1-f871c94c6695",
+      "3011c876-62b7-4ada-afa2-506cbbecc68c",
+      "cc117bb9-00cf-4eb8-b580-ea2a878fe8f7",
+      "656f6061-f9fe-4807-9708-6a2e0934df76",
+      "50483e42-d915-4231-9639-7fdb7fd190e5"
+    ]
   },
   "imports": {
     "microsoftGraphV1_0": {
@@ -341,7 +357,7 @@
                 "type": "Role"
               },
               {
-                "id": "741c54c3-0c1e-44a1-818b-3f97ab4e8c83",
+                "id": "77f3a031-c388-4f99-b373-dc68676a979e",
                 "type": "Role"
               },
               {
@@ -349,11 +365,11 @@
                 "type": "Role"
               },
               {
-                "id": "7438b122-aefc-4978-80ed-43db9fcc7715",
+                "id": "3011c876-62b7-4ada-afa2-506cbbecc68c",
                 "type": "Role"
               },
               {
-                "id": "4a4b1410-cd70-4f50-a78f-d12c1247b3e9",
+                "id": "cc117bb9-00cf-4eb8-b580-ea2a878fe8f7",
                 "type": "Role"
               },
               {
@@ -395,6 +411,32 @@
       "dependsOn": [
         "appReg",
         "managedIdentity"
+      ]
+    },
+    "graphSpRef": {
+      "existing": true,
+      "import": "microsoftGraphV1_0",
+      "type": "Microsoft.Graph/servicePrincipals@v1.0",
+      "properties": {
+        "appId": "00000003-0000-0000-c000-000000000000"
+      }
+    },
+    "adminConsentGrants": {
+      "copy": {
+        "name": "adminConsentGrants",
+        "count": "[length(variables('grantedAppRoleIds'))]"
+      },
+      "condition": "[and(parameters('CreateAppRegistration'), parameters('GrantAdminConsent'))]",
+      "import": "microsoftGraphV1_0",
+      "type": "Microsoft.Graph/appRoleAssignedTo@v1.0",
+      "properties": {
+        "appRoleId": "[variables('grantedAppRoleIds')[copyIndex()]]",
+        "principalId": "[reference('appSp').id]",
+        "resourceId": "[reference('graphSpRef').id]"
+      },
+      "dependsOn": [
+        "appSp",
+        "graphSpRef"
       ]
     },
     "hostingPlan": {
@@ -1581,7 +1623,7 @@
     },
     "nextStep": {
       "type": "string",
-      "value": "[if(parameters('CreateAppRegistration'), 'Grant admin consent: Portal → Microsoft Entra ID → App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent. Then Function App starts working on next timer cycle.', 'Copy ficCommandToRun and run it in Azure CLI to enable Federated Identity Credential. Then Function App starts working on next timer cycle.')]"
+      "value": "[if(not(parameters('CreateAppRegistration')), 'Copy ficCommandToRun and run it in Azure CLI to enable Federated Identity Credential. Then Function App starts working on next timer cycle.', if(parameters('GrantAdminConsent'), 'Zero-touch deployment complete. App Registration, Federated Identity Credential, and Graph admin consent all granted by ARM. Function App starts on next timer cycle.', 'Final manual step (1 portal click): Portal → Microsoft Entra ID → App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent. Then Function App starts on next timer cycle. (To skip this step on next deployment, set GrantAdminConsent=true and ensure deployer has Cloud Application Administrator role.)'))]"
     }
   }
 }

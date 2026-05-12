@@ -216,7 +216,15 @@ class TestProcessSourceMultiTenant(unittest.TestCase):
 
     def test_tenant_drops_after_three_403s(self):
         """Tenant A 403s consecutively for 3 emails → dropped on the 3rd; future
-        lookups for new emails skip it. Tenant B continues to work."""
+        lookups for new emails skip it. Tenant B continues to work.
+
+        After bug fix EXP-0129: per-lookup 403 visibility prevents silent
+        false negatives. When tenant-bad returns 403 and tenant-good returns
+        404 for the same email, we cannot claim the user is "not found" —
+        they might exist in tenant-bad which we couldn't read. So the
+        record is marked `lookup_permission_denied` (not `not_found`).
+        Only the 4th email, where tenant-bad is already dropped and only
+        tenant-good (404) is tried, qualifies as a true `not_found`."""
         emps = [_emp(f"u{i}@x.com") for i in range(4)]
         headers_map = {"tenant-bad": _hdr("bad"), "tenant-good": _hdr("good")}
         # All 4 emails: A always 403, B always 404 (not found)
@@ -232,8 +240,17 @@ class TestProcessSourceMultiTenant(unittest.TestCase):
         # 4th email: only tenant-good tried (1 call).
         # Total: 6 + 1 = 7 calls.
         self.assertEqual(mock_lookup.call_count, 7)
-        # All emails: not_found in any tenant
-        self.assertEqual(result["not_found"], 4)
+        # First 3 emails saw at least one 403 → lookup_permission_denied (errors++).
+        # 4th email only saw 404 (tenant-bad already dropped) → genuine not_found.
+        self.assertEqual(result["not_found"], 1)
+        self.assertEqual(result["errors"], 3)
+        # Verify the per-record statuses on the actual employee dicts:
+        self.assertEqual([e["entra_status"] for e in emps], [
+            "lookup_permission_denied",
+            "lookup_permission_denied",
+            "lookup_permission_denied",
+            "not_found",
+        ])
 
 
 if __name__ == "__main__":

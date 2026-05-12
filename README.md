@@ -46,12 +46,17 @@ Click the badge above ↑. Azure Portal opens with the ARM template. Fill in:
 | **WorkspaceLocation** | Leave empty (auto-detects RG location) |
 | **SocradarApiKey** | SOCRadar Platform → Settings → API → copy the platform key |
 | **SocradarCompanyId** | SOCRadar Platform → Settings → Company → company ID number |
-| **CreateAppRegistration** | Leave `true` (default) — App Registration + Federated Identity Credential created automatically. Set false only if you want to use a pre-existing App Registration. |
+| **CreateAppRegistration** | Leave `true` (default) — App Registration + Service Principal + Federated Identity Credential created automatically by ARM (via Microsoft Graph Bicep extension). Set false only if you want to use a pre-existing App Registration. |
+| **GrantAdminConsent** | Leave `false` (default) — admin consent is a 1-click portal step after deploy. **Set `true` only if** the deploying user holds the **Cloud Application Administrator** (or Application Administrator / Privileged Role Administrator) directory role; in that case admin consent is also granted by ARM and deployment is fully zero-touch. |
 | **EntraIdClientId** | Leave empty when `CreateAppRegistration=true` (will be created). Set only for pre-existing App Reg. |
 | **EntraIdTenantId** / **EntraIdTenantIds** | Leave empty (auto-detects current subscription tenant for single-tenant). Set only for multi-tenant deployments. |
 | **SecurityGroupId** | Optional: quarantine group's Object ID (required only if `EnableAddToGroup=true`) |
 
-**After deploy** (one click): Open the auto-created App Registration → API permissions → "Grant admin consent for {tenant}". This authorizes the Graph permissions declared by the integration.
+**After deploy:**
+- If `GrantAdminConsent=true` was set (and deployer held Cloud App Admin role): **no manual step**. Function App starts pulling on next timer cycle.
+- If left default (`false`): open the auto-created App Registration → API permissions → "Grant admin consent for {tenant}" (1 click). Then Function App starts.
+
+The `nextStep` deployment output tells you exactly which case applies.
 
 Click "Review + create" → "Create". Deployment takes ~3 minutes.
 

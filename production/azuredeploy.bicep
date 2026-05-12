@@ -31,6 +31,9 @@ param SocradarBaseUrl string = 'https://platform.socradar.com'
 @description('Create the App Registration inline during deployment (default: true). When true, an App Registration is created with FIC binding to the Function App UAMI — zero manual setup. Set false to use an existing App Registration (provide EntraIdClientId).')
 param CreateAppRegistration bool = true
 
+@description('Grant admin consent to the Microsoft Graph application permissions during deployment (default: false). When true, deployment also grants admin consent — fully zero-touch. REQUIRES the deploying user to hold one of these Microsoft Entra ID directory roles: Cloud Application Administrator, Application Administrator, or Privileged Role Administrator. If the deployer is only a subscription Owner without AAD admin role, leave this false and grant consent via Portal (1-click) after deploy.')
+param GrantAdminConsent bool = false
+
 @description('Existing App Registration Client ID (appId). Leave empty when CreateAppRegistration=true — a new App Reg will be created and its appId used automatically.')
 param EntraIdClientId string = ''
 
@@ -188,10 +191,10 @@ resource appReg 'Microsoft.Graph/applications@v1.0' = if (CreateAppRegistration)
       resourceAppId: '00000003-0000-0000-c000-000000000000' // Microsoft Graph
       resourceAccess: [
         { id: 'df021288-bdef-4463-88db-98f22de89214', type: 'Role' }    // User.Read.All
-        { id: '741c54c3-0c1e-44a1-818b-3f97ab4e8c83', type: 'Role' }    // User.RevokeSessions.All
+        { id: '77f3a031-c388-4f99-b373-dc68676a979e', type: 'Role' }    // User.RevokeSessions.All
         { id: 'dbaae8cf-10b5-4b86-a4a1-f871c94c6695', type: 'Role' }    // GroupMember.ReadWrite.All
-        { id: '7438b122-aefc-4978-80ed-43db9fcc7715', type: 'Role' }    // User.EnableDisableAccount.All
-        { id: '4a4b1410-cd70-4f50-a78f-d12c1247b3e9', type: 'Role' }    // User-PasswordProfile.ReadWrite.All
+        { id: '3011c876-62b7-4ada-afa2-506cbbecc68c', type: 'Role' }    // User.EnableDisableAccount.All
+        { id: 'cc117bb9-00cf-4eb8-b580-ea2a878fe8f7', type: 'Role' }    // User-PasswordProfile.ReadWrite.All
         { id: '656f6061-f9fe-4807-9708-6a2e0934df76', type: 'Role' }    // IdentityRiskyUser.ReadWrite.All
         { id: '50483e42-d915-4231-9639-7fdb7fd190e5', type: 'Role' }    // UserAuthenticationMethod.ReadWrite.All
       ]
@@ -209,6 +212,30 @@ resource fic 'Microsoft.Graph/applications/federatedIdentityCredentials@v1.0' = 
   issuer: 'https://login.microsoftonline.com/${tenant().tenantId}/v2.0'
   subject: managedIdentity.properties.principalId
 }
+
+// Admin consent automation: grant each Graph application permission to the
+// app's service principal. Requires the deploying user to have
+// AppRoleAssignment.ReadWrite.All (Application Administrator role provides this).
+// Eliminates the "Grant admin consent" portal click.
+resource graphSpRef 'Microsoft.Graph/servicePrincipals@v1.0' existing = {
+  appId: '00000003-0000-0000-c000-000000000000'
+}
+
+var grantedAppRoleIds = [
+  'df021288-bdef-4463-88db-98f22de89214'    // User.Read.All
+  '77f3a031-c388-4f99-b373-dc68676a979e'    // User.RevokeSessions.All
+  'dbaae8cf-10b5-4b86-a4a1-f871c94c6695'    // GroupMember.ReadWrite.All
+  '3011c876-62b7-4ada-afa2-506cbbecc68c'    // User.EnableDisableAccount.All
+  'cc117bb9-00cf-4eb8-b580-ea2a878fe8f7'    // User-PasswordProfile.ReadWrite.All
+  '656f6061-f9fe-4807-9708-6a2e0934df76'    // IdentityRiskyUser.ReadWrite.All
+  '50483e42-d915-4231-9639-7fdb7fd190e5'    // UserAuthenticationMethod.ReadWrite.All
+]
+
+resource adminConsentGrants 'Microsoft.Graph/appRoleAssignedTo@v1.0' = [for roleId in grantedAppRoleIds: if (CreateAppRegistration && GrantAdminConsent) {
+  appRoleId: roleId
+  principalId: appSp.id
+  resourceId: graphSpRef.id
+}]
 
 // Resolved app client ID — either newly created or provided as parameter
 var resolvedAppClientId = CreateAppRegistration ? appReg.appId : EntraIdClientId
@@ -1293,4 +1320,4 @@ output pollingSchedule string = pollingSchedule
 output managedIdentityPrincipalId string = reference(managedIdentity.id, '2023-01-31', 'Full').properties.principalId
 output entraIdClientId string = resolvedAppClientId
 output ficCommandToRun string = CreateAppRegistration ? 'No manual FIC step needed — App Registration and Federated Identity Credential created automatically by ARM.' : 'az ad app federated-credential create --id ${EntraIdClientId} --parameters \'{"name":"socradar-entraid-uami","issuer":"https://login.microsoftonline.com/${(empty(EntraIdTenantId)?subscription().tenantId:EntraIdTenantId)}/v2.0","subject":"${reference(managedIdentity.id,'2023-01-31','Full').properties.principalId}","audiences":["api://AzureADTokenExchange"]}\''
-output nextStep string = CreateAppRegistration ? 'Grant admin consent: Portal → Microsoft Entra ID → App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent. Then Function App starts working on next timer cycle.' : 'Copy ficCommandToRun and run it in Azure CLI to enable Federated Identity Credential. Then Function App starts working on next timer cycle.'
+output nextStep string = (!CreateAppRegistration) ? 'Copy ficCommandToRun and run it in Azure CLI to enable Federated Identity Credential. Then Function App starts working on next timer cycle.' : (GrantAdminConsent ? 'Zero-touch deployment complete. App Registration, Federated Identity Credential, and Graph admin consent all granted by ARM. Function App starts on next timer cycle.' : 'Final manual step (1 portal click): Portal → Microsoft Entra ID → App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent. Then Function App starts on next timer cycle. (To skip this step on next deployment, set GrantAdminConsent=true and ensure deployer has Cloud Application Administrator role.)')
