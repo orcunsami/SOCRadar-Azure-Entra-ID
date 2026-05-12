@@ -161,7 +161,7 @@ No secret rotation needed — auth is fully secretless via Managed Identity.
   ```
   Should show the latest release tag.
 - Customer can force re-pull by re-running ARM deployment (idempotent) or by running `func azure functionapp publish <FA_NAME> --python --remote-build` from a clone at master.
-- From 2026-04 onward, auto-release workflow builds zip on every tag push. Admins can pin to `.../releases/latest/download/FunctionApp.zip` for always-current.
+- From 2026-04 onward, auto-release workflow builds zip on every tag push. **Always pin to the versioned URL** (`.../releases/download/vX.Y.Z/FunctionApp.zip`) — Azure does not follow the 302 redirect on `releases/latest/download/...`, so a `latest` URL will leave `WEBSITE_RUN_FROM_PACKAGE` broken at runtime (`Container 'FunctionApp.zip' not found`).
 
 ---
 
