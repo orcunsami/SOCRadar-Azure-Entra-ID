@@ -59,8 +59,19 @@ jobs:
           ARM template installs without requiring 'func publish' (zero customer setup).
           "
 
-          gh release create "$TAG_NAME" \
-            "$GITHUB_WORKSPACE/FunctionApp.zip" \
-            --repo "$REPO" \
-            --title "$TAG_NAME" \
-            --notes "$NOTES"
+          # Idempotent: if a release for this tag already exists (e.g. the
+          # release was created manually before the tag was pushed), upload
+          # the built asset onto it with --clobber instead of failing.
+          if gh release view "$TAG_NAME" --repo "$REPO" >/dev/null 2>&1; then
+            echo "Release $TAG_NAME already exists — uploading asset with --clobber"
+            gh release upload "$TAG_NAME" \
+              "$GITHUB_WORKSPACE/FunctionApp.zip" \
+              --repo "$REPO" \
+              --clobber
+          else
+            gh release create "$TAG_NAME" \
+              "$GITHUB_WORKSPACE/FunctionApp.zip" \
+              --repo "$REPO" \
+              --title "$TAG_NAME" \
+              --notes "$NOTES"
+          fi
