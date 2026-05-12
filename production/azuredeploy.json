@@ -19,7 +19,14 @@
             "type": "string",
             "defaultValue": "",
             "metadata": {
-                "description": "Location/region of the Log Analytics workspace (e.g. 'northeurope'). Leave empty to use the deployment resource group's location."
+                "description": "Location/region of the Log Analytics workspace (e.g. northeurope). Leave empty to use the deployment resource group\u2019s location."
+            }
+        },
+        "WorkspaceResourceGroup": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Resource group of the Log Analytics workspace. Leave empty to use the current deployment resource group (default \u2014 same RG as Function App)."
             }
         },
         "SocradarApiKey": {
@@ -41,11 +48,17 @@
                 "description": "SOCRadar Platform Base URL"
             }
         },
+        "EntraIdClientId": {
+            "type": "string",
+            "metadata": {
+                "description": "App Registration Client ID (multi-tenant App with signInAudience=AzureADMultipleOrgs). Same ID across all tenants. Auth is secretless via Managed Identity plus Federated Identity Credential on the primary tenant\u2019s app object."
+            }
+        },
         "EntraIdTenantIds": {
             "type": "string",
             "defaultValue": "",
             "metadata": {
-                "description": "Comma-separated Microsoft Entra ID Tenant IDs to query for compromised users. The first tenant in the list is the 'primary' — its admin owns the multi-tenant App Registration and the UAMI Federated Identity Credential. Additional tenants must consent the same App Registration (signInAudience=AzureADMultipleOrgs). For single-tenant deployments, leave this empty and set EntraIdTenantId instead."
+                "description": "Comma-separated Microsoft Entra ID Tenant IDs to query for compromised users. The first tenant in the list is the primary one \u2019where the multi-tenant App Registration and the UAMI Federated Identity Credential live. Additional tenants must consent the same App Registration (signInAudience=AzureADMultipleOrgs). For single-tenant deployments, leave this empty and set EntraIdTenantId instead."
             }
         },
         "EntraIdTenantId": {
@@ -53,12 +66,6 @@
             "defaultValue": "",
             "metadata": {
                 "description": "Legacy single-tenant ID. Only used when EntraIdTenantIds is empty (backward compat). New deployments should use EntraIdTenantIds."
-            }
-        },
-        "EntraIdClientId": {
-            "type": "string",
-            "metadata": {
-                "description": "App Registration Client ID (multi-tenant App: signInAudience=AzureADMultipleOrgs). Same ID across all tenants. Auth is secretless via Managed Identity + Federated Identity Credential on the primary tenant's app object."
             }
         },
         "SecurityGroupId": {
@@ -138,18 +145,18 @@
                 "description": "Re-enable previously disabled accounts. Requires EnableUserLookup=true and User.EnableDisableAccount.All."
             }
         },
+        "EnableForceMfaReregistration": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Delete all non-password authentication methods (Microsoft Authenticator, phone, FIDO2, software OATH, Windows Hello, email, TAP) to force MFA re-registration at next sign-in. Works on all Entra ID tiers. Requires EnableUserLookup=true and UserAuthenticationMethod.ReadWrite.All. HIGH IMPACT \u2014 off by default."
+            }
+        },
         "EnableConfirmRisky": {
             "type": "bool",
             "defaultValue": false,
             "metadata": {
                 "description": "Confirm matched users as compromised in Identity Protection. Requires EnableUserLookup=true, IdentityRiskyUser.ReadWrite.All, and Entra ID P1/P2 licensing."
-            }
-        },
-        "EnableForceMfaReregistration": {
-            "type": "bool",
-            "defaultValue": false,
-            "metadata": {
-                "description": "Delete all non-password authentication methods (Microsoft Authenticator, phone, FIDO2, software OATH, Windows Hello, email, TAP) to force MFA re-registration at next sign-in. Works on all Entra ID tiers. Requires EnableUserLookup=true and UserAuthenticationMethod.ReadWrite.All. HIGH IMPACT — off by default."
             }
         },
         "EnableROPC": {
@@ -202,14 +209,7 @@
             "type": "string",
             "defaultValue": "",
             "metadata": {
-                "description": "Start date for first run (YYYY-MM-DD, e.g. 2025-06-15). Takes priority over InitialLookbackMinutes. Leave empty to use lookback."
-            }
-        },
-        "WorkspaceResourceGroup": {
-            "type": "string",
-            "defaultValue": "",
-            "metadata": {
-                "description": "Resource group of the Log Analytics workspace. Leave empty to use the current deployment resource group (default — same RG as Function App)."
+                "description": "Optional date (YYYY-MM-DD format, e.g. 2026-04-01) for the first fetch. Takes priority over InitialLookbackMinutes. Leave empty to use the lookback window. Not a number of minutes \u2014 use date format only."
             }
         },
         "MaxPagesPerRun": {
@@ -553,27 +553,90 @@
                 "schema": {
                     "name": "SOCRadar_Botnet_CL",
                     "columns": [
-                        {"name": "TimeGenerated", "type": "dateTime"},
-                        {"name": "email", "type": "string"},
-                        {"name": "url", "type": "string"},
-                        {"name": "device_ip", "type": "string"},
-                        {"name": "device_os", "type": "string"},
-                        {"name": "country", "type": "string"},
-                        {"name": "log_date", "type": "string"},
-                        {"name": "is_employee", "type": "boolean"},
-                        {"name": "source", "type": "string"},
-                        {"name": "alarm_id", "type": "int"},
-                        {"name": "password_present", "type": "boolean"},
-                        {"name": "password_masked", "type": "string"},
-                        {"name": "is_plaintext", "type": "boolean"},
-                        {"name": "password", "type": "string"},
-                        {"name": "entra_status", "type": "string"},
-                        {"name": "entra_tenant_id", "type": "string"},
-                        {"name": "entra_account_enabled", "type": "boolean"},
-                        {"name": "severity", "type": "string"},
-                        {"name": "actions_taken", "type": "dynamic"},
-                        {"name": "mfa_methods_deleted", "type": "int"},
-                        {"name": "mfa_methods_skipped", "type": "int"}
+                        {
+                            "name": "TimeGenerated",
+                            "type": "dateTime"
+                        },
+                        {
+                            "name": "email",
+                            "type": "string"
+                        },
+                        {
+                            "name": "url",
+                            "type": "string"
+                        },
+                        {
+                            "name": "device_ip",
+                            "type": "string"
+                        },
+                        {
+                            "name": "device_os",
+                            "type": "string"
+                        },
+                        {
+                            "name": "country",
+                            "type": "string"
+                        },
+                        {
+                            "name": "log_date",
+                            "type": "string"
+                        },
+                        {
+                            "name": "is_employee",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "source",
+                            "type": "string"
+                        },
+                        {
+                            "name": "alarm_id",
+                            "type": "int"
+                        },
+                        {
+                            "name": "password_present",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "password_masked",
+                            "type": "string"
+                        },
+                        {
+                            "name": "is_plaintext",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "password",
+                            "type": "string"
+                        },
+                        {
+                            "name": "entra_status",
+                            "type": "string"
+                        },
+                        {
+                            "name": "entra_tenant_id",
+                            "type": "string"
+                        },
+                        {
+                            "name": "entra_account_enabled",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "severity",
+                            "type": "string"
+                        },
+                        {
+                            "name": "actions_taken",
+                            "type": "dynamic"
+                        },
+                        {
+                            "name": "mfa_methods_deleted",
+                            "type": "int"
+                        },
+                        {
+                            "name": "mfa_methods_skipped",
+                            "type": "int"
+                        }
                     ]
                 },
                 "retentionInDays": 30,
@@ -588,25 +651,82 @@
                 "schema": {
                     "name": "SOCRadar_PII_CL",
                     "columns": [
-                        {"name": "TimeGenerated", "type": "dateTime"},
-                        {"name": "email", "type": "string"},
-                        {"name": "source_name", "type": "string"},
-                        {"name": "breach_date", "type": "string"},
-                        {"name": "discovery_date", "type": "string"},
-                        {"name": "is_employee", "type": "boolean"},
-                        {"name": "source", "type": "string"},
-                        {"name": "alarm_id", "type": "int"},
-                        {"name": "password_present", "type": "boolean"},
-                        {"name": "password_masked", "type": "string"},
-                        {"name": "is_plaintext", "type": "boolean"},
-                        {"name": "password", "type": "string"},
-                        {"name": "entra_status", "type": "string"},
-                        {"name": "entra_tenant_id", "type": "string"},
-                        {"name": "entra_account_enabled", "type": "boolean"},
-                        {"name": "severity", "type": "string"},
-                        {"name": "actions_taken", "type": "dynamic"},
-                        {"name": "mfa_methods_deleted", "type": "int"},
-                        {"name": "mfa_methods_skipped", "type": "int"}
+                        {
+                            "name": "TimeGenerated",
+                            "type": "dateTime"
+                        },
+                        {
+                            "name": "email",
+                            "type": "string"
+                        },
+                        {
+                            "name": "source_name",
+                            "type": "string"
+                        },
+                        {
+                            "name": "breach_date",
+                            "type": "string"
+                        },
+                        {
+                            "name": "discovery_date",
+                            "type": "string"
+                        },
+                        {
+                            "name": "is_employee",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "source",
+                            "type": "string"
+                        },
+                        {
+                            "name": "alarm_id",
+                            "type": "int"
+                        },
+                        {
+                            "name": "password_present",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "password_masked",
+                            "type": "string"
+                        },
+                        {
+                            "name": "is_plaintext",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "password",
+                            "type": "string"
+                        },
+                        {
+                            "name": "entra_status",
+                            "type": "string"
+                        },
+                        {
+                            "name": "entra_tenant_id",
+                            "type": "string"
+                        },
+                        {
+                            "name": "entra_account_enabled",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "severity",
+                            "type": "string"
+                        },
+                        {
+                            "name": "actions_taken",
+                            "type": "dynamic"
+                        },
+                        {
+                            "name": "mfa_methods_deleted",
+                            "type": "int"
+                        },
+                        {
+                            "name": "mfa_methods_skipped",
+                            "type": "int"
+                        }
                     ]
                 },
                 "retentionInDays": 30,
@@ -621,24 +741,78 @@
                 "schema": {
                     "name": "SOCRadar_VIP_CL",
                     "columns": [
-                        {"name": "TimeGenerated", "type": "dateTime"},
-                        {"name": "email", "type": "string"},
-                        {"name": "keyword", "type": "string"},
-                        {"name": "vip_name", "type": "string"},
-                        {"name": "status", "type": "string"},
-                        {"name": "discovery_date", "type": "string"},
-                        {"name": "source_name", "type": "string"},
-                        {"name": "is_employee", "type": "boolean"},
-                        {"name": "source", "type": "string"},
-                        {"name": "alarm_id", "type": "int"},
-                        {"name": "password_present", "type": "boolean"},
-                        {"name": "password_masked", "type": "string"},
-                        {"name": "is_plaintext", "type": "boolean"},
-                        {"name": "entra_status", "type": "string"},
-                        {"name": "entra_tenant_id", "type": "string"},
-                        {"name": "entra_account_enabled", "type": "boolean"},
-                        {"name": "severity", "type": "string"},
-                        {"name": "actions_taken", "type": "dynamic"}
+                        {
+                            "name": "TimeGenerated",
+                            "type": "dateTime"
+                        },
+                        {
+                            "name": "email",
+                            "type": "string"
+                        },
+                        {
+                            "name": "keyword",
+                            "type": "string"
+                        },
+                        {
+                            "name": "vip_name",
+                            "type": "string"
+                        },
+                        {
+                            "name": "status",
+                            "type": "string"
+                        },
+                        {
+                            "name": "discovery_date",
+                            "type": "string"
+                        },
+                        {
+                            "name": "source_name",
+                            "type": "string"
+                        },
+                        {
+                            "name": "is_employee",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "source",
+                            "type": "string"
+                        },
+                        {
+                            "name": "alarm_id",
+                            "type": "int"
+                        },
+                        {
+                            "name": "password_present",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "password_masked",
+                            "type": "string"
+                        },
+                        {
+                            "name": "is_plaintext",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "entra_status",
+                            "type": "string"
+                        },
+                        {
+                            "name": "entra_tenant_id",
+                            "type": "string"
+                        },
+                        {
+                            "name": "entra_account_enabled",
+                            "type": "boolean"
+                        },
+                        {
+                            "name": "severity",
+                            "type": "string"
+                        },
+                        {
+                            "name": "actions_taken",
+                            "type": "dynamic"
+                        }
                     ]
                 },
                 "retentionInDays": 30,
@@ -653,19 +827,58 @@
                 "schema": {
                     "name": "SOCRadar_EntraID_Audit_CL",
                     "columns": [
-                        {"name": "TimeGenerated", "type": "dateTime"},
-                        {"name": "source", "type": "string"},
-                        {"name": "total_records", "type": "int"},
-                        {"name": "employee_records", "type": "int"},
-                        {"name": "found_count", "type": "int"},
-                        {"name": "not_found_count", "type": "int"},
-                        {"name": "actions_taken", "type": "int"},
-                        {"name": "error_count", "type": "int"},
-                        {"name": "duration_sec", "type": "real"},
-                        {"name": "event_type", "type": "string"},
-                        {"name": "tenant_id", "type": "string"},
-                        {"name": "details", "type": "string"},
-                        {"name": "aadsts_code", "type": "string"}
+                        {
+                            "name": "TimeGenerated",
+                            "type": "dateTime"
+                        },
+                        {
+                            "name": "source",
+                            "type": "string"
+                        },
+                        {
+                            "name": "total_records",
+                            "type": "int"
+                        },
+                        {
+                            "name": "employee_records",
+                            "type": "int"
+                        },
+                        {
+                            "name": "found_count",
+                            "type": "int"
+                        },
+                        {
+                            "name": "not_found_count",
+                            "type": "int"
+                        },
+                        {
+                            "name": "actions_taken",
+                            "type": "int"
+                        },
+                        {
+                            "name": "error_count",
+                            "type": "int"
+                        },
+                        {
+                            "name": "duration_sec",
+                            "type": "real"
+                        },
+                        {
+                            "name": "event_type",
+                            "type": "string"
+                        },
+                        {
+                            "name": "tenant_id",
+                            "type": "string"
+                        },
+                        {
+                            "name": "details",
+                            "type": "string"
+                        },
+                        {
+                            "name": "aadsts_code",
+                            "type": "string"
+                        }
                     ]
                 },
                 "retentionInDays": 30,
@@ -685,93 +898,306 @@
                 "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_EntraID_Audit_CL')]"
             ],
             "properties": {
-                "description": "SOCRadar Entra ID Integration — Logs Ingestion API",
+                "description": "SOCRadar Entra ID Integration \u2014 Logs Ingestion API",
                 "streamDeclarations": {
                     "Custom-SOCRadar_Botnet_CL": {
                         "columns": [
-                            {"name": "TimeGenerated", "type": "datetime"},
-                            {"name": "email", "type": "string"},
-                            {"name": "url", "type": "string"},
-                            {"name": "device_ip", "type": "string"},
-                            {"name": "device_os", "type": "string"},
-                            {"name": "country", "type": "string"},
-                            {"name": "log_date", "type": "string"},
-                            {"name": "is_employee", "type": "boolean"},
-                            {"name": "source", "type": "string"},
-                            {"name": "alarm_id", "type": "int"},
-                            {"name": "password_present", "type": "boolean"},
-                            {"name": "password_masked", "type": "string"},
-                            {"name": "is_plaintext", "type": "boolean"},
-                            {"name": "password", "type": "string"},
-                            {"name": "entra_status", "type": "string"},
-                            {"name": "entra_tenant_id", "type": "string"},
-                            {"name": "entra_account_enabled", "type": "boolean"},
-                            {"name": "severity", "type": "string"},
-                            {"name": "actions_taken", "type": "dynamic"},
-                            {"name": "mfa_methods_deleted", "type": "int"},
-                            {"name": "mfa_methods_skipped", "type": "int"}
+                            {
+                                "name": "TimeGenerated",
+                                "type": "datetime"
+                            },
+                            {
+                                "name": "email",
+                                "type": "string"
+                            },
+                            {
+                                "name": "url",
+                                "type": "string"
+                            },
+                            {
+                                "name": "device_ip",
+                                "type": "string"
+                            },
+                            {
+                                "name": "device_os",
+                                "type": "string"
+                            },
+                            {
+                                "name": "country",
+                                "type": "string"
+                            },
+                            {
+                                "name": "log_date",
+                                "type": "string"
+                            },
+                            {
+                                "name": "is_employee",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "source",
+                                "type": "string"
+                            },
+                            {
+                                "name": "alarm_id",
+                                "type": "int"
+                            },
+                            {
+                                "name": "password_present",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "password_masked",
+                                "type": "string"
+                            },
+                            {
+                                "name": "is_plaintext",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "password",
+                                "type": "string"
+                            },
+                            {
+                                "name": "entra_status",
+                                "type": "string"
+                            },
+                            {
+                                "name": "entra_tenant_id",
+                                "type": "string"
+                            },
+                            {
+                                "name": "entra_account_enabled",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "severity",
+                                "type": "string"
+                            },
+                            {
+                                "name": "actions_taken",
+                                "type": "dynamic"
+                            },
+                            {
+                                "name": "mfa_methods_deleted",
+                                "type": "int"
+                            },
+                            {
+                                "name": "mfa_methods_skipped",
+                                "type": "int"
+                            }
                         ]
                     },
                     "Custom-SOCRadar_PII_CL": {
                         "columns": [
-                            {"name": "TimeGenerated", "type": "datetime"},
-                            {"name": "email", "type": "string"},
-                            {"name": "source_name", "type": "string"},
-                            {"name": "breach_date", "type": "string"},
-                            {"name": "discovery_date", "type": "string"},
-                            {"name": "is_employee", "type": "boolean"},
-                            {"name": "source", "type": "string"},
-                            {"name": "alarm_id", "type": "int"},
-                            {"name": "password_present", "type": "boolean"},
-                            {"name": "password_masked", "type": "string"},
-                            {"name": "is_plaintext", "type": "boolean"},
-                            {"name": "password", "type": "string"},
-                            {"name": "entra_status", "type": "string"},
-                            {"name": "entra_tenant_id", "type": "string"},
-                            {"name": "entra_account_enabled", "type": "boolean"},
-                            {"name": "severity", "type": "string"},
-                            {"name": "actions_taken", "type": "dynamic"},
-                            {"name": "mfa_methods_deleted", "type": "int"},
-                            {"name": "mfa_methods_skipped", "type": "int"}
+                            {
+                                "name": "TimeGenerated",
+                                "type": "datetime"
+                            },
+                            {
+                                "name": "email",
+                                "type": "string"
+                            },
+                            {
+                                "name": "source_name",
+                                "type": "string"
+                            },
+                            {
+                                "name": "breach_date",
+                                "type": "string"
+                            },
+                            {
+                                "name": "discovery_date",
+                                "type": "string"
+                            },
+                            {
+                                "name": "is_employee",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "source",
+                                "type": "string"
+                            },
+                            {
+                                "name": "alarm_id",
+                                "type": "int"
+                            },
+                            {
+                                "name": "password_present",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "password_masked",
+                                "type": "string"
+                            },
+                            {
+                                "name": "is_plaintext",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "password",
+                                "type": "string"
+                            },
+                            {
+                                "name": "entra_status",
+                                "type": "string"
+                            },
+                            {
+                                "name": "entra_tenant_id",
+                                "type": "string"
+                            },
+                            {
+                                "name": "entra_account_enabled",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "severity",
+                                "type": "string"
+                            },
+                            {
+                                "name": "actions_taken",
+                                "type": "dynamic"
+                            },
+                            {
+                                "name": "mfa_methods_deleted",
+                                "type": "int"
+                            },
+                            {
+                                "name": "mfa_methods_skipped",
+                                "type": "int"
+                            }
                         ]
                     },
                     "Custom-SOCRadar_VIP_CL": {
                         "columns": [
-                            {"name": "TimeGenerated", "type": "datetime"},
-                            {"name": "email", "type": "string"},
-                            {"name": "keyword", "type": "string"},
-                            {"name": "vip_name", "type": "string"},
-                            {"name": "status", "type": "string"},
-                            {"name": "discovery_date", "type": "string"},
-                            {"name": "source_name", "type": "string"},
-                            {"name": "is_employee", "type": "boolean"},
-                            {"name": "source", "type": "string"},
-                            {"name": "alarm_id", "type": "int"},
-                            {"name": "password_present", "type": "boolean"},
-                            {"name": "password_masked", "type": "string"},
-                            {"name": "is_plaintext", "type": "boolean"},
-                            {"name": "entra_status", "type": "string"},
-                            {"name": "entra_tenant_id", "type": "string"},
-                            {"name": "entra_account_enabled", "type": "boolean"},
-                            {"name": "severity", "type": "string"},
-                            {"name": "actions_taken", "type": "dynamic"}
+                            {
+                                "name": "TimeGenerated",
+                                "type": "datetime"
+                            },
+                            {
+                                "name": "email",
+                                "type": "string"
+                            },
+                            {
+                                "name": "keyword",
+                                "type": "string"
+                            },
+                            {
+                                "name": "vip_name",
+                                "type": "string"
+                            },
+                            {
+                                "name": "status",
+                                "type": "string"
+                            },
+                            {
+                                "name": "discovery_date",
+                                "type": "string"
+                            },
+                            {
+                                "name": "source_name",
+                                "type": "string"
+                            },
+                            {
+                                "name": "is_employee",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "source",
+                                "type": "string"
+                            },
+                            {
+                                "name": "alarm_id",
+                                "type": "int"
+                            },
+                            {
+                                "name": "password_present",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "password_masked",
+                                "type": "string"
+                            },
+                            {
+                                "name": "is_plaintext",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "entra_status",
+                                "type": "string"
+                            },
+                            {
+                                "name": "entra_tenant_id",
+                                "type": "string"
+                            },
+                            {
+                                "name": "entra_account_enabled",
+                                "type": "boolean"
+                            },
+                            {
+                                "name": "severity",
+                                "type": "string"
+                            },
+                            {
+                                "name": "actions_taken",
+                                "type": "dynamic"
+                            }
                         ]
                     },
                     "Custom-SOCRadar_EntraID_Audit_CL": {
                         "columns": [
-                            {"name": "TimeGenerated", "type": "datetime"},
-                            {"name": "source", "type": "string"},
-                            {"name": "total_records", "type": "int"},
-                            {"name": "employee_records", "type": "int"},
-                            {"name": "found_count", "type": "int"},
-                            {"name": "not_found_count", "type": "int"},
-                            {"name": "actions_taken", "type": "int"},
-                            {"name": "error_count", "type": "int"},
-                            {"name": "duration_sec", "type": "real"},
-                            {"name": "event_type", "type": "string"},
-                            {"name": "tenant_id", "type": "string"},
-                            {"name": "details", "type": "string"},
-                            {"name": "aadsts_code", "type": "string"}
+                            {
+                                "name": "TimeGenerated",
+                                "type": "datetime"
+                            },
+                            {
+                                "name": "source",
+                                "type": "string"
+                            },
+                            {
+                                "name": "total_records",
+                                "type": "int"
+                            },
+                            {
+                                "name": "employee_records",
+                                "type": "int"
+                            },
+                            {
+                                "name": "found_count",
+                                "type": "int"
+                            },
+                            {
+                                "name": "not_found_count",
+                                "type": "int"
+                            },
+                            {
+                                "name": "actions_taken",
+                                "type": "int"
+                            },
+                            {
+                                "name": "error_count",
+                                "type": "int"
+                            },
+                            {
+                                "name": "duration_sec",
+                                "type": "real"
+                            },
+                            {
+                                "name": "event_type",
+                                "type": "string"
+                            },
+                            {
+                                "name": "tenant_id",
+                                "type": "string"
+                            },
+                            {
+                                "name": "details",
+                                "type": "string"
+                            },
+                            {
+                                "name": "aadsts_code",
+                                "type": "string"
+                            }
                         ]
                     }
                 },
@@ -785,23 +1211,39 @@
                 },
                 "dataFlows": [
                     {
-                        "streams": ["Custom-SOCRadar_Botnet_CL"],
-                        "destinations": ["lawDest"],
+                        "streams": [
+                            "Custom-SOCRadar_Botnet_CL"
+                        ],
+                        "destinations": [
+                            "lawDest"
+                        ],
                         "outputStream": "Custom-SOCRadar_Botnet_CL"
                     },
                     {
-                        "streams": ["Custom-SOCRadar_PII_CL"],
-                        "destinations": ["lawDest"],
+                        "streams": [
+                            "Custom-SOCRadar_PII_CL"
+                        ],
+                        "destinations": [
+                            "lawDest"
+                        ],
                         "outputStream": "Custom-SOCRadar_PII_CL"
                     },
                     {
-                        "streams": ["Custom-SOCRadar_VIP_CL"],
-                        "destinations": ["lawDest"],
+                        "streams": [
+                            "Custom-SOCRadar_VIP_CL"
+                        ],
+                        "destinations": [
+                            "lawDest"
+                        ],
                         "outputStream": "Custom-SOCRadar_VIP_CL"
                     },
                     {
-                        "streams": ["Custom-SOCRadar_EntraID_Audit_CL"],
-                        "destinations": ["lawDest"],
+                        "streams": [
+                            "Custom-SOCRadar_EntraID_Audit_CL"
+                        ],
+                        "destinations": [
+                            "lawDest"
+                        ],
                         "outputStream": "Custom-SOCRadar_EntraID_Audit_CL"
                     }
                 ]
