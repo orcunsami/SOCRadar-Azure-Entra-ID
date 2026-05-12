@@ -31,9 +31,9 @@
         },
         "CreateWorkspace": {
             "type": "bool",
-            "defaultValue": false,
+            "defaultValue": true,
             "metadata": {
-                "description": "If true, create a new Log Analytics workspace with the WorkspaceName given. If false (default), reference an existing workspace. Only valid when WorkspaceResourceGroup is empty (same RG as deployment). Sentinel will be onboarded automatically on the created workspace."
+                "description": "Create a new Log Analytics workspace with WorkspaceName (default: true). Set to false ONLY if you already have an existing workspace you want to use. Only valid when WorkspaceResourceGroup is empty (same RG as deployment). Sentinel will be onboarded automatically on the created/existing workspace."
             }
         },
         "SocradarApiKey": {
