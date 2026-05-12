@@ -65,7 +65,7 @@
             "type": "string",
             "defaultValue": "",
             "metadata": {
-                "description": "Legacy single-tenant ID. Only used when EntraIdTenantIds is empty (backward compat). New deployments should use EntraIdTenantIds."
+                "description": "Single Entra ID Tenant ID. Used when EntraIdTenantIds is empty. Leave empty to auto-detect the current subscription tenant (single-tenant default). Set explicitly only for cross-tenant deployments."
             }
         },
         "SecurityGroupId": {
@@ -385,7 +385,7 @@
                         },
                         {
                             "name": "ENTRA_TENANT_ID",
-                            "value": "[parameters('EntraIdTenantId')]"
+                            "value": "[if(empty(parameters('EntraIdTenantId')), subscription().tenantId, parameters('EntraIdTenantId'))]"
                         },
                         {
                             "name": "ENTRA_CLIENT_ID",
