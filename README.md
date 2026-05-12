@@ -2,11 +2,8 @@
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Forcunsami%2FSOCRadar-Azure-Entra-ID%2Fmaster%2Fproduction%2Fazuredeploy.json)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Release](https://img.shields.io/github/v/release/orcunsami/SOCRadar-Azure-Entra-ID)](https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/latest)
 
 Automated remediation for **leaked employee credentials** detected by SOCRadar — pulls Botnet, PII Exposure, and VIP Protection alerts from the SOCRadar Platform, looks up matching users in Microsoft Entra ID, and takes configurable response actions (revoke sessions, force MFA re-registration, disable account, add to quarantine group, etc.). All findings are logged to Microsoft Sentinel custom tables for incident triage.
-
-> **Looking for what changed?** See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 

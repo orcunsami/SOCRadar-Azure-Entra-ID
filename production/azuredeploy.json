@@ -17,9 +17,9 @@
         },
         "WorkspaceLocation": {
             "type": "string",
-            "defaultValue": "[resourceGroup().location]",
+            "defaultValue": "",
             "metadata": {
-                "description": "Location/region of the Log Analytics workspace"
+                "description": "Location/region of the Log Analytics workspace (e.g. 'northeurope'). Leave empty to use the deployment resource group's location."
             }
         },
         "SocradarApiKey": {
@@ -209,7 +209,7 @@
             "type": "string",
             "defaultValue": "",
             "metadata": {
-                "description": "Resource group of the Log Analytics workspace (for cross-RG deployments). Leave empty if same as deployment RG."
+                "description": "Resource group of the Log Analytics workspace. Leave empty to use the current deployment resource group (default — same RG as Function App)."
             }
         },
         "MaxPagesPerRun": {
@@ -485,7 +485,7 @@
                         },
                         {
                             "name": "WORKSPACE_LOCATION",
-                            "value": "[parameters('WorkspaceLocation')]"
+                            "value": "[if(empty(parameters('WorkspaceLocation')), resourceGroup().location, parameters('WorkspaceLocation'))]"
                         },
                         {
                             "name": "WORKSPACE_RESOURCE_GROUP",
@@ -676,7 +676,7 @@
             "type": "Microsoft.Insights/dataCollectionRules",
             "apiVersion": "2023-03-11",
             "name": "[variables('dcrName')]",
-            "location": "[parameters('WorkspaceLocation')]",
+            "location": "[if(empty(parameters('WorkspaceLocation')), resourceGroup().location, parameters('WorkspaceLocation'))]",
             "kind": "Direct",
             "dependsOn": [
                 "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_Botnet_CL')]",
