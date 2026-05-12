@@ -29,6 +29,13 @@
                 "description": "Resource group of the Log Analytics workspace. Leave empty to use the current deployment resource group (default \u2014 same RG as Function App)."
             }
         },
+        "CreateWorkspace": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "If true, create a new Log Analytics workspace with the WorkspaceName given. If false (default), reference an existing workspace. Only valid when WorkspaceResourceGroup is empty (same RG as deployment). Sentinel will be onboarded automatically on the created workspace."
+            }
+        },
         "SocradarApiKey": {
             "type": "securestring",
             "metadata": {
@@ -244,6 +251,22 @@
         "dcrName": "[concat('socradar-ei-dcr-', uniqueString(resourceGroup().id))]"
     },
     "resources": [
+        {
+            "type": "Microsoft.OperationalInsights/workspaces",
+            "apiVersion": "2023-09-01",
+            "name": "[parameters('WorkspaceName')]",
+            "location": "[if(empty(parameters('WorkspaceLocation')), resourceGroup().location, parameters('WorkspaceLocation'))]",
+            "condition": "[and(parameters('CreateWorkspace'), empty(parameters('WorkspaceResourceGroup')))]",
+            "properties": {
+                "sku": {
+                    "name": "PerGB2018"
+                },
+                "retentionInDays": 30,
+                "features": {
+                    "enableLogAccessUsingOnlyResourcePermissions": true
+                }
+            }
+        },
         {
             "type": "Microsoft.Storage/storageAccounts",
             "apiVersion": "2023-05-01",
@@ -641,7 +664,10 @@
                 },
                 "retentionInDays": 30,
                 "plan": "Analytics"
-            }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]"
+            ]
         },
         {
             "type": "Microsoft.OperationalInsights/workspaces/tables",
@@ -731,7 +757,10 @@
                 },
                 "retentionInDays": 30,
                 "plan": "Analytics"
-            }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]"
+            ]
         },
         {
             "type": "Microsoft.OperationalInsights/workspaces/tables",
@@ -817,7 +846,10 @@
                 },
                 "retentionInDays": 30,
                 "plan": "Analytics"
-            }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]"
+            ]
         },
         {
             "type": "Microsoft.OperationalInsights/workspaces/tables",
@@ -883,7 +915,10 @@
                 },
                 "retentionInDays": 30,
                 "plan": "Analytics"
-            }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]"
+            ]
         },
         {
             "type": "Microsoft.Insights/dataCollectionRules",
@@ -895,7 +930,8 @@
                 "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_Botnet_CL')]",
                 "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_PII_CL')]",
                 "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_VIP_CL')]",
-                "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_EntraID_Audit_CL')]"
+                "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('WorkspaceName'), 'SOCRadar_EntraID_Audit_CL')]",
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]"
             ],
             "properties": {
                 "description": "SOCRadar Entra ID Integration \u2014 Logs Ingestion API",
@@ -1302,7 +1338,10 @@
             "apiVersion": "2024-03-01",
             "name": "[concat(parameters('WorkspaceName'), '/Microsoft.SecurityInsights/default')]",
             "condition": "[empty(parameters('WorkspaceResourceGroup'))]",
-            "properties": {}
+            "properties": {},
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]"
+            ]
         },
         {
             "type": "Microsoft.Resources/deployments",
@@ -1341,7 +1380,10 @@
                 "version": "1.0",
                 "sourceId": "[if(empty(parameters('WorkspaceResourceGroup')), resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')), resourceId(parameters('WorkspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')))]",
                 "category": "sentinel"
-            }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]"
+            ]
         },
         {
             "type": "Microsoft.Insights/workbooks",
@@ -1355,7 +1397,10 @@
                 "version": "1.0",
                 "sourceId": "[if(empty(parameters('WorkspaceResourceGroup')), resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')), resourceId(parameters('WorkspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')))]",
                 "category": "sentinel"
-            }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]"
+            ]
         },
         {
             "type": "Microsoft.Insights/workbooks",
@@ -1369,7 +1414,10 @@
                 "version": "1.0",
                 "sourceId": "[if(empty(parameters('WorkspaceResourceGroup')), resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')), resourceId(parameters('WorkspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')))]",
                 "category": "sentinel"
-            }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]"
+            ]
         },
         {
             "type": "Microsoft.Insights/workbooks",
@@ -1383,7 +1431,10 @@
                 "version": "1.0",
                 "sourceId": "[if(empty(parameters('WorkspaceResourceGroup')), resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')), resourceId(parameters('WorkspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')))]",
                 "category": "sentinel"
-            }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]"
+            ]
         }
     ],
     "outputs": {
