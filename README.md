@@ -42,14 +42,16 @@ Click the badge above ↑. Azure Portal opens with the ARM template. Fill in:
 
 | Field | Where to get it |
 |-------|-----------------|
-| **WorkspaceName** | Your existing Log Analytics workspace name |
-| **WorkspaceLocation** | Same region as your workspace (e.g. `northeurope`) |
+| **WorkspaceName** | Any name (workspace will be auto-created — set `CreateWorkspace=true` default) |
+| **WorkspaceLocation** | Leave empty (auto-detects RG location) |
 | **SocradarApiKey** | SOCRadar Platform → Settings → API → copy the platform key |
 | **SocradarCompanyId** | SOCRadar Platform → Settings → Company → company ID number |
-| **EntraIdTenantIds** | One or more Entra ID Tenant IDs (comma-separated). The first ID is the "primary" tenant — where the multi-tenant App Registration and its Federated Identity Credential live. Additional IDs are tenants whose admins consent the same app (no extra FIC required). For single-tenant deployments leave empty and use `EntraIdTenantId`. See [Multi-Tenant Setup](docs/multi-tenant-setup.md). |
-| **EntraIdTenantId** | Legacy single-tenant ID. Use only if `EntraIdTenantIds` is empty (backward compat). |
-| **EntraIdClientId** | App Registration's Application (client) ID (see [App Registration setup](#-app-registration-setup) below). For multi-tenant, this is the same ID across every tenant. |
+| **CreateAppRegistration** | Leave `true` (default) — App Registration + Federated Identity Credential created automatically. Set false only if you want to use a pre-existing App Registration. |
+| **EntraIdClientId** | Leave empty when `CreateAppRegistration=true` (will be created). Set only for pre-existing App Reg. |
+| **EntraIdTenantId** / **EntraIdTenantIds** | Leave empty (auto-detects current subscription tenant for single-tenant). Set only for multi-tenant deployments. |
 | **SecurityGroupId** | Optional: quarantine group's Object ID (required only if `EnableAddToGroup=true`) |
+
+**After deploy** (one click): Open the auto-created App Registration → API permissions → "Grant admin consent for {tenant}". This authorizes the Graph permissions declared by the integration.
 
 Click "Review + create" → "Create". Deployment takes ~3 minutes.
 
