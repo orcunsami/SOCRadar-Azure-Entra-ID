@@ -37,6 +37,9 @@ param CreateAppRegistration bool = empty(EntraIdClientId)
 @description('Grant admin consent to the Microsoft Graph application permissions during deployment (default: false). Only applies when CreateAppRegistration=true (i.e. when ARM is creating a new App Registration). When the new App Registration is being created AND deployer holds Cloud Application Administrator role, set true for fully zero-touch deploy. When reusing an existing App Registration with consent already granted, this parameter has no effect.')
 param GrantAdminConsent bool = false
 
+@description('Skip automatic Federated Identity Credential (FIC) creation. Recommended for reuse path: when EntraIdClientId points to an existing App Registration that you (the deployer) OWN, set this true and add the FIC manually after deployment with one Azure CLI command (the command will be shown in deployment Outputs). The default false attempts to add the FIC automatically using the UAMI identity, which only succeeds if the UAMI is an App Registration owner — typically it is not, so the addFic deployment script fails with "Insufficient privileges" and the overall deployment shows Failed. Setting SkipFicCreation=true keeps the deployment clean (Succeeded) and you run the manual command shown in Outputs. Has no effect when CreateAppRegistration=true (greenfield path creates FIC inline via Microsoft Graph extension and never uses the addFic script).')
+param SkipFicCreation bool = false
+
 @description('Comma-separated Microsoft Entra ID Tenant IDs to query for compromised users. The first tenant in the list is the primary one where the multi-tenant App Registration and the UAMI Federated Identity Credential live. Additional tenants must consent the same App Registration (signInAudience=AzureADMultipleOrgs). For single-tenant deployments, leave this empty and set EntraIdTenantId instead.')
 param EntraIdTenantIds string = ''
 
@@ -253,7 +256,7 @@ var resolvedAppClientId = CreateAppRegistration ? appReg.appId : EntraIdClientId
 // So we use a deployment script (Azure CLI) to add the FIC for our new UAMI.
 // Idempotent: if a FIC with the same name already exists, az ad app federated-credential
 // create errors with "already exists" — we catch that and ignore.
-resource addFicToExistingApp 'Microsoft.Resources/deploymentScripts@2020-10-01' = if (!CreateAppRegistration) {
+resource addFicToExistingApp 'Microsoft.Resources/deploymentScripts@2020-10-01' = if (!CreateAppRegistration && !SkipFicCreation) {
   name: 'addFic-${uniqueString(resourceGroup().id)}'
   location: resourceGroup().location
   kind: 'AzureCLI'
@@ -373,7 +376,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: 'https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.0.3/FunctionApp.zip'
+          value: 'https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.0.4/FunctionApp.zip'
         }
         {
           name: 'POLLING_SCHEDULE'
