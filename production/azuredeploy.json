@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "14542047081022193484"
+      "templateHash": "2387661103385036336"
     },
     "title": "SOCRadar Entra ID Integration for Microsoft Sentinel",
     "description": "Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
@@ -61,25 +61,25 @@
         "description": "SOCRadar Platform Base URL"
       }
     },
+    "EntraIdClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Existing App Registration Client ID (appId). RECOMMENDED for production: provide the appId of an App Registration that already has admin consent in this tenant. ARM will reuse it and only add a Federated Identity Credential for the new UAMI — ZERO consent required. Leave empty to let ARM create a new App Registration (requires 1-click admin consent post-deploy)."
+      }
+    },
     "CreateAppRegistration": {
       "type": "bool",
-      "defaultValue": true,
+      "defaultValue": "[empty(parameters('EntraIdClientId'))]",
       "metadata": {
-        "description": "Create the App Registration inline during deployment (default: true). When true, an App Registration is created with FIC binding to the Function App UAMI — zero manual setup. Set false to use an existing App Registration (provide EntraIdClientId)."
+        "description": "Create a new App Registration inline during deployment. Auto-derived: false when EntraIdClientId is provided (reuse existing), true when empty (create new). You normally do NOT set this manually."
       }
     },
     "GrantAdminConsent": {
       "type": "bool",
       "defaultValue": false,
       "metadata": {
-        "description": "Grant admin consent to the Microsoft Graph application permissions during deployment (default: false). When true, deployment also grants admin consent — fully zero-touch. REQUIRES the deploying user to hold one of these Microsoft Entra ID directory roles: Cloud Application Administrator, Application Administrator, or Privileged Role Administrator. If the deployer is only a subscription Owner without AAD admin role, leave this false and grant consent via Portal (1-click) after deploy."
-      }
-    },
-    "EntraIdClientId": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Existing App Registration Client ID (appId). Leave empty when CreateAppRegistration=true — a new App Reg will be created and its appId used automatically."
+        "description": "Grant admin consent to the Microsoft Graph application permissions during deployment (default: false). Only applies when CreateAppRegistration=true (i.e. when ARM is creating a new App Registration). When the new App Registration is being created AND deployer holds Cloud Application Administrator role, set true for fully zero-touch deploy. When reusing an existing App Registration with consent already granted, this parameter has no effect."
       }
     },
     "EntraIdTenantIds": {
@@ -455,6 +455,47 @@
         "graphSpRef"
       ]
     },
+    "addFicToExistingApp": {
+      "condition": "[not(parameters('CreateAppRegistration'))]",
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2020-10-01",
+      "name": "[format('addFic-{0}', uniqueString(resourceGroup().id))]",
+      "location": "[resourceGroup().location]",
+      "kind": "AzureCLI",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')))]": {}
+        }
+      },
+      "properties": {
+        "azCliVersion": "2.50.0",
+        "retentionInterval": "PT1H",
+        "timeout": "PT5M",
+        "environmentVariables": [
+          {
+            "name": "APP_ID",
+            "value": "[parameters('EntraIdClientId')]"
+          },
+          {
+            "name": "TENANT_ID",
+            "value": "[if(empty(parameters('EntraIdTenantId')), subscription().tenantId, parameters('EntraIdTenantId'))]"
+          },
+          {
+            "name": "UAMI_PRINCIPAL",
+            "value": "[reference('managedIdentity').principalId]"
+          },
+          {
+            "name": "RG_NAME",
+            "value": "[resourceGroup().name]"
+          }
+        ],
+        "scriptContent": "      set -e\n      FIC_NAME=\"socradar-entraid-${RG_NAME}-uami\"\n      # Check if FIC already exists for this UAMI\n      EXISTING=$(az ad app federated-credential list --id \"$APP_ID\" --query \"[?subject=='${UAMI_PRINCIPAL}'].name\" -o tsv 2>/dev/null || echo \"\")\n      if [ -n \"$EXISTING\" ]; then\n        echo \"FIC already exists for UAMI ${UAMI_PRINCIPAL} on app ${APP_ID}: ${EXISTING}\"\n      else\n        echo \"Adding FIC ${FIC_NAME} to existing app ${APP_ID}...\"\n        az ad app federated-credential create --id \"$APP_ID\" --parameters \"{\n          \\\"name\\\": \\\"${FIC_NAME}\\\",\n          \\\"issuer\\\": \\\"https://login.microsoftonline.com/${TENANT_ID}/v2.0\\\",\n          \\\"subject\\\": \\\"${UAMI_PRINCIPAL}\\\",\n          \\\"audiences\\\": [\\\"api://AzureADTokenExchange\\\"]\n        }\"\n        echo \"FIC added successfully\"\n      fi\n    "
+      },
+      "dependsOn": [
+        "managedIdentity"
+      ]
+    },
     "hostingPlan": {
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2023-12-01",
@@ -529,7 +570,7 @@
             },
             {
               "name": "WEBSITE_RUN_FROM_PACKAGE",
-              "value": "https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.0.1/FunctionApp.zip"
+              "value": "https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.0.2/FunctionApp.zip"
             },
             {
               "name": "POLLING_SCHEDULE",
