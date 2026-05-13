@@ -1,6 +1,5 @@
 """
 VIP Protection v2 fetcher.
-UNVERIFIED: endpoint not in official API documentation.
 No password field in responses. Entra ID actions limited to lookup + incident.
 """
 
@@ -23,8 +22,6 @@ MAX_PAGES_PER_RUN = int(os.environ.get("MAX_PAGES_PER_RUN", "50"))
 def fetch(conf: dict, checkpoint: dict) -> list:
     """
     Fetch VIP Protection v2 records.
-    WARNING: This endpoint is UNVERIFIED — not in official API docs.
-    Verified working in live tests (2026-03-26) but may change without notice.
     Respects MAX_PAGES_PER_RUN to avoid function timeout.
     """
     api_key = conf["socradar_api_key"]
@@ -43,7 +40,6 @@ def fetch(conf: dict, checkpoint: dict) -> list:
     start_date = get_start_date(checkpoint, initial_lookback, initial_start_date)
     resume_page = checkpoint.get("last_page", 0)
     logger.info("[VIP] Starting fetch. start_date=%s, page=%d", start_date, resume_page + 1)
-    logger.warning("VIP endpoint is UNVERIFIED — not in official API documentation")
 
     all_records = []
     page = resume_page + 1 if resume_page else 1

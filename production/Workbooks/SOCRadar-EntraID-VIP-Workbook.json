@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## SOCRadar Entra ID \u2014 VIP Protection Dashboard\n> \u26a0\ufe0f **UNVERIFIED**: VIP Protection endpoint is not in official SOCRadar API documentation. Verified working in live tests but may change without notice.\n\nVIP user exposures found by SOCRadar, enriched with Microsoft Entra ID lookup."
+        "json": "## SOCRadar Entra ID \u2014 VIP Protection Dashboard\n> VIP user exposures found by SOCRadar, enriched with Microsoft Entra ID lookup."
       },
       "name": "header"
     },

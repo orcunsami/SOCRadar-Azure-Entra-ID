@@ -8,7 +8,7 @@ Pulls leaked employee credentials from SOCRadar and takes automated remediation 
 |--------|-------------|--------------|
 | Botnet Data v2 | Employee credentials from botnet logs | Platform key |
 | PII Exposure v2 | Employee credentials from data breaches | Platform key |
-| VIP Protection v2 | VIP user exposures | Platform key — ⚠️ UNVERIFIED endpoint |
+| VIP Protection v2 | VIP user exposures | Platform key |
 
 ## Deployment
 
@@ -89,7 +89,7 @@ The deployment is designed so that each Entra action is configurable independent
 |-----------|---------|-------------|
 | `EnableBotnetSource` | `true` | Botnet Data v2 |
 | `EnablePiiSource` | `true` | PII Exposure v2 |
-| `EnableVipSource` | `false` | VIP Protection v2 (UNVERIFIED endpoint) |
+| `EnableVipSource` | `false` | VIP Protection v2 |
 
 ### Actions
 
@@ -134,7 +134,7 @@ Four workbooks are included in `Workbooks/`:
 
 - `SOCRadar-EntraID-Botnet-Workbook.json`
 - `SOCRadar-EntraID-PII-Workbook.json`
-- `SOCRadar-EntraID-VIP-Workbook.json` ⚠️ UNVERIFIED
+- `SOCRadar-EntraID-VIP-Workbook.json`
 - `SOCRadar-EntraID-Combined-Workbook.json`
 
 Import via Azure Portal → Microsoft Sentinel → Workbooks → Add workbook → Edit → Advanced editor.
@@ -192,7 +192,7 @@ python3 e2e_test.py --source botnet     # single source
 
 - **Password handling**: Passwords are sanitized immediately on fetch. By default only `password_present` (bool) and `password_masked` are logged. Set `EnableLogPlaintextPassword=true` to write plaintext passwords to LAW (customer decision — not recommended).
 - **ROPC**: Microsoft discourages ROPC for production use. It is disabled by default and only works with accounts that do not have MFA enforced.
-- **VIP endpoint**: Not in official SOCRadar API documentation. Verified working but may change without notice. Disabled by default.
+- **VIP endpoint**: Disabled by default (set EnableVipSource=true to enable).
 - **Checkpoint**: Each source stores its last processed date in Azure Table Storage. Subsequent runs only fetch new records from that date forward.
 - **Field truncation**: Long strings (>30KB) from SOCRadar are automatically truncated before writing to Log Analytics to stay within field limits.
 - **Workspace soft-delete**: If you delete and recreate a Log Analytics workspace with the same name within 14 days, old data reappears. Use a different name or wait 14 days. See [workspace soft-delete](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/delete-workspace).

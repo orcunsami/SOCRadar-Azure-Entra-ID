@@ -6,7 +6,7 @@ and takes automated remediation actions in Microsoft Entra ID.
 Sources:
   - Botnet Data v2
   - PII Exposure v2
-  - VIP Protection v2 (UNVERIFIED — no official API docs)
+  - VIP Protection v2
 """
 
 import os
@@ -147,7 +147,7 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
     if conf["enable_pii_source"]:
         sources_to_run.append("pii")
     if conf["enable_vip_source"]:
-        logger.warning("[VIP] Source enabled — endpoint is UNVERIFIED (not in official API docs)")
+        logger.info("[VIP] Source enabled")
         sources_to_run.append("vip")
 
     logger.info("Active sources: %s", sources_to_run)
