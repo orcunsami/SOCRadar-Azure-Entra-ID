@@ -1,73 +1,35 @@
-# SOCRadar Entra ID Integration
+# SOCRadar Entra ID Integration for Microsoft Sentinel
 
-Pulls leaked employee credentials from SOCRadar and takes automated remediation actions in Microsoft Entra ID.
+Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. All findings are written to Microsoft Sentinel custom tables.
 
-## Sources
+## Deploy
 
-| Source | Description | Key Required |
-|--------|-------------|--------------|
-| Botnet Data v2 | Employee credentials from botnet logs | Platform key |
-| PII Exposure v2 | Employee credentials from data breaches | Platform key |
-| VIP Protection v2 | VIP user exposures | Platform key |
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Forcunsami%2FSOCRadar-Azure-Entra-ID%2Fv1.0.0%2Fproduction%2Fazuredeploy.json)
 
-## Deployment
+1. Click **Deploy to Azure** above
+2. Fill the form (see [Parameters](#parameters))
+3. Click **Review + create** → **Create**
+4. When deployment completes, grant admin consent for the App Registration:
+   - Open the Azure portal → **Microsoft Entra ID** → **App registrations**
+   - Open the newly created **SOCRadar Entra ID Integration** App Registration
+   - **API permissions** → **Grant admin consent for [your tenant]** → confirm
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Forcunsami%2FSOCRadar-Azure-Entra-ID%2Fmaster%2Fproduction%2Fazuredeploy.json)
+That's it. The Function App starts polling SOCRadar on its next timer cycle (default: every 6 hours).
 
-Or via CLI:
+> **Tip:** If the user performing the deployment holds the **Cloud Application Administrator** role, set `GrantAdminConsent=true` in the form. ARM will grant consent automatically and step 4 is skipped — fully zero-touch deployment.
 
-```bash
-az deployment group create \
-  --resource-group YOUR-RG \
-  --template-file production/azuredeploy.json \
-  --parameters \
-    WorkspaceName="your-workspace-name" \
-    WorkspaceLocation="northeurope" \
-    SocradarApiKey="your-platform-key" \
-    SocradarCompanyId="your-company-id" \
-    EntraIdTenantIds="primary-tenant-id,secondary-tenant-id" \
-    EntraIdClientId="your-app-client-id" \
-    SecurityGroupId="your-security-group-object-id"
-```
+## Who Can Deploy
 
-For single-tenant deployments, set `EntraIdTenantId` (singular) instead and leave `EntraIdTenantIds` empty.
+The user clicking **Deploy to Azure** must have:
 
-## Authentication (Secretless)
+| Role | Greenfield (CreateAppRegistration=true) | Auto-consent (GrantAdminConsent=true) |
+|------|------------------------------------------|----------------------------------------|
+| **Application Administrator** | ✓ | — (consent step manual) |
+| **Cloud Application Administrator** | ✓ | ✓ (zero-touch) |
+| **Global Administrator** | ✓ | ✓ |
+| Standard user | ✗ | ✗ |
 
-This integration uses **Workload Identity Federation** — no client secret, no password rotation:
-
-1. ARM template creates a **User-Assigned Managed Identity** (UAMI) automatically
-2. UAMI is linked to the App Registration via **one Federated Identity Credential** (FIC) on the primary tenant's App Registration
-3. Graph permissions are managed through the portal: App Registration → API permissions → Grant admin consent
-4. No `ENTRA_CLIENT_SECRET` is needed — auth is fully secretless
-
-**What you provide**: `ENTRA_TENANT_IDS` (comma-separated list of tenants to monitor) + `ENTRA_CLIENT_ID` (your App Registration's Client ID, marked multi-tenant if monitoring more than one tenant). These are identifiers, not secrets. See [Multi-Tenant Setup](docs/multi-tenant-setup.md) for the consent flow when monitoring more than one Entra directory.
-
-## App Registration Permissions
-
-Create an App Registration and add only the Microsoft Graph Application permissions required by the features you enable (Grant admin consent after adding).
-
-| Permission | Required For |
-|------------|-------------|
-| `User.Read.All` | `EnableUserLookup=true` (look up users in Entra ID before taking action) |
-| `User.RevokeSessions.All` | `EnableRevokeSession=true` |
-| `GroupMember.ReadWrite.All` | `EnableAddToGroup=true` or `EnableRemoveFromGroup=true` |
-| `User-PasswordProfile.ReadWrite.All` | `EnablePasswordChange=true` |
-| `User.EnableDisableAccount.All` | `EnableDisableAccount=true` or `EnableEnableAccount=true` |
-| `IdentityRiskyUser.ReadWrite.All` | `EnableConfirmRisky` (requires P1/P2 license) |
-| `UserAuthenticationMethod.ReadWrite.All` | `EnableForceMfaReregistration=true` (also needs Privileged Authentication Administrator role on the SP) |
-
-`User.ReadWrite.All` is not required for the current action model and should not be granted unless you intentionally add a broader capability.
-
-For ROPC password validation (`EnableROPC=true`): enable **Allow public client flows** on the App Registration.
-
-## Least-Privilege Model
-
-The deployment is designed so that each Entra action is configurable independently.
-
-- If `EnableUserLookup=false`, the app still fetches SOCRadar data and writes to Log Analytics, but it skips Entra user matching and all Entra-targeted actions.
-- If an action is disabled, the corresponding Microsoft Graph permission does not need to be granted.
-- High-impact actions such as account disable, account re-enable, password reset, and risky-user confirmation are disabled by default.
+The user must also have **Owner** or **Contributor** role on the target Azure subscription/resource group.
 
 ## Parameters
 
@@ -75,124 +37,121 @@ The deployment is designed so that each Entra action is configurable independent
 
 | Parameter | Description |
 |-----------|-------------|
-| `WorkspaceName` | Log Analytics workspace name |
-| `WorkspaceLocation` | Workspace region |
-| `SocradarApiKey` | SOCRadar platform API key |
-| `SocradarCompanyId` | SOCRadar company ID |
-| `EntraIdTenantIds` | CSV of Microsoft Entra tenant IDs (primary first). See [multi-tenant-setup.md](docs/multi-tenant-setup.md). |
-| `EntraIdTenantId` | (Legacy) Single Entra tenant ID — used only when `EntraIdTenantIds` is empty. |
-| `EntraIdClientId` | App Registration client ID. For multi-tenant deployments this is the same client ID across every tenant. |
+| `WorkspaceName` | Name of the Log Analytics workspace to create (or reuse) |
+| `SocradarApiKey` | Your SOCRadar Platform API key |
+| `SocradarCompanyId` | Your SOCRadar Company ID |
 
-### Sources
+### Sources (what to monitor)
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `EnableBotnetSource` | `true` | Botnet Data v2 |
-| `EnablePiiSource` | `true` | PII Exposure v2 |
-| `EnableVipSource` | `false` | VIP Protection v2 |
+| `EnableBotnetSource` | `true` | Botnet Data v2 — credentials from botnet logs |
+| `EnablePiiSource` | `true` | PII Exposure v2 — credentials from data breaches |
+| `EnableVipSource` | `false` | VIP Protection v2 — VIP user exposures |
 
-### Actions
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `EnableUserLookup` | `true` | Look up leaked identities in Entra ID before taking action. Requires `User.Read.All`. If `false`, the app runs in data-ingest mode and skips Entra actions. |
-| `EnableRevokeSession` | `true` | Revoke all sign-in sessions. Requires `User.RevokeSessions.All`. |
-| `EnableAddToGroup` | `true` | Add user to a security group. Requires `GroupMember.ReadWrite.All`. |
-| `EnableRemoveFromGroup` | `false` | Remove user from security group. Requires `GroupMember.ReadWrite.All`. |
-| `SecurityGroupId` | `""` | Security group object ID (required if `EnableAddToGroup` or `EnableRemoveFromGroup`) |
-| `EnableDisableAccount` | `false` | Disable the account. Requires `User.EnableDisableAccount.All`. |
-| `EnableEnableAccount` | `false` | Re-enable a previously disabled account. Requires `User.EnableDisableAccount.All`. |
-| `EnablePasswordChange` | `false` | Force password change on next sign-in. Requires `User-PasswordProfile.ReadWrite.All`. |
-| `EnableConfirmRisky` | `false` | Mark user as confirmed compromised in Identity Protection. Requires `IdentityRiskyUser.ReadWrite.All` and P1/P2 licensing. |
-| `EnableForceMfaReregistration` | `false` | Delete all non-password MFA methods to force re-registration. Requires `UserAuthenticationMethod.ReadWrite.All`. HIGH IMPACT. |
-| `EnableCreateIncident` | `false` | Create Microsoft Sentinel incident |
-| `EnableROPC` | `false` | Validate password via ROPC (only for plaintext passwords) |
-| `EnableResolveAlarm` | `false` | Resolve the SOCRadar alarm when a matched user is found in Entra ID |
-
-### Other
+### Actions (what to do when a match is found in Entra ID)
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `PollingIntervalHours` | `6` | Polling interval in hours |
-| `InitialLookbackMinutes` | `43200` | Lookback window for first run (minutes) |
-| `InitialStartDate` | `""` | Optional first-run start date in `YYYY-MM-DD` format |
-| `EnableLogPlaintextPassword` | `false` | Write plaintext passwords to Log Analytics (customer decision) |
-| `WorkspaceResourceGroup` | `""` | Workspace resource group (for cross-RG deployments) |
+| `EnableUserLookup` | `true` | Look up leaked identity in Entra ID before taking action |
+| `EnableRevokeSession` | `true` | Revoke all active sign-in sessions |
+| `EnableAddToGroup` | `false` | Add user to a quarantine security group (requires `SecurityGroupId`) |
+| `EnableRemoveFromGroup` | `false` | Remove user from a security group |
+| `EnablePasswordChange` | `false` | Force password change at next sign-in |
+| `EnableDisableAccount` | `false` | Disable the user account (high impact) |
+| `EnableEnableAccount` | `false` | Re-enable previously disabled accounts |
+| `EnableForceMfaReregistration` | `false` | Delete all non-password MFA methods to force re-registration (high impact) |
+| `EnableConfirmRisky` | `false` | Mark user as confirmed compromised in Identity Protection (requires Entra ID P1/P2) |
+| `EnableResolveAlarm` | `false` | Mark the SOCRadar alarm as RESOLVED when remediation succeeds |
 
-## Log Analytics Tables
+### Polling
 
-| Table | Source |
-|-------|--------|
-| `SOCRadar_Botnet_CL` | Botnet Data v2 |
-| `SOCRadar_PII_CL` | PII Exposure v2 |
-| `SOCRadar_VIP_CL` | VIP Protection v2 |
-| `SOCRadar_EntraID_Audit_CL` | Audit log (all sources) |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `PollingIntervalHours` | `6` | How often the Function App polls SOCRadar |
+| `InitialLookbackMinutes` | `43200` | Lookback window for the first run (default: 30 days). Set higher (e.g. `129600` = 90 days) for initial backlog import. |
+| `MaxPagesPerRun` | `50` | Pagination cap per run |
+| `RunOnStartup` | `true` | Run an immediate poll after deployment instead of waiting for the first timer cycle |
 
-## Workbooks
+### Advanced (optional)
 
-Four workbooks are included in `Workbooks/`:
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `EntraIdTenantId` | (current subscription tenant) | Target Microsoft Entra ID tenant ID. Leave empty to auto-detect. |
+| `EntraIdTenantIds` | (empty) | Comma-separated tenant IDs for multi-tenant monitoring (MSSP / holding scenarios). When set, overrides `EntraIdTenantId`. |
+| `WorkspaceLocation` | (deployment region) | Region for the Log Analytics workspace |
+| `WorkspaceResourceGroup` | (current RG) | Resource group of the workspace (for cross-RG deployments) |
+| `HostingPlanSku` | `Y1` | App Service Plan SKU. `Y1` = Consumption (best-effort timer). `B1` = Basic with Always-On (recommended for production reliability). `EP1` = Elastic Premium. |
+| `SocradarBaseUrl` | `https://platform.socradar.com` | SOCRadar Platform base URL |
 
-- `SOCRadar-EntraID-Botnet-Workbook.json`
-- `SOCRadar-EntraID-PII-Workbook.json`
-- `SOCRadar-EntraID-VIP-Workbook.json`
-- `SOCRadar-EntraID-Combined-Workbook.json`
+## What Gets Deployed
 
-Import via Azure Portal → Microsoft Sentinel → Workbooks → Add workbook → Edit → Advanced editor.
+| Resource | Purpose |
+|----------|---------|
+| Function App (Python 3.11) | Polls SOCRadar, performs Entra ID actions, writes to LAW |
+| App Service Plan | Hosting plan for the Function App |
+| User-Assigned Managed Identity | Secretless auth (Workload Identity Federation) |
+| Storage Account | Function App runtime + checkpoint table |
+| Application Insights | Function App telemetry |
+| App Registration (Entra ID) | Microsoft Graph permissions (created automatically) |
+| Federated Identity Credential | Binds the UAMI to the App Registration (no client secret) |
+| Log Analytics workspace + Sentinel onboarding | Destination for findings |
+| 4 custom LAW tables | `SOCRadar_Botnet_CL`, `SOCRadar_PII_CL`, `SOCRadar_VIP_CL`, `SOCRadar_EntraID_Audit_CL` |
+| Data Collection Rule (DCR) | DCR-based Logs Ingestion API |
+| 4 Sentinel workbooks | Dashboards for Botnet, PII, VIP, Combined |
+| Role assignments | Function App → LAW (write), UAMI → DCR (publish) |
 
-Or deploy all at once via CLI:
+## Microsoft Graph Permissions
 
-```bash
-cd scripts
-bash deploy_workbooks.sh
+The App Registration receives only the Graph Application permissions required by the actions you enable. Each permission is granted at deployment time (when `GrantAdminConsent=true`) or after deployment via the portal click.
+
+| Permission | Required For |
+|------------|-------------|
+| `User.Read.All` | `EnableUserLookup` |
+| `User.RevokeSessions.All` | `EnableRevokeSession` |
+| `GroupMember.ReadWrite.All` | `EnableAddToGroup`, `EnableRemoveFromGroup` |
+| `User.EnableDisableAccount.All` | `EnableDisableAccount`, `EnableEnableAccount` |
+| `User-PasswordProfile.ReadWrite.All` | `EnablePasswordChange` |
+| `IdentityRiskyUser.ReadWrite.All` | `EnableConfirmRisky` |
+| `UserAuthenticationMethod.ReadWrite.All` | `EnableForceMfaReregistration` |
+
+If an action is disabled, its permission is still requested on the App Registration but is unused at runtime. To minimize the permission set, you can manually remove unused permissions from the App Registration after deployment.
+
+## Sentinel Workbooks
+
+Four workbooks are deployed automatically:
+
+- **Botnet Protection Dashboard** — credentials harvested by botnets
+- **PII Protection Dashboard** — credentials exposed in data breaches
+- **VIP Protection Dashboard** — VIP user exposures
+- **Combined Dashboard** — single pane covering all three sources, with tenant-level breakdown
+
+Open them in **Microsoft Sentinel** → **Workbooks** → tab "My Workbooks".
+
+## Verification
+
+After deployment, query the audit table to confirm the Function App is running:
+
+```kql
+SOCRadar_EntraID_Audit_CL
+| where TimeGenerated > ago(2h)
+| project TimeGenerated, source, total_records, found_count, error_count, duration_sec
+| order by TimeGenerated desc
 ```
 
-## Scripts
+For matched users and the actions taken:
 
-Deployment and testing scripts are in `scripts/`:
-
-| Script | Description |
-|--------|-------------|
-| `deploy.sh` | Full ARM deployment + workbooks + role propagation wait |
-| `deploy.config.example` | Configuration template (copy to `deploy.config` and fill in) |
-| `deploy_workbooks.sh` | Deploy/update Sentinel workbooks only |
-| `validate.sh` | Post-deployment health check (8-point validation) |
-| `e2e_test.py` | Comprehensive E2E test suite (9 test categories) |
-| `e2e_test.sh` | Test runner wrapper (full/dry-run/unit/quick modes) |
-| `reset.sh` | Delete all deployed resources (with confirmation) |
-
-### Quick Start
-
-```bash
-cd scripts
-
-# 1. Configure
-cp deploy.config.example deploy.config
-# Edit deploy.config with your credentials
-
-# 2. Deploy (5-month lookback by default)
-bash deploy.sh
-
-# 3. Validate
-bash validate.sh
-
-# 4. Test
-python3 e2e_test.py --dry-run          # connectivity only
-python3 e2e_test.py                     # full E2E with writes
-python3 e2e_test.py --source botnet     # single source
+```kql
+union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL
+| where TimeGenerated > ago(2h)
+| where entra_status == "found"
+| project TimeGenerated, source, email, actions_taken, entra_tenant_id
+| order by TimeGenerated desc
 ```
-
-## Prerequisites
-
-- Azure subscription with a Log Analytics workspace (Microsoft Sentinel optional)
-- SOCRadar Platform API key + Company ID
-- App Registration with Graph permissions configured (portal: API permissions → Grant admin consent)
-- **Outbound HTTPS access** from Function App to `platform.socradar.com` and `graph.microsoft.com`. If your network uses a proxy or firewall, whitelist these domains.
 
 ## Notes
 
-- **Password handling**: Passwords are sanitized immediately on fetch. By default only `password_present` (bool) and `password_masked` are logged. Set `EnableLogPlaintextPassword=true` to write plaintext passwords to LAW (customer decision — not recommended).
-- **ROPC**: Microsoft discourages ROPC for production use. It is disabled by default and only works with accounts that do not have MFA enforced.
-- **VIP endpoint**: Disabled by default (set EnableVipSource=true to enable).
-- **Checkpoint**: Each source stores its last processed date in Azure Table Storage. Subsequent runs only fetch new records from that date forward.
-- **Field truncation**: Long strings (>30KB) from SOCRadar are automatically truncated before writing to Log Analytics to stay within field limits.
-- **Workspace soft-delete**: If you delete and recreate a Log Analytics workspace with the same name within 14 days, old data reappears. Use a different name or wait 14 days. See [workspace soft-delete](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/delete-workspace).
+- **Password handling**: Passwords are sanitized immediately on fetch. By default only `password_present` (bool) and `password_masked` are written to Log Analytics. Set `EnableLogPlaintextPassword=true` only if you have a compelling reason (not recommended).
+- **Checkpoint**: Each source stores its last processed date in Azure Table Storage. Subsequent runs only fetch records after that date — no duplicates.
+- **Workspace soft-delete**: If you delete and recreate a workspace with the same name within 14 days, old data reappears. Use a different name or wait 14 days.
+- **Network requirements**: Outbound HTTPS access from the Function App to `platform.socradar.com` and `graph.microsoft.com`. If your network uses a proxy or firewall, whitelist these domains.
