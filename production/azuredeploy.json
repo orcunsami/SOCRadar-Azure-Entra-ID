@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "1593029321438514164"
+      "templateHash": "14542047081022193484"
     },
     "title": "SOCRadar Entra ID Integration for Microsoft Sentinel",
     "description": "Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
@@ -224,6 +224,20 @@
         "description": "How often to check for new leaked credentials (1-24 hours)"
       }
     },
+    "HostingPlanSku": {
+      "type": "string",
+      "defaultValue": "Y1",
+      "allowedValues": [
+        "Y1",
+        "B1",
+        "B2",
+        "EP1",
+        "EP2"
+      ],
+      "metadata": {
+        "description": "Function App hosting plan SKU. Y1 (Consumption, default) is free-tier with best-effort timer reliability — recommended for test/eval. B1 (Basic, Linux) costs ~$55/month and supports Always On for guaranteed timer execution — recommended for production where missed schedules are unacceptable. Microsoft Learn: \"Consumption plan timer triggers are best-effort; for mission-critical scheduled workloads, use App Service Plan with Always On.\""
+      }
+    },
     "InitialLookbackMinutes": {
       "type": "int",
       "defaultValue": 43200,
@@ -279,7 +293,9 @@
       "cc117bb9-00cf-4eb8-b580-ea2a878fe8f7",
       "656f6061-f9fe-4807-9708-6a2e0934df76",
       "50483e42-d915-4231-9639-7fdb7fd190e5"
-    ]
+    ],
+    "hostingPlanTier": "[if(startsWith(parameters('HostingPlanSku'), 'Y'), 'Dynamic', if(startsWith(parameters('HostingPlanSku'), 'EP'), 'ElasticPremium', 'Basic'))]",
+    "hostingPlanIsConsumption": "[startsWith(parameters('HostingPlanSku'), 'Y')]"
   },
   "imports": {
     "microsoftGraphV1_0": {
@@ -445,8 +461,8 @@
       "name": "[variables('hostingPlanName')]",
       "location": "[resourceGroup().location]",
       "sku": {
-        "name": "Y1",
-        "tier": "Dynamic"
+        "name": "[parameters('HostingPlanSku')]",
+        "tier": "[variables('hostingPlanTier')]"
       },
       "kind": "functionapp",
       "properties": {
@@ -481,6 +497,7 @@
         "httpsOnly": true,
         "siteConfig": {
           "linuxFxVersion": "Python|3.11",
+          "alwaysOn": "[not(variables('hostingPlanIsConsumption'))]",
           "appSettings": [
             {
               "name": "AzureWebJobsStorage",

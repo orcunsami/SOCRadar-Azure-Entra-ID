@@ -99,6 +99,10 @@ param EnableLogPlaintextPassword bool = false
 @maxValue(24)
 param PollingIntervalHours int = 6
 
+@description('Function App hosting plan SKU. Y1 (Consumption, default) is free-tier with best-effort timer reliability — recommended for test/eval. B1 (Basic, Linux) costs ~$55/month and supports Always On for guaranteed timer execution — recommended for production where missed schedules are unacceptable. Microsoft Learn: "Consumption plan timer triggers are best-effort; for mission-critical scheduled workloads, use App Service Plan with Always On."')
+@allowed(['Y1', 'B1', 'B2', 'EP1', 'EP2'])
+param HostingPlanSku string = 'Y1'
+
 @description('Fallback: minutes of history to fetch on first run if InitialStartDate is empty. Default 43200 = 30 days.')
 @minValue(0)
 @maxValue(525600)
@@ -240,12 +244,17 @@ resource adminConsentGrants 'Microsoft.Graph/appRoleAssignedTo@v1.0' = [for role
 // Resolved app client ID — either newly created or provided as parameter
 var resolvedAppClientId = CreateAppRegistration ? appReg.appId : EntraIdClientId
 
+// Map SKU to its tier (Y1=Dynamic Consumption, B*=Basic, EP*=ElasticPremium).
+var hostingPlanTier = startsWith(HostingPlanSku, 'Y') ? 'Dynamic' : (startsWith(HostingPlanSku, 'EP') ? 'ElasticPremium' : 'Basic')
+// Always On requires a non-Consumption plan. Y1 doesn't support it; B1+ and EP1+ do.
+var hostingPlanIsConsumption = startsWith(HostingPlanSku, 'Y')
+
 resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: hostingPlanName
   location: resourceGroup().location
   sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
+    name: HostingPlanSku
+    tier: hostingPlanTier
   }
   kind: 'functionapp'
   properties: {
@@ -278,6 +287,8 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     siteConfig: {
       linuxFxVersion: 'Python|3.11'
+      // Always On is only valid on non-Consumption plans (B1+, EP1+). On Y1 (Consumption), the setting is invalid and silently ignored.
+      alwaysOn: !hostingPlanIsConsumption
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
@@ -1237,6 +1248,10 @@ resource triggerFirstRun_id 'Microsoft.Resources/deploymentScripts@2020-10-01' =
     Microsoft_Web_sites_functionAppName_managedIdentityName_WebsiteContributorRoleId
   ]
 }
+
+// Note: Logic App external scheduler removed. Microsoft official guidance is to
+// upgrade the hosting plan (B1 + Always On, or EP1+) for reliable timer triggers
+// rather than add a separate scheduler. See HostingPlanSku parameter.
 
 resource WorkspaceName_Microsoft_SecurityInsights_default 'Microsoft.OperationalInsights/workspaces/providers/onboardingStates@2024-03-01' = if (empty(WorkspaceResourceGroup)) {
   name: '${WorkspaceName}/Microsoft.SecurityInsights/default'
