@@ -114,21 +114,13 @@ is listed, consent succeeded.
 
 ## Step 3 — Configure the Function App
 
-Pass every tenant you want to monitor (primary first) as a comma-separated
-list to the ARM template parameter `EntraIdTenantIds`:
+When you deploy via the **Deploy to Azure** button, set the `EntraIdTenantIds` parameter to a comma-separated list of tenant IDs (primary first):
 
-```bash
-az deployment group create \
-  --resource-group my-socradar-rg \
-  --template-uri https://raw.githubusercontent.com/orcunsami/SOCRadar-Azure-Entra-ID/master/production/azuredeploy.json \
-  --parameters \
-    WorkspaceName="my-sentinel-ws" \
-    WorkspaceLocation="northeurope" \
-    SocradarApiKey="<key>" \
-    SocradarCompanyId="<id>" \
-    EntraIdTenantIds="00000000-0000-0000-0000-aaaaaaaaaaaa,00000000-0000-0000-0000-bbbbbbbbbbbb" \
-    EntraIdClientId="<client-id>"
 ```
+EntraIdTenantIds: 00000000-0000-0000-0000-aaaaaaaaaaaa,00000000-0000-0000-0000-bbbbbbbbbbbb
+```
+
+Leave `EntraIdTenantId` (singular) empty when using the CSV list.
 
 The Function App reads this via the `ENTRA_TENANT_IDS` app setting. At
 runtime, every leaked credential is looked up against each tenant in

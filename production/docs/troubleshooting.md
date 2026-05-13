@@ -13,12 +13,8 @@ Scan the symptom first. If none match, the last section lists how to collect dia
 **Diagnosis (v1.5.0+ — DCR-based ingestion)**:
 - Custom tables in Log Analytics take 5–15 minutes to appear on first write.
 - Confirm the function actually called the Logs Ingestion API: App Insights → Traces → filter `[LAW]`. Look for `LogsIngestionClient initialized for https://<dcr-name>.<region>.ingest.monitor.azure.com`.
-- If 403/401 on DCR upload: UAMI is missing the **Monitoring Metrics Publisher** role on the DCR. Check via:
-  ```bash
-  az role assignment list --assignee <UAMI_PRINCIPAL_ID> --all \
-    --query "[?roleDefinitionName=='Monitoring Metrics Publisher']" -o table
-  ```
-- If 200 and still no data: check `DCR_IMMUTABLE_ID` and `DCR_ENDPOINT` app settings; verify table exists with `az monitor log-analytics workspace table show`.
+- If 403/401 on DCR upload: UAMI is missing the **Monitoring Metrics Publisher** role on the DCR. Check via Azure Portal → Data Collection Rule → **Access control (IAM)** → look for the UAMI under role assignments.
+- If 200 and still no data: check `DCR_IMMUTABLE_ID` and `DCR_ENDPOINT` app settings (Function App → Configuration); verify the table exists in Azure Portal → Log Analytics workspace → **Tables**.
 
 **Fix**:
 - Wait 15 minutes after first ingest.
@@ -38,7 +34,7 @@ Scan the symptom first. If none match, the last section lists how to collect dia
 | AADSTS code | Meaning | Fix |
 |-------------|---------|-----|
 | `AADSTS7000215` | Invalid client credential | FIC misconfiguration. Verify: (1) FIC exists on app registration linking to UAMI, (2) AZURE_CLIENT_ID matches the UAMI's client ID, (3) ENTRA_CLIENT_ID matches the app registration's client ID. |
-| `AADSTS700016` | App not found in tenant | App registration deleted, or wrong `ENTRA_TENANT_ID`. Verify `appId` exists via `az ad app show --id <appId>`. |
+| `AADSTS700016` | App not found in tenant | App registration deleted, or wrong `ENTRA_TENANT_ID`. Verify the appId exists in Azure Portal → Microsoft Entra ID → App registrations → search by appId. |
 | `AADSTS7000112` | App disabled | Enable the app registration in the Entra admin portal. |
 | `AADSTS65001` / `AADSTS700022` | Admin has not consented | Admin must click the consent URL: `https://login.microsoftonline.com/{tenant}/adminconsent?client_id={appId}`. |
 | `AADSTS50020` | User account not in tenant | Wrong tenant. Check `ENTRA_TENANT_ID`. |
@@ -125,7 +121,7 @@ SOCRadar_EntraID_Audit_CL
 - Table `EntraIDState` corrupted or deleted.
 
 **Fix**:
-- Verify UAMI role assignment: `az role assignment list --assignee <UAMI-principal-id> --scope /subscriptions/.../storageAccounts/<name>`.
+- Verify UAMI role assignment in Azure Portal → Storage account → **Access control (IAM)** → role assignments — look for `SOCRadar-EntraID-MI` with **Storage Table Data Contributor**.
 - Missing → ARM redeploy restores it.
 - Table deleted → ARM redeploy recreates, but checkpoint resets to earliest lookback.
 
@@ -138,11 +134,11 @@ SOCRadar_EntraID_Audit_CL
 **Diagnosis**: The Federated Identity Credential (FIC) linking the UAMI to the App Registration may be misconfigured.
 
 **Fix**:
-1. Verify FIC exists: `az ad app federated-credential list --id <appId>` — should show `uami-federation` entry.
-2. Verify `AZURE_CLIENT_ID` app setting matches the UAMI's client ID.
-3. Verify `ENTRA_CLIENT_ID` app setting matches the App Registration's client ID.
-4. Verify `ENTRA_TENANT_ID` app setting matches the tenant ID.
-5. If FIC is missing, recreate it (see deployment docs).
+1. Verify FIC exists: Azure Portal → Microsoft Entra ID → App registrations → open the App Registration → **Certificates & secrets** → **Federated credentials** tab. You should see at least one credential linking the UAMI.
+2. Verify `AZURE_CLIENT_ID` app setting matches the UAMI's client ID (Function App → Configuration; UAMI → Overview → Client ID).
+3. Verify `ENTRA_CLIENT_ID` app setting matches the App Registration's Application (client) ID.
+4. Verify `ENTRA_TENANT_ID` app setting matches the tenant ID (Azure Portal → Microsoft Entra ID → Overview).
+5. If FIC is missing, add it via **Certificates & secrets** → **Federated credentials** → **Add credential** → scenario **Managed identity** → select the UAMI → save.
 
 No secret rotation needed — auth is fully secretless via Managed Identity.
 
@@ -196,26 +192,28 @@ No secret rotation needed — auth is fully secretless via Managed Identity.
 
 ## 12. How to collect diagnostic info for support
 
-Before opening a ticket, collect:
+Before opening a ticket, collect (all via Azure Portal):
 
-```bash
-# 1. Recent traces (last hour)
-az monitor app-insights query \
-  --app <AI_APP_ID> \
-  --analytics-query "traces | where timestamp > ago(1h) | order by timestamp desc | take 100"
+**1. Recent traces (Azure Portal → Application Insights → Logs):**
+```kql
+traces
+| where timestamp > ago(1h)
+| order by timestamp desc
+| take 100
+```
 
-# 2. Last 5 function executions
-az monitor app-insights query \
-  --app <AI_APP_ID> \
-  --analytics-query "requests | where timestamp > ago(1d) | order by timestamp desc | take 5"
+**2. Last 5 function executions (Azure Portal → Application Insights → Logs):**
+```kql
+requests
+| where timestamp > ago(1d)
+| order by timestamp desc
+| take 5
+```
 
-# 3. Current app settings (redact secrets!)
-az functionapp config appsettings list \
-  --name <FA_NAME> --resource-group <RG> \
-  --query "[?name!='SOCRADAR_API_KEY' && name!='WORKSPACE_KEY'].{name:name, value:value}" -o table
+**3. Current app settings:** Azure Portal → Function App → **Configuration** → **Application settings**. Screenshot the list (redact `SOCRADAR_API_KEY` before sharing).
 
-# 4. Lifecycle events
-# In Log Analytics, run:
+**4. Lifecycle events (Azure Portal → Log Analytics workspace → Logs):**
+```kql
 SOCRadar_EntraID_Audit_CL
 | where TimeGenerated > ago(7d)
 | project TimeGenerated, event_type, tenant_id, aadsts_code, details
