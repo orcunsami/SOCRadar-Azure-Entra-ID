@@ -221,7 +221,10 @@ resource fic 'Microsoft.Graph/applications/federatedIdentityCredentials@v1.0' = 
 // app's service principal. Requires the deploying user to have
 // AppRoleAssignment.ReadWrite.All (Application Administrator role provides this).
 // Eliminates the "Grant admin consent" portal click.
-resource graphSpRef 'Microsoft.Graph/servicePrincipals@v1.0' existing = {
+// Conditional existing: portal preflight eager-evaluates existing references and
+// requires Application.Read.All for the signed-in user; gating by the same
+// condition as adminConsentGrants skips the fetch when consent automation is off.
+resource graphSpRef 'Microsoft.Graph/servicePrincipals@v1.0' existing = if (CreateAppRegistration && GrantAdminConsent) {
   appId: '00000003-0000-0000-c000-000000000000'
 }
 
@@ -370,7 +373,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: 'https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.0.2/FunctionApp.zip'
+          value: 'https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.0.3/FunctionApp.zip'
         }
         {
           name: 'POLLING_SCHEDULE'
