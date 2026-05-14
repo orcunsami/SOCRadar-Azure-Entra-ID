@@ -155,6 +155,7 @@ DEPLOY_OUTPUT=$(az deployment group create \
         SocradarBaseUrl="$SOCRADAR_BASE_URL" \
         EntraIdTenantIds="$ENTRA_TENANT_IDS" \
         EntraIdTenantId="$ENTRA_TENANT_ID" \
+        EntraIdVerifiedDomains="${ENTRA_ID_VERIFIED_DOMAINS:-}" \
         EntraIdClientId="$ENTRA_CLIENT_ID" \
         SecurityGroupId="$SECURITY_GROUP_ID" \
         EnableBotnetSource="$ENABLE_BOTNET" \

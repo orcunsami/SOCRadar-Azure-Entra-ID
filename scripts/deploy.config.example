@@ -30,6 +30,13 @@ SOCRADAR_COMPANY_ID=330
 ENTRA_TENANT_ID=your-tenant-id
 ENTRA_CLIENT_ID=your-app-registration-client-id
 
+# Optional comma-separated allowlist of Microsoft Entra ID verified domains
+# (e.g. acme.com,acme.io,acme.onmicrosoft.com). When set, only records whose
+# email domain matches one of these is forwarded to Microsoft Graph; others
+# land in LAW with entra_status="skipped_domain_allowlist". Leave empty to
+# query every record returned by SOCRadar (v1.0 behavior).
+ENTRA_ID_VERIFIED_DOMAINS=
+
 # Entra ID Security Group (quarantine group for compromised users)
 SECURITY_GROUP_ID=
 
