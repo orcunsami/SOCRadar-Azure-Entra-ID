@@ -25,23 +25,36 @@ Microsoft   Microsoft Sentinel
                 (each action is independently configurable)
 ```
 
+## Required Permissions (read this first)
+
+| Deployer's Microsoft Entra ID role | Post-deploy experience | Form values |
+|------------------------------------|------------------------|-------------|
+| **Cloud Application Administrator** (or Global Admin) | 🟢 Zero post-deploy steps — App Registration, federated credential, and admin consent are all granted inline | `GrantAdminConsent=true` |
+| **Application Administrator** | 🟡 One manual click after deploy: **App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent** | `GrantAdminConsent=false` *(default)* |
+| **No Entra ID admin role** | 🔴 Fallback only — contact SOCRadar for the reuse-path setup | — |
+
+On the Azure side, the deployer needs **Contributor** (or Owner) on the target subscription / resource group. **Owner is not required.**
+
+See [`production/README.md` → Required Permissions](production/README.md#required-permissions) for the full prerequisite list, including pre-deploy info you must gather (tenant IDs, verified domains, SOCRadar API key, etc.).
+
 ## Deploy
 
-Click **Deploy to Azure** above. Fill the form. Click **Create**. When deployment completes:
-
-1. Open the Azure portal → **Microsoft Entra ID** → **App registrations**
-2. Open the newly created **SOCRadar Entra ID Integration** App Registration
-3. **API permissions** → **Grant admin consent for [your tenant]** → confirm
-
-That's the final step. The Function App starts polling on its next timer cycle.
-
-> **Cloud Application Administrator?** Set `GrantAdminConsent=true` in the form and consent is granted automatically — fully zero-touch deployment.
+Click **Deploy to Azure** at the top. Fill the form. Click **Review + create** → **Create**. Function App starts polling on its next timer cycle (default: every 6 hours).
 
 ## Documentation
 
 - **[Deployment guide + parameter reference](production/README.md)** — what each form field means, what gets deployed, who can deploy, verification queries
 
-## Sources Monitored
+## Capabilities at a glance
+
+- **3 SOCRadar dark-web sources** — Botnet Data (info-stealer malware logs), PII Exposure (data-breach surfacing), VIP Protection (executives & high-value users)
+- **Identity scoping** — multi-tenant lookup (`EntraIdTenantIds` CSV, MSSP / holdings / M&A) + optional verified-domain allowlist (`EntraIdVerifiedDomains` CSV) that gates Microsoft Graph lookups to in-scope domains only
+- **11 independently togglable remediation actions** — see table below
+- **4 custom Log Analytics tables** via DCR-based Logs Ingestion (HTTP Data Collector deprecation already handled) + **4 Sentinel workbooks** with multi-tenant filter dropdowns
+- **Secretless authentication** — Workload Identity Federation (UAMI → Federated Credential → App Registration). No client secrets, no key rotation
+- **Operational resilience** — per-tenant 403 dropout, per-employee + per-source time budgets, pagination resume across function timeouts, App Insights tracing, per-record status enum (`found`, `not_found`, `lookup_permission_denied`, `skipped_domain_allowlist`, `compromised`, ...)
+
+### Sources Monitored
 
 | Source | What it detects |
 |--------|-----------------|
@@ -49,19 +62,27 @@ That's the final step. The Function App starts polling on its next timer cycle.
 | **PII Exposure** | Employee credentials surfacing in data breaches |
 | **VIP Protection** | Exposures of executives and high-value users |
 
-## Actions Available
+### Actions Available
 
-When a leaked identity is found in Entra ID, the Function App can take any combination of:
+When a leaked identity is found in Entra ID, any combination can run automatically:
 
-- **Revoke session** — invalidates all active sign-in tokens
-- **Force password change** — flags account for password reset at next sign-in
-- **Disable account** — blocks sign-in entirely
-- **Force MFA re-registration** — deletes all non-password authentication methods, forcing the user to re-enroll
-- **Add to quarantine group** — segregates the user into a restricted security group
-- **Mark as confirmed compromised** — feeds Identity Protection (Entra ID P1/P2)
-- **Resolve SOCRadar alarm** — closes the alarm on the SOCRadar Platform after successful remediation
+| Action | Default | Impact |
+|--------|---------|--------|
+| **Revoke session** — invalidate all active sign-in tokens | ✓ on | Low — forces re-login |
+| **Force password change** at next sign-in | off | Medium — user prompted on next login |
+| **Disable account** — block sign-in entirely | off | High — full lockout |
+| **Re-enable account** | off | — |
+| **Force MFA re-registration** — delete non-password auth methods, force re-enrol | off | High — user must re-enrol MFA |
+| **Add to quarantine group** + restricted Conditional Access policy | off | Medium |
+| **Remove from group** | off | — |
+| **Mark as Confirmed Compromised** — feeds Identity Protection (Entra ID P1/P2) | off | Low |
+| **Create Microsoft Sentinel incident** | off | — |
+| **Resolve SOCRadar alarm** on successful remediation | off | — |
+| **ROPC password validation** (advanced) | off | — |
 
-Each action is independently togglable in the deployment parameters. High-impact actions (account disable, MFA reset, password reset) are **off by default**.
+Defaults are conservative — only **Revoke session** runs out of the box. Flip the rest on after validating with the [Customer Acceptance Test runbook](../to-Radargoger/CUSTOMER-TEST-RUNBOOK.md) (shipped with the Standalone delivery bundle).
+
+See [`production/README.md` → Capabilities](production/README.md#capabilities) for the full feature inventory including DCR schema, workbook tiles, lifecycle events, and operational guarantees.
 
 ## Security
 

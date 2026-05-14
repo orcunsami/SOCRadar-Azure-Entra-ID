@@ -154,18 +154,96 @@ All actions are toggled independently. Defaults are conservative — only `Enabl
 
 Full troubleshooting (with diagnosis recipes for `AADSTS70001`, `AADSTS700016`, lifecycle events, empty TenantId dropdowns, etc.) lives in [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
-## Who Can Deploy
+## Required Permissions
 
-The user clicking **Deploy to Azure** must have:
+The deployment is **script-free for any user who holds an admin role on Microsoft Entra ID**. The exact post-deploy experience depends on the role the deployer has — pick the highest one available, and use the **Deploy form switches** column to set the form values.
 
-| Role | Greenfield (CreateAppRegistration=true) | Auto-consent (GrantAdminConsent=true) |
-|------|------------------------------------------|----------------------------------------|
-| **Application Administrator** | ✓ | — (consent step manual) |
-| **Cloud Application Administrator** | ✓ | ✓ (zero-touch) |
-| **Global Administrator** | ✓ | ✓ |
-| Standard user | ✗ | ✗ |
+### Microsoft Entra ID role on the customer tenant
 
-The user must also have **Owner** or **Contributor** role on the target Azure subscription/resource group.
+| Role on the deployer | Post-deploy experience | Deploy form switches |
+|----------------------|------------------------|----------------------|
+| **Cloud Application Administrator** (or Global Admin) | 🟢 **Zero post-deploy steps.** ARM creates the App Registration, federated credential, and grants admin consent inline. | `CreateAppRegistration=true` *(default)* · `GrantAdminConsent=true` |
+| **Application Administrator** | 🟡 **One post-deploy click.** ARM creates the App Registration + federated credential. Deployer (or another admin) clicks **Grant admin consent** once in the portal. | `CreateAppRegistration=true` *(default)* · `GrantAdminConsent=false` *(default)* |
+| **No Entra ID admin role at all** | 🔴 **Fallback only.** SOCRadar pre-creates the App Registration in its own tenant; the customer runs a Cloud Shell helper to attach the federated credential and grants consent on the consent screen. Use only if no IT user in the customer org can be assigned an Entra ID admin role. | `CreateAppRegistration=false` · `EntraIdClientId=<SOCRadar-provided>` · `SkipFicCreation=true` |
+
+> Cloud Application Administrator is the **least-privileged** Entra role that supports zero-touch. Application Administrator is one step below — it can create App Registrations but cannot grant tenant-wide admin consent, which is why one manual portal click remains.
+
+### Azure RBAC on the deployment subscription / resource group
+
+| Role | Required for | Notes |
+|------|--------------|-------|
+| **Contributor** (or Owner) on the target RG/subscription | Creating Function App, Storage, DCR, Log Analytics workspace (if new), Sentinel onboarding | If the workspace already exists in a different RG, deployer needs **Contributor** on that RG too |
+| **Microsoft Sentinel Contributor** on the workspace | Onboarding Sentinel + writing custom table schema | Skipped if the workspace already has Sentinel onboarded |
+
+> Owner is **not** required; Contributor is enough. The User Assigned Managed Identity that the integration runs as is granted least-privilege roles (DCR Monitoring Metrics Publisher, Storage Table Data Contributor) automatically by the template.
+
+### Pre-deploy info you must have on hand
+
+Before clicking **Deploy to Azure**, gather:
+
+- `SocradarApiKey` and `SocradarCompanyId` — from SOCRadar account team.
+- The **Tenant ID(s)** to monitor — copy from Azure Portal → Microsoft Entra ID → Overview.
+- The **verified domains** attached to those tenants (e.g. `acme.com,acme.io`) — Microsoft Entra ID → Overview → "Primary domain" + Custom Domain Names blade. Optional but recommended.
+- The Log Analytics workspace name (existing or to-be-created) and its region.
+
+If a customer cannot satisfy these prerequisites, contact SOCRadar — the fallback (no-AAD-admin) path can be arranged but is not the recommended onboarding flow.
+
+## Capabilities
+
+What this integration does for you, end to end:
+
+### 1. Continuous monitoring of leaked employee credentials
+- **Three SOCRadar dark-web sources** polled on a configurable timer (default every 6 hours): Botnet Data (info-stealer logs), PII Exposure (data-breach surfacing), VIP Protection (executive / high-value).
+- **Initial backfill** of up to 365 days (`InitialLookbackMinutes` parameter) so the first run captures the existing exposure picture, not just new findings.
+- **Checkpoint-based resume** — heavy backlogs that exceed the function timeout are drained across multiple cycles; nothing is lost.
+
+### 2. Identity scoping for relevance
+- **Multi-tenant lookup** — query several Entra ID tenants from a single deployment (`EntraIdTenantIds` CSV). MSSP / holding-company / M&A use case. First-match-wins across tenants; the matched tenant is recorded on every Log Analytics record so downstream KQL can pivot per tenant.
+- **Verified-domain allowlist** (`EntraIdVerifiedDomains` CSV) — scopes Microsoft Graph lookups to records whose email domain matches one of the customer's verified domains. Cross-domain SOCRadar matches (e.g. an employee's personal Gmail caught in a third-party breach) are written to the audit table with `entra_status="skipped_domain_allowlist"` and never touch Microsoft Graph — saves API quota and removes audit noise.
+- **Configurable polling cadence** (`PollingIntervalHours`, default 6) and lookback window.
+
+### 3. Eleven independently togglable remediation actions
+When a leaked identity is found in Entra ID, any combination of the following can run automatically:
+
+| Action | Toggle parameter | Graph permission required |
+|--------|-----------------|---------------------------|
+| Revoke all active sessions | `EnableRevokeSession` *(default true)* | `User.RevokeSessions.All` |
+| Force password change at next sign-in | `EnablePasswordChange` | `User-PasswordProfile.ReadWrite.All` |
+| Disable account (block sign-in) | `EnableDisableAccount` | `User.EnableDisableAccount.All` |
+| Re-enable account | `EnableEnableAccount` | `User.EnableDisableAccount.All` |
+| Force MFA re-registration (deletes auth methods) | `EnableForceMfaReregistration` | `UserAuthenticationMethod.ReadWrite.All` |
+| Add to quarantine security group | `EnableAddToGroup` + `SecurityGroupId` | `GroupMember.ReadWrite.All` |
+| Remove from group | `EnableRemoveFromGroup` + `SecurityGroupId` | `GroupMember.ReadWrite.All` |
+| Mark as Confirmed Compromised in Identity Protection | `EnableConfirmRisky` | `IdentityRiskyUser.ReadWrite.All` (P1/P2 license) |
+| ROPC password validation (advanced) | `EnableROPC` | optional |
+| Create Microsoft Sentinel incident | `EnableCreateIncident` | Sentinel Contributor on workspace |
+| Resolve SOCRadar alarm on success | `EnableResolveAlarm` | n/a (SOCRadar API) |
+
+Defaults are conservative: only **Revoke session** is on. High-impact actions (account disable, password reset, MFA re-registration) start off — flip them on after validating with the [Customer Acceptance Test runbook](../to-Radargoger/CUSTOMER-TEST-RUNBOOK.md).
+
+### 4. Outputs in Microsoft Sentinel
+- **Four custom Log Analytics tables** via DCR-based Logs Ingestion API (HTTP Data Collector deprecation already handled):
+  - `SOCRadar_Botnet_CL`, `SOCRadar_PII_CL`, `SOCRadar_VIP_CL` — per-source matches
+  - `SOCRadar_EntraID_Audit_CL` — per-run summary (counts, duration, errors)
+- **Four Sentinel workbooks** — Botnet, PII, VIP, plus a Combined Operational Dashboard. All workbooks carry a `TenantId` filter dropdown for multi-tenant deployments.
+- **Per-record status enum**: `found`, `not_found`, `lookup_permission_denied`, `skipped_no_token`, `skipped_user_lookup_disabled`, `skipped_domain_allowlist`, `compromised` (ROPC), `no_email`. Surfaces directly in workbook tiles.
+
+### 5. Operational resilience
+- **Secretless authentication** — Workload Identity Federation (UAMI → Federated Credential → App Registration). No client secrets, no key rotation, no expiring credentials.
+- **Per-tenant 403 dropout** — if a tenant returns three consecutive 403s during a run (admin consent missing or revoked), it is dropped from the lookup map for the remainder of that run. Healthy tenants continue.
+- **Per-source + per-employee time budget** — guarantees graceful exit within the 10-minute Linux Consumption hard timeout.
+- **Pagination resume** — `MAX_PAGES_PER_RUN` exits cleanly, checkpoint records the last drained page, next run resumes.
+- **Application Insights** — every poll and Graph call is traced; the `[AUDIT]` log line carries the per-source summary for quick triage.
+- **Pre-Graph domain filter** prevents wasted quota on records that don't belong to the customer's tenant domain.
+
+### 6. Lifecycle events
+The integration emits structured lifecycle events to `SOCRadar_EntraID_Audit_CL` when configuration drifts (e.g. `consent_revoked` when a tenant suddenly returns 403). These are queryable for alerting:
+
+```kql
+SOCRadar_EntraID_Audit_CL
+| where TimeGenerated > ago(24h)
+| where source startswith "lifecycle:"
+```
 
 ## Parameters
 
