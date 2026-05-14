@@ -18,6 +18,142 @@ That's it. The Function App starts polling SOCRadar on its next timer cycle (def
 
 > **Tip:** If the user performing the deployment holds the **Cloud Application Administrator** role, set `GrantAdminConsent=true` in the form. ARM will grant consent automatically and step 4 is skipped — fully zero-touch deployment.
 
+## First-time onboarding (clean seamless integration)
+
+This section walks a customer through the integration end to end the first time. Allow ~60 minutes.
+
+### Step 0 — Pre-deploy checklist
+
+Before clicking **Deploy to Azure**, confirm:
+
+- [ ] An Azure subscription where you have **Owner** or **Contributor**.
+- [ ] A Microsoft Sentinel workspace already onboarded (`Microsoft.SecurityInsights` solution + `onboardingStates/default` on the Log Analytics workspace). If you don't have one, create it first.
+- [ ] You are signed in as one of: **Cloud Application Administrator**, **Application Administrator**, or **Global Administrator** — only required for the greenfield path; the reuse path needs no AAD role at all.
+- [ ] You have received from SOCRadar: `SocradarApiKey`, `SocradarCompanyId`, and (for the reuse path) the `EntraIdClientId` of SOCRadar's pre-consented App Registration.
+- [ ] You know the list of Entra ID **tenant IDs** to monitor (single tenant: just yours; MSSP/holding: a comma-separated list).
+- [ ] You know which **verified domains** are attached to those tenants (e.g. `acme.com,acme.io,acme.onmicrosoft.com`) — optional but recommended; without it every leaked email touches Microsoft Graph.
+
+### Step 1 — Pick a deployment path
+
+You have two paths. **Reuse is the recommended one for most customers.**
+
+| Path | When to pick | What you need | Manual steps after deploy |
+|------|--------------|---------------|---------------------------|
+| **A) Reuse SOCRadar's App Registration** | You don't want to create a new App Registration in your own tenant. You want SOCRadar to operationally own the App Reg + permissions. | `EntraIdClientId` from SOCRadar. Set `CreateAppRegistration=false` + `SkipFicCreation=true` in the form. | One: grant admin consent for SOCRadar's App in your tenant (single portal click), and run the `socradar-entraid-fic.sh` helper script once (added below). |
+| **B) Greenfield — create a new App Registration** | You want full operational ownership in your own tenant, and the deploying user has **Application Administrator** role (or higher). | Leave `CreateAppRegistration=true` (default) + leave `EntraIdClientId` blank. | One: grant admin consent (or set `GrantAdminConsent=true` if the deploying user has Cloud Application Administrator role — zero-touch). |
+
+### Step 2 — Multi-tenant + multi-domain configuration (when applicable)
+
+For an MSSP or a holding company that monitors several Entra ID tenants from a single deployment:
+
+```
+EntraIdTenantIds        = 11111111-...,22222222-...,33333333-...
+EntraIdVerifiedDomains  = acme.com,acme.io,acme.onmicrosoft.com,acme-uk.com,acme.de
+EntraIdClientId         = <SOCRadar reuse App Reg, OR leave blank for greenfield>
+```
+
+The same App Registration is consented in every tenant in `EntraIdTenantIds`. The verified-domain allowlist is **one list across all those tenants** — every email whose domain matches any entry is forwarded to Microsoft Graph (which then tries each tenant in order, first match wins). Emails outside the allowlist are written to Log Analytics with `entra_status="skipped_domain_allowlist"` and **never reach Microsoft Graph** (saves API quota, removes audit noise).
+
+Leave `EntraIdVerifiedDomains` empty to query every record returned by SOCRadar — the v1.0 behavior before the feature was added.
+
+### Step 3 — Click Deploy and fill the form
+
+Click the **Deploy to Azure** button at the top of this README. Fill the parameters following the table in the [Parameters](#parameters) section.
+
+### Step 4 — Reuse-path post-deploy (skip if greenfield)
+
+If you picked Path A (reuse) and set `SkipFicCreation=true`, the deployment script that creates the Federated Identity Credential is skipped on purpose. After the ARM deploy completes with `Succeeded`:
+
+1. Download `scripts/socradar-entraid-fic.sh` from this repository.
+2. Open Azure Cloud Shell (Bash).
+3. Run:
+   ```bash
+   bash socradar-entraid-fic.sh <YOUR_RESOURCE_GROUP_NAME>
+   ```
+
+The script:
+- Reads the User-Assigned Managed Identity's `principalId` from the resource group.
+- Adds the Federated Identity Credential to SOCRadar's App Registration (requires you to be signed in as an **owner** of that App Reg — SOCRadar will add you as an owner before delivery if needed).
+- Restarts the Function App and triggers the first poll.
+
+It is idempotent — re-running is safe.
+
+### Step 5 — Verify in Log Analytics
+
+Allow ~5 minutes after the first run, then open **Log Analytics workspace → Logs**:
+
+**Was the first run logged?**
+
+```kql
+SOCRadar_EntraID_Audit_CL
+| where TimeGenerated > ago(30m)
+| order by TimeGenerated desc
+| project TimeGenerated, source, total_records, found_count, not_found_count, error_count, duration_sec, actions_taken
+```
+
+Expected: 3 rows (one per source: botnet, pii, vip). `error_count=0` for each. `total_records` reflects the SOCRadar API result count for your company.
+
+**Were any of your users matched and actioned?**
+
+```kql
+union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL
+| where TimeGenerated > ago(30m)
+| where entra_status == "found"
+| project TimeGenerated, source=Type, email, actions_taken, entra_tenant_id
+| order by TimeGenerated desc
+```
+
+Expected (when SOCRadar has real findings for you): one row per matched user, `actions_taken` populated, `entra_tenant_id` showing which tenant matched.
+
+**Was the domain allowlist working?** (only if `EntraIdVerifiedDomains` was set)
+
+```kql
+union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL
+| where TimeGenerated > ago(30m)
+| summarize Count=count() by entra_status
+```
+
+Expected: zero rows with `entra_status="skipped_domain_allowlist"` if every SOCRadar finding's email is on one of your verified domains. A non-zero count means SOCRadar surfaced a cross-domain email that was excluded from Graph lookup (audit only, no action taken) — that's the filter working as designed.
+
+### Step 6 — Visual confirmation in workbooks
+
+Open **Microsoft Sentinel → Workbooks → My workbooks** in the deployment's workspace. Four workbook templates land in the workspace:
+
+- SOCRadar Entra ID — Botnet
+- SOCRadar Entra ID — PII
+- SOCRadar Entra ID — VIP
+- SOCRadar Entra ID — Combined Dashboard (start here)
+
+Each one carries a **TenantId** filter dropdown (active when `EntraIdTenantIds` lists multiple tenants), a top-line "compromised user count", a per-source status pie, and a recent-records table.
+
+### Step 7 — Validate the integration with a controlled test (recommended)
+
+To prove the integration end-to-end with controlled data — including the actions (revoke session, etc.) — use the **[Customer Acceptance Test runbook](../to-Radargoger/CUSTOMER-TEST-RUNBOOK.md)** (also shipped with the Standalone delivery bundle). The runbook walks 3-each test users × 3 sources (botnet/PII/VIP) and is what SOCRadar uses internally to validate new customer onboardings.
+
+### Step 8 — Tune the integration
+
+After the first successful run, decide which extra actions to enable and re-deploy (or update App Settings live):
+
+- `EnableForceMfaReregistration` — invalidates MFA methods, forces re-enrolment. **High user impact.** Validate with one test user first.
+- `EnableDisableAccount` — full lockout. **Highest user impact.** Combine with a recovery procedure.
+- `EnableAddToGroup` + `SecurityGroupId` — segregate matched users into a quarantine group with restricted Conditional Access.
+- `EnableCreateIncident` — create Microsoft Sentinel incidents for SOC triage.
+- `EnableResolveAlarm` — automatically resolve the SOCRadar alarm on remediation success.
+
+All actions are toggled independently. Defaults are conservative — only `EnableRevokeSession` is on by default.
+
+### Troubleshooting first-run issues
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Audit `total_records=0` | Initial lookback too short or SOCRadar has no recent findings | Bump `InitialLookbackMinutes` (e.g. `86400` for 60 days) and re-run |
+| Every record `entra_status="skipped_no_token"` | UAMI Federated Identity Credential missing or wrong subject | Run `socradar-entraid-fic.sh` (reuse path) or check that the addFic deployment script succeeded (greenfield path) |
+| Every record `entra_status="lookup_permission_denied"` | Admin consent not granted on the App Registration | Microsoft Entra ID → App registrations → your App Reg → **API permissions** → **Grant admin consent** |
+| Some records `entra_status="not_found"` | UPN mismatch — SOCRadar leaked email differs from the Entra UPN of the same user | This is expected for accounts that don't actually exist in your tenant; for true matches, verify the UPN format SOCRadar surfaces |
+| Function App "Running" but no Log Analytics rows after 15 minutes | Custom-table first-write latency or a deployment-time DCR mismatch | Check the Function App **Log stream** for ingestion errors; verify `DCR_IMMUTABLE_ID` and `DCR_ENDPOINT` App Settings are populated |
+
+Full troubleshooting (with diagnosis recipes for `AADSTS70001`, `AADSTS700016`, lifecycle events, empty TenantId dropdowns, etc.) lives in [`docs/troubleshooting.md`](docs/troubleshooting.md).
+
 ## Who Can Deploy
 
 The user clicking **Deploy to Azure** must have:
