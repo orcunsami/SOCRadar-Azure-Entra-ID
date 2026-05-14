@@ -273,4 +273,48 @@ The integration takes a "first match wins" approach: tenants are tried in
 the order given in `EntraIdTenantIds`, and only the first tenant where the
 user is found is acted upon. Reorder the CSV to change priority.
 
+---
+
+## 14. Records with `entra_status="skipped_domain_allowlist"`
+
+**Symptom**: Records appear in `SOCRadar_Botnet_CL`, `SOCRadar_PII_CL`, or
+`SOCRadar_VIP_CL` with `entra_status="skipped_domain_allowlist"`,
+`actions_taken=[]`, and `entra_tenant_id=""`. No Microsoft Graph call
+was made for them.
+
+**This is not an error** — it is the verified-domain allowlist filter
+working as designed. When `EntraIdVerifiedDomains` is set, only records
+whose email domain matches the allowlist proceed to the multi-tenant
+Graph lookup loop; everything else is recorded for audit and skipped.
+
+**Diagnosis**:
+
+```kql
+union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL
+| where TimeGenerated > ago(24h)
+| where entra_status == "skipped_domain_allowlist"
+| extend domain = tostring(split(email, "@")[1])
+| summarize records=count() by domain
+| order by records desc
+```
+
+**Fix (only if the records SHOULD have been looked up)**:
+
+- If the surfaced domain belongs to a verified domain you forgot to list,
+  add it to `EntraIdVerifiedDomains` (comma-separated). Match is
+  case-insensitive but exact — `mail.acme.com` does not match `acme.com`.
+- If you want to disable filtering entirely, set
+  `EntraIdVerifiedDomains=""` (empty string). Every record SOCRadar
+  returns will then reach Microsoft Graph (pre-feature behavior).
+
+To apply a change without re-deploying:
+
+1. Azure Portal → Function App → **Configuration** → edit
+   `ENTRA_ID_VERIFIED_DOMAINS` → **Save**.
+2. **Overview** → **Restart**.
+3. Wait for the next timer cycle (or trigger manually via the SCM
+   `/admin/functions/socradar_entra_id_import` endpoint).
+
+---
+
 Attach all four to the support ticket.

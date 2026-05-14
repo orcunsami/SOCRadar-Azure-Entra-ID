@@ -132,6 +132,31 @@ Legacy single-tenant deployments using `EntraIdTenantId` continue to work
 unchanged — when `EntraIdTenantIds` is empty, the integration falls back
 to the single legacy ID.
 
+### Verified-domain allowlist (recommended for multi-tenant)
+
+For an MSSP or holding-company deployment, SOCRadar may surface leaked
+credentials whose email domain belongs to none of the configured
+tenants (cross-contamination, guest accounts, employees on personal
+email caught in third-party breaches). To skip Microsoft Graph lookups
+for those records, list every verified domain attached to every
+configured tenant via the `EntraIdVerifiedDomains` parameter:
+
+```
+EntraIdTenantIds        = tenant-A-GUID,tenant-B-GUID,tenant-C-GUID
+EntraIdVerifiedDomains  = acme.com,acme.uk,acme.onmicrosoft.com,subA.io,subB.de
+```
+
+The allowlist is **one list across every configured tenant** — every
+email whose domain matches any entry is forwarded to the multi-tenant
+lookup loop (first match wins). Off-allowlist records land in Log
+Analytics with `entra_status="skipped_domain_allowlist"` and no Graph
+call is made.
+
+Leave `EntraIdVerifiedDomains` empty to query every record SOCRadar
+returns (pre-feature behavior). Match is case-insensitive and exact —
+no subdomain wildcards, so list `mail.acme.com` explicitly if you
+want it.
+
 ---
 
 ## What ends up in Log Analytics
@@ -149,6 +174,17 @@ SOCRadar_Botnet_CL
 | where entra_status == "found"
 | summarize records=count() by entra_tenant_id
 | order by records desc
+```
+
+When `EntraIdVerifiedDomains` is set, records whose email domain
+didn't match the allowlist appear with `entra_status="skipped_domain_allowlist"`
+and `entra_tenant_id=""`. They reach Log Analytics for audit but no
+Graph lookup or remediation happens for them:
+
+```kql
+union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL
+| where entra_status == "skipped_domain_allowlist"
+| summarize records=count() by Type, tostring(split(email, "@")[1])
 ```
 
 ---
