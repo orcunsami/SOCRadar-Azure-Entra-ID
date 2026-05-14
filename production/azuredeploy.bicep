@@ -1,6 +1,6 @@
 metadata title = 'SOCRadar Entra ID Integration for Microsoft Sentinel'
 metadata description = 'Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.'
-metadata version = '1.1.0'
+metadata version = '1.0.0'
 metadata author = 'SOCRadar'
 metadata lastUpdateTime = '2026-03-26T00:00:00.000Z'
 
@@ -337,7 +337,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   kind: 'functionapp,linux'
   tags: {
     'hidden-SentinelTemplateName': 'SOCRadar-EntraID-Integration'
-    'hidden-SentinelTemplateVersion': '1.1.0'
+    'hidden-SentinelTemplateVersion': '1.0.0'
   }
   identity: {
     type: 'UserAssigned'
@@ -383,7 +383,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: 'https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.1.0/FunctionApp.zip'
+          value: 'https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.0.0/FunctionApp.zip'
         }
         {
           name: 'POLLING_SCHEDULE'
