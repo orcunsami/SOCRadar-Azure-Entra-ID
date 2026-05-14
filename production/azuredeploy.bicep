@@ -1,6 +1,6 @@
 metadata title = 'SOCRadar Entra ID Integration for Microsoft Sentinel'
 metadata description = 'Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.'
-metadata version = '1.0.0'
+metadata version = '1.1.0'
 metadata author = 'SOCRadar'
 metadata lastUpdateTime = '2026-03-26T00:00:00.000Z'
 
@@ -45,6 +45,9 @@ param EntraIdTenantIds string = ''
 
 @description('Single Entra ID Tenant ID. Used when EntraIdTenantIds is empty. Leave empty to auto-detect the current subscription tenant (single-tenant default). Set explicitly only for cross-tenant deployments.')
 param EntraIdTenantId string = ''
+
+@description('Optional comma-separated allowlist of Microsoft Entra ID verified domains (e.g. acme.com,acme.io,acme.onmicrosoft.com). When set, only records whose email domain matches one of these is forwarded to Microsoft Graph; others are written to LAW with entra_status=skipped_domain_allowlist (audit only, no action). Leave empty to query every record returned by SOCRadar (v1.0 behavior). Case-insensitive exact match — no subdomain wildcards.')
+param EntraIdVerifiedDomains string = ''
 
 @description('Entra ID Security Group ID for compromised users (required if EnableAddToGroup=true)')
 param SecurityGroupId string = ''
@@ -334,7 +337,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   kind: 'functionapp,linux'
   tags: {
     'hidden-SentinelTemplateName': 'SOCRadar-EntraID-Integration'
-    'hidden-SentinelTemplateVersion': '1.0.0'
+    'hidden-SentinelTemplateVersion': '1.1.0'
   }
   identity: {
     type: 'UserAssigned'
@@ -380,7 +383,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: 'https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.0.0/FunctionApp.zip'
+          value: 'https://github.com/orcunsami/SOCRadar-Azure-Entra-ID/releases/download/v1.1.0/FunctionApp.zip'
         }
         {
           name: 'POLLING_SCHEDULE'
@@ -405,6 +408,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'ENTRA_TENANT_ID'
           value: (empty(EntraIdTenantId) ? subscription().tenantId : EntraIdTenantId)
+        }
+        {
+          name: 'ENTRA_ID_VERIFIED_DOMAINS'
+          value: EntraIdVerifiedDomains
         }
         {
           name: 'ENTRA_CLIENT_ID'

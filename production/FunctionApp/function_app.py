@@ -194,7 +194,8 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
         audit_summary(
             source=r["source"], total=r["total"], employees=r["employees"],
             found=r["found"], not_found=r["not_found"], actions=r["actions"],
-            errors=r["errors"], duration_sec=r.get("duration", 0)
+            errors=r["errors"], duration_sec=r.get("duration", 0),
+            domain_filtered=r.get("domain_filtered", 0),
         )
 
     if conf.get("dcr_immutable_id") and conf.get("dcr_endpoint"):
@@ -231,7 +232,7 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
         return {"source": source_name, "total": 0, "employees": 0,
                 "found": 0, "not_found": 0, "actions": 0, "errors": 0}
 
-    found = not_found = actions = errors = 0
+    found = not_found = actions = errors = domain_filtered = 0
     records = []
     # Per-tenant 403 counter: if a tenant returns 403 three times in a row,
     # drop it from the lookup map (admin consent missing — no point retrying).
@@ -273,6 +274,21 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
                 emp.pop("_checkpoint_update", None)
                 records.append(emp)
                 continue
+
+            # Verified-domain allowlist gate. Applied before the per-tenant lookup
+            # loop so we save Graph quota on every non-matching tenant, not just
+            # the first. Empty allowlist disables filtering (backward compat).
+            allow_domains = conf.get("verified_domains", [])
+            if allow_domains:
+                _, _, email_domain = email.partition("@")
+                if not email_domain or email_domain.lower() not in allow_domains:
+                    domain_filtered += 1
+                    emp["entra_status"] = "skipped_domain_allowlist"
+                    emp["entra_tenant_id"] = ""
+                    emp["actions_taken"] = []
+                    emp.pop("_checkpoint_update", None)
+                    records.append(emp)
+                    continue
 
             # Multi-tenant lookup: try each tenant in order, first match wins.
             # Track per-lookup whether any tenant returned 403 — distinguishes
@@ -470,4 +486,5 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
         "not_found":  not_found,
         "actions":    actions,
         "errors":     errors,
+        "domain_filtered": domain_filtered,
     }

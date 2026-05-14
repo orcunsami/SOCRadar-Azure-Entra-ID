@@ -8,6 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] — 2026-05-14
+
+### Added
+
+- **`EntraIdVerifiedDomains` parameter** — optional comma-separated allowlist
+  of Microsoft Entra ID verified domains attached to the customer tenant
+  (e.g. `acme.com,acme.io,acme.onmicrosoft.com`). When set, only records
+  whose email domain matches one of these is forwarded to Microsoft Graph;
+  others are written to LAW with `entra_status="skipped_domain_allowlist"`
+  (audit only, no action). Saves Graph API quota and reduces audit noise
+  on cross-domain SOCRadar matches. Leaving the parameter empty preserves
+  v1.0 behavior (every record is looked up).
+- **`domain_filtered` field** on the per-source audit summary line for
+  visibility into how many records were filtered out of Graph lookups by
+  the allowlist.
+
+### Notes
+
+- Case-insensitive exact match, no subdomain wildcards — list every
+  domain explicitly (e.g. `mail.acme.com` does not match `acme.com`).
+- One allowlist applies to every tenant in a multi-tenant
+  (`EntraIdTenantIds`) deployment. Per-tenant allowlists may follow in a
+  later release if needed.
+- Backward compatible — empty `EntraIdVerifiedDomains` is the default and
+  behaves identically to v1.0.
+
+---
+
 ## [1.0.0] — 2026-05-12
 
 Initial public release.

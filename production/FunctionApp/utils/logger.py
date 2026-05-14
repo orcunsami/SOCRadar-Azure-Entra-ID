@@ -70,10 +70,12 @@ def get_logger(source: str) -> SourceLogger:
 
 def audit_summary(source: str, total: int, employees: int,
                   found: int, not_found: int, actions: int,
-                  errors: int, duration_sec: float):
+                  errors: int, duration_sec: float,
+                  domain_filtered: int = 0):
     log = logging.getLogger("socradar.entra.audit")
     log.info(
         "[AUDIT] source=%s total=%d employees=%d found=%d not_found=%d "
-        "actions=%d errors=%d duration=%.1fs",
-        source, total, employees, found, not_found, actions, errors, duration_sec
+        "domain_filtered=%d actions=%d errors=%d duration=%.1fs",
+        source, total, employees, found, not_found, domain_filtered,
+        actions, errors, duration_sec
     )

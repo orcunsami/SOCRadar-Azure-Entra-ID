@@ -90,6 +90,13 @@ def load() -> dict:
         "tenant_id":     _get("ENTRA_TENANT_ID", default=""),
         "client_id":     _get("ENTRA_CLIENT_ID", required=user_lookup),
 
+        # Verified-domain allowlist (optional). When non-empty, only records whose
+        # email domain matches one of these is forwarded to Microsoft Graph; others
+        # are written to LAW with entra_status="skipped_domain_allowlist". Empty
+        # list disables filtering (current behavior). Case-insensitive exact match
+        # — lowercased on load so the per-record comparison stays cheap.
+        "verified_domains": [d.lower() for d in _list("ENTRA_ID_VERIFIED_DOMAINS")],
+
         # Action toggles
         "enable_user_lookup":       user_lookup,
         "enable_ropc":              _bool("ENABLE_ROPC", False),

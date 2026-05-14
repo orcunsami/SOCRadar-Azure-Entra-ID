@@ -36,13 +36,14 @@ PROD_DIR = Path(__file__).parent.parent.parent / "production" / "FunctionApp"
 sys.path.insert(0, str(PROD_DIR))
 
 
-def _base_conf(tenant_ids=None, tenant_id=""):
+def _base_conf(tenant_ids=None, tenant_id="", verified_domains=None):
     """Minimal conf dict good enough for _process_source."""
     return {
         "tenant_ids": tenant_ids or [],
         "tenant_id": tenant_id,
         "client_id": "test-client",
         "storage_account_name": "stor",
+        "verified_domains": verified_domains or [],
         "enable_user_lookup": True,
         "enable_ropc": False,
         "enable_revoke_session": True,
@@ -100,10 +101,11 @@ class TestProcessSourceMultiTenant(unittest.TestCase):
         if "function_app" in sys.modules:
             del sys.modules["function_app"]
 
-    def _run(self, employees, tenant_headers_map, lookup_table):
+    def _run(self, employees, tenant_headers_map, lookup_table, **conf_overrides):
         """Invoke _process_source with mocks.
 
         lookup_table: dict {(email, tenant_id): (user_info_or_None, http_status_or_None)}
+        conf_overrides: forwarded to _base_conf (e.g. verified_domains=...).
         """
         from function_app import _process_source
 
@@ -131,7 +133,7 @@ class TestProcessSourceMultiTenant(unittest.TestCase):
             mock_botnet.fetch.return_value = employees
             result = _process_source(
                 source_name="botnet",
-                conf=_base_conf(),
+                conf=_base_conf(**conf_overrides),
                 credential=MagicMock(),
                 tenant_headers_map=tenant_headers_map,
                 function_start_time=time.time(),  # fresh start, time budget not tripped
@@ -251,6 +253,75 @@ class TestProcessSourceMultiTenant(unittest.TestCase):
             "lookup_permission_denied",
             "not_found",
         ])
+
+
+class TestVerifiedDomainAllowlist(TestProcessSourceMultiTenant):
+    """Verified-domain allowlist filter (v1.1.0).
+
+    When `verified_domains` is non-empty, only records whose email domain
+    matches one of the listed domains is forwarded to Microsoft Graph;
+    others skip the lookup loop entirely and surface in LAW with
+    entra_status="skipped_domain_allowlist". When the list is empty the
+    filter is inert and behavior is identical to v1.0.
+    """
+
+    def test_empty_allowlist_disables_filter(self):
+        """verified_domains=[] → every record is looked up (v1.0 behavior)."""
+        emps = [_emp("alice@acme.com"), _emp("bob@external.com")]
+        headers_map = {"tenant-a": _hdr("a")}
+        lookups = {
+            ("alice@acme.com", "tenant-a"):    ({"id": "uid-a", "accountEnabled": True}, 200),
+            ("bob@external.com", "tenant-a"):  (None, 404),
+        }
+        result, mock_lookup, _ = self._run(emps, headers_map, lookups,
+                                           verified_domains=[])
+        self.assertEqual(mock_lookup.call_count, 2)
+        self.assertEqual(result["found"], 1)
+        self.assertEqual(result["not_found"], 1)
+        self.assertEqual(result["domain_filtered"], 0)
+        self.assertEqual(emps[1]["entra_status"], "not_found")
+
+    def test_email_in_allowlist_passes_through(self):
+        """Email domain matches → record proceeds to Graph lookup loop."""
+        emps = [_emp("alice@Acme.com")]  # mixed case to exercise lower()
+        headers_map = {"tenant-a": _hdr("a")}
+        lookups = {
+            ("alice@Acme.com", "tenant-a"): ({"id": "uid-a", "accountEnabled": True}, 200),
+        }
+        result, mock_lookup, mock_revoke = self._run(
+            emps, headers_map, lookups,
+            verified_domains=["acme.com", "acme.io"],
+        )
+        self.assertEqual(mock_lookup.call_count, 1)
+        self.assertEqual(result["found"], 1)
+        self.assertEqual(result["domain_filtered"], 0)
+        self.assertEqual(emps[0]["entra_status"], "found")
+        mock_revoke.assert_called_once_with("uid-a", headers_map["tenant-a"])
+
+    def test_email_not_in_allowlist_is_filtered(self):
+        """Email domain not in list → status=skipped_domain_allowlist, no Graph call."""
+        emps = [_emp("attacker@gmail.com"),
+                _emp("legit@acme.io")]
+        headers_map = {"tenant-a": _hdr("a")}
+        lookups = {
+            ("legit@acme.io", "tenant-a"): ({"id": "uid-legit", "accountEnabled": True}, 200),
+            # No entry for gmail — would 404 if filter were broken.
+        }
+        result, mock_lookup, mock_revoke = self._run(
+            emps, headers_map, lookups,
+            verified_domains=["acme.com", "acme.io"],
+        )
+        # Only the in-allowlist record reaches Graph
+        self.assertEqual(mock_lookup.call_count, 1)
+        self.assertEqual(result["found"], 1)
+        self.assertEqual(result["not_found"], 0)
+        self.assertEqual(result["domain_filtered"], 1)
+        self.assertEqual(emps[0]["entra_status"], "skipped_domain_allowlist")
+        self.assertEqual(emps[0]["entra_tenant_id"], "")
+        self.assertEqual(emps[0]["actions_taken"], [])
+        self.assertEqual(emps[1]["entra_status"], "found")
+        # Action ran only against the matching record
+        mock_revoke.assert_called_once_with("uid-legit", headers_map["tenant-a"])
 
 
 if __name__ == "__main__":
