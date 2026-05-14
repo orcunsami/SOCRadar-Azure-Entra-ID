@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "8112398676939588999"
+      "templateHash": "5772773553981310318"
     },
     "title": "SOCRadar Entra ID Integration for Microsoft Sentinel",
     "description": "Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
@@ -535,6 +535,10 @@
       "name": "[variables('functionAppName')]",
       "location": "[resourceGroup().location]",
       "kind": "functionapp,linux",
+      "tags": {
+        "hidden-SentinelTemplateName": "SOCRadar-EntraID-Integration",
+        "hidden-SentinelTemplateVersion": "1.0.0"
+      },
       "identity": {
         "type": "UserAssigned",
         "userAssignedIdentities": {

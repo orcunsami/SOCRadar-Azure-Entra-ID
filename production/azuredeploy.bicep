@@ -332,6 +332,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: functionAppName
   location: resourceGroup().location
   kind: 'functionapp,linux'
+  tags: {
+    'hidden-SentinelTemplateName': 'SOCRadar-EntraID-Integration'
+    'hidden-SentinelTemplateVersion': '1.0.0'
+  }
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
