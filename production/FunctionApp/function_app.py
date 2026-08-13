@@ -276,6 +276,10 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
     else:
         ledger = act_ledger.InMemoryActionLedger()
 
+    # Absolute per-source, per-run ceiling on directory mutations. 0 closes
+    # the gate entirely (that is also what a broken setting parses to).
+    max_actions = int(conf.get("entra_max_actions_per_run", 50) or 0)
+
     # Fetch employees from source
     if source_name == "botnet":
         employees = src_botnet.fetch(conf, chk)
@@ -291,6 +295,7 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
     found = not_found = actions = errors = domain_filtered = no_address = 0
     lookup_disabled = no_token = lookup_failed = 0
     truncated = False
+    capped = False
     records = []
     # Per-tenant 403 counter: if a tenant returns 403 three times in a row,
     # drop it from the lookup map (admin consent missing — no point retrying).
@@ -436,6 +441,25 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
             emp["entra_account_enabled"] = user_info.get("accountEnabled", True)
             emp["entra_user_id"] = user_info.get("id", "")
 
+            # Action ceiling. A feed that suddenly returns thousands of
+            # matches must not turn into thousands of account changes.
+            # Matches keep being recorded; the held checkpoint gives the
+            # remainder their turn next run, and the ledger keeps the ones
+            # already acted on from being repeated. Checked before ROPC so a
+            # capped run also stops probing sign-ins.
+            if actions >= max_actions:
+                if not capped:
+                    logger.warning(
+                        "[%s] Action ceiling (%d) reached — further matches are recorded without actions.",
+                        source_name.upper(), max_actions
+                    )
+                capped = True
+                emp["severity"] = "MEDIUM"
+                emp["actions_taken"] = ["skipped_capped"]
+                emp.pop("_checkpoint_update", None)
+                records.append(emp)
+                continue
+
             # All subsequent actions use the headers of the tenant where the user was found.
             graph_headers = tenant_headers_map[found_tenant]
 
@@ -568,9 +592,14 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
     #   lookup_failed — findings nobody could check against a directory (403)
     #   no_token      — same, for want of a single usable Graph token
     #   errors        — records that raised before reaching the table
+    #   capped        — matches deliberately left without their actions; the
+    #                   ledger keeps the re-read from repeating anyone done.
+    #                   ONLY when the ceiling is positive: a closed gate
+    #                   (max_actions == 0) held forever would never converge.
     # Saving the checkpoint regardless used to retire all of those silently.
     hold_checkpoint = (truncated or not law_ok or lookup_failed > 0
-                       or no_token > 0 or errors > 0)
+                       or no_token > 0 or errors > 0
+                       or (capped and max_actions > 0))
 
     holds = int(chk.get("consecutive_holds") or 0)
     if hold_checkpoint:
@@ -591,9 +620,9 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
         else:
             logger.warning(
                 "[%s] Holding the checkpoint (hold %d/%d) — truncated=%s law_ok=%s "
-                "lookup_failed=%d no_token=%d errors=%d. Window will be read again.",
+                "lookup_failed=%d no_token=%d errors=%d capped=%s. Window will be read again.",
                 source_name.upper(), holds, MAX_CONSECUTIVE_HOLDS, truncated,
-                law_ok, lookup_failed, no_token, errors
+                law_ok, lookup_failed, no_token, errors, capped
             )
             held = {k: v for k, v in chk.items()
                     if k not in ("PartitionKey", "RowKey", "Timestamp", "etag")
@@ -628,5 +657,6 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
         "no_token":   no_token,
         "lookup_failed": lookup_failed,
         "truncated":  truncated,
+        "capped":     capped,
         "held":       hold_checkpoint,
     }

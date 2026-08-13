@@ -753,6 +753,10 @@
               "value": "90"
             },
             {
+              "name": "ENTRA_MAX_ACTIONS_PER_RUN",
+              "value": "50"
+            },
+            {
               "name": "RUN_ON_STARTUP",
               "value": "[string(parameters('RunOnStartup'))]"
             }
@@ -1174,6 +1178,10 @@
             {
               "name": "truncated",
               "type": "boolean"
+            },
+            {
+              "name": "capped",
+              "type": "boolean"
             }
           ]
         },
@@ -1521,6 +1529,10 @@
               },
               {
                 "name": "truncated",
+                "type": "boolean"
+              },
+              {
+                "name": "capped",
                 "type": "boolean"
               }
             ]

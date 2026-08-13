@@ -543,6 +543,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: '90'
         }
         {
+          name: 'ENTRA_MAX_ACTIONS_PER_RUN'
+          value: '50'
+        }
+        {
           name: 'RUN_ON_STARTUP'
           value: string(RunOnStartup)
         }
@@ -927,6 +931,10 @@ resource WorkspaceName_SOCRadar_EntraID_Audit_CL 'Microsoft.OperationalInsights/
           type: 'boolean'
         }
         {
+          name: 'capped'
+          type: 'boolean'
+        }
+        {
           name: 'event_type'
           type: 'string'
         }
@@ -1268,6 +1276,10 @@ resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
         }
         {
           name: 'truncated'
+          type: 'boolean'
+        }
+        {
+          name: 'capped'
           type: 'boolean'
         }
           {

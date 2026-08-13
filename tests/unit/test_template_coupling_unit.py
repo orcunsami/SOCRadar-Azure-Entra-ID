@@ -121,7 +121,8 @@ class ColumnCoupling(unittest.TestCase):
     AUDIT_REQUIRED = {"total_records", "found_count", "not_found_count",
                       "domain_filtered", "no_address_count",
                       "lookup_disabled_count", "no_token_count",
-                      "lookup_failed_count", "truncated", "error_count"}
+                      "lookup_failed_count", "truncated", "capped",
+                      "error_count"}
 
     def test_audit_summary_fields_are_declared(self):
         src = (APP / "actions" / "law_writer.py").read_text()

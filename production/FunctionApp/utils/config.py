@@ -162,6 +162,12 @@ def load() -> dict:
         # window could still be re-read.
         "action_ledger_retention_days": _int("ACTION_LEDGER_RETENTION_DAYS", 90),
 
+        # Absolute ceiling on directory mutations per source per run. A feed
+        # that suddenly returns thousands of records must not turn into
+        # thousands of account changes. on_invalid=0: a broken value CLOSES
+        # the gate (no actions) rather than silently restoring the default.
+        "entra_max_actions_per_run": _int("ENTRA_MAX_ACTIONS_PER_RUN", 50, on_invalid=0),
+
         # Schedule
         "initial_lookback_minutes": _int("INITIAL_LOOKBACK_MINUTES", 43200),
         "initial_start_date": _get("INITIAL_START_DATE", default=""),
