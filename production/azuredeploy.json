@@ -364,6 +364,15 @@
         "storageAccountName_default"
       ]
     },
+
+    "storageAccountName_default_ledger_table": {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', 'EntraIDActionLedger')]",
+      "dependsOn": [
+        "storageAccountName_default"
+      ]
+    },
     "managedIdentity": {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
@@ -738,6 +747,10 @@
             {
               "name": "MAX_PAGES_PER_RUN",
               "value": "[string(parameters('MaxPagesPerRun'))]"
+            },
+            {
+              "name": "ACTION_LEDGER_RETENTION_DAYS",
+              "value": "90"
             },
             {
               "name": "RUN_ON_STARTUP",

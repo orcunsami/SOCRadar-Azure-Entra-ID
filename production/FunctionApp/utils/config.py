@@ -157,6 +157,11 @@ def load() -> dict:
         # Storage (for checkpoint)
         "storage_account_name": _get("STORAGE_ACCOUNT_NAME", required=True),
 
+        # How long the action idempotency ledger keeps rows. Floored at 30
+        # days in the ledger itself, so a typo cannot empty it while a held
+        # window could still be re-read.
+        "action_ledger_retention_days": _int("ACTION_LEDGER_RETENTION_DAYS", 90),
+
         # Schedule
         "initial_lookback_minutes": _int("INITIAL_LOOKBACK_MINUTES", 43200),
         "initial_start_date": _get("INITIAL_START_DATE", default=""),

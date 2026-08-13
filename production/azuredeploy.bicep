@@ -177,6 +177,11 @@ resource storageAccountName_default_table 'Microsoft.Storage/storageAccounts/tab
   name: tableName
 }
 
+resource storageAccountName_default_ledger_table 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: storageAccountName_default
+  name: 'EntraIDActionLedger'
+}
+
 resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: managedIdentityName
   location: resourceGroup().location
@@ -532,6 +537,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'MAX_PAGES_PER_RUN'
           value: string(MaxPagesPerRun)
+        }
+        {
+          name: 'ACTION_LEDGER_RETENTION_DAYS'
+          value: '90'
         }
         {
           name: 'RUN_ON_STARTUP'

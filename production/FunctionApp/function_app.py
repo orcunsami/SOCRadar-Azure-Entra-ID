@@ -27,6 +27,7 @@ from actions import entra_id as entra
 from actions import law_writer as law
 from actions import sentinel as sent
 from actions import socradar as socradar_api
+from actions import action_ledger as act_ledger
 
 logger = logging.getLogger(__name__)
 app = func.FunctionApp()
@@ -63,6 +64,42 @@ def _required_graph_permissions(conf: dict) -> list[tuple[str, str]]:
         permissions.append(("UserAuthenticationMethod.ReadWrite.All", "delete MFA methods to force re-registration"))
 
     return permissions
+
+
+def _any_action_enabled(conf: dict) -> bool:
+    """Whether this configuration can mutate anything at all — decides if the
+    idempotency ledger is worth a storage round-trip."""
+    return any((
+        conf.get("enable_revoke_session"),
+        conf.get("enable_add_to_group") and conf.get("security_group_id"),
+        conf.get("enable_remove_from_group") and conf.get("security_group_id"),
+        conf.get("enable_password_change"),
+        conf.get("enable_disable_account"),
+        conf.get("enable_enable_account"),
+        conf.get("enable_confirm_risky"),
+        conf.get("enable_force_mfa_reregistration"),
+        conf.get("enable_create_incident"),
+        conf.get("enable_resolve_alarm"),
+    ))
+
+
+def _apply_once(ledger, source_name: str, window_id: str, email: str,
+                action_name: str, apply_fn, taken: list) -> bool:
+    """Apply one remediation exactly once per (email, action, window).
+
+    The checkpoint hold makes re-reading a window normal operation; without
+    this gate every re-read would repeat every action on the same person.
+    Returns True when the action was attempted this run (success or failure),
+    so the caller can count it. Only a SUCCESSFUL application is recorded —
+    a failed one is retried on the next read of the window."""
+    if ledger.already_applied(source_name, email, action_name, window_id):
+        taken.append(f"{action_name}_skipped_duplicate")
+        return False
+    ok = apply_fn()
+    taken.append(action_name if ok else f"{action_name}_failed")
+    if ok:
+        ledger.record(source_name, email, action_name, window_id)
+    return True
 
 
 @app.timer_trigger(
@@ -229,6 +266,16 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
 
     chk = cp.load(conf["storage_account_name"], credential, source_name)
 
+    # Idempotency ledger: the checkpoint hold makes window re-reads normal, so
+    # applied actions are recorded per (email, action, window) and never
+    # repeated. The window is the run's start date — a NEW window is a new
+    # finding and acts again by design. Only built when something can mutate.
+    window_id = str(chk.get("last_start_date") or "initial")
+    if _any_action_enabled(conf):
+        ledger = act_ledger.build(conf, credential)
+    else:
+        ledger = act_ledger.InMemoryActionLedger()
+
     # Fetch employees from source
     if source_name == "botnet":
         employees = src_botnet.fetch(conf, chk)
@@ -392,7 +439,9 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
             # All subsequent actions use the headers of the tenant where the user was found.
             graph_headers = tenant_headers_map[found_tenant]
 
-            # ROPC validation (only if plaintext password available)
+            # ROPC validation (only if plaintext password available).
+            # Deliberately not ledgered: it is a validation, not a directory
+            # mutation, and its outcome feeds the severity below.
             ropc_result = None
             if conf["enable_ropc"] and emp.get("sanitized", {}).get("is_plaintext"):
                 raw_pw = emp.get("sanitized", {}).get("_raw")
@@ -413,79 +462,89 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
             else:
                 emp["severity"] = "MEDIUM"  # default
 
-            # Take actions
+            # Take actions — each gated by the idempotency ledger.
             taken = []
             user_id = emp["entra_user_id"]
 
             if conf["enable_revoke_session"]:
-                ok = entra.revoke_sessions(user_id, graph_headers)
-                taken.append("revoke_session" if ok else "revoke_session_failed")
-                actions += 1
+                if _apply_once(ledger, source_name, window_id, email, "revoke_session",
+                               lambda: entra.revoke_sessions(user_id, graph_headers), taken):
+                    actions += 1
 
             if conf["enable_add_to_group"] and conf["security_group_id"]:
-                ok = entra.add_to_group(user_id, conf["security_group_id"], graph_headers)
-                taken.append("add_to_group" if ok else "add_to_group_failed")
-                actions += 1
+                if _apply_once(ledger, source_name, window_id, email, "add_to_group",
+                               lambda: entra.add_to_group(user_id, conf["security_group_id"], graph_headers), taken):
+                    actions += 1
 
             if conf["enable_remove_from_group"] and conf["security_group_id"]:
-                ok = entra.remove_from_group(user_id, conf["security_group_id"], graph_headers)
-                taken.append("remove_from_group" if ok else "remove_from_group_failed")
-                actions += 1
+                if _apply_once(ledger, source_name, window_id, email, "remove_from_group",
+                               lambda: entra.remove_from_group(user_id, conf["security_group_id"], graph_headers), taken):
+                    actions += 1
 
             if conf["enable_disable_account"]:
-                ok = entra.disable_account(user_id, graph_headers)
-                taken.append("disable_account" if ok else "disable_account_failed")
-                actions += 1
+                if _apply_once(ledger, source_name, window_id, email, "disable_account",
+                               lambda: entra.disable_account(user_id, graph_headers), taken):
+                    actions += 1
 
             if conf["enable_enable_account"]:
-                ok = entra.enable_account(user_id, graph_headers)
-                taken.append("enable_account" if ok else "enable_account_failed")
-                actions += 1
+                if _apply_once(ledger, source_name, window_id, email, "enable_account",
+                               lambda: entra.enable_account(user_id, graph_headers), taken):
+                    actions += 1
 
             if conf["enable_password_change"]:
-                ok = entra.force_password_change(user_id, graph_headers)
-                taken.append("force_password_change" if ok else "force_password_change_failed")
-                actions += 1
+                if _apply_once(ledger, source_name, window_id, email, "force_password_change",
+                               lambda: entra.force_password_change(user_id, graph_headers), taken):
+                    actions += 1
 
             if conf["enable_confirm_risky"]:
-                ok = entra.confirm_compromised(user_id, graph_headers)
-                taken.append("confirm_risky" if ok else "confirm_risky_failed")
-                actions += 1
+                if _apply_once(ledger, source_name, window_id, email, "confirm_risky",
+                               lambda: entra.confirm_compromised(user_id, graph_headers), taken):
+                    actions += 1
 
             if conf["enable_force_mfa_reregistration"]:
-                mfa_result = entra.force_mfa_reregistration(user_id, graph_headers)
-                if mfa_result["permission_denied"]:
-                    logger.warning(
-                        "[%s] force_mfa_rereg skipped — UserAuthenticationMethod.ReadWrite.All not granted",
-                        source_name.upper()
-                    )
-                    taken.append("force_mfa_rereg_no_permission")
-                elif mfa_result["methods_deleted"] > 0:
-                    taken.append("force_mfa_rereg")
-                elif mfa_result.get("errors"):
-                    taken.append("force_mfa_rereg_failed")
+                if ledger.already_applied(source_name, email, "force_mfa_rereg", window_id):
+                    taken.append("force_mfa_rereg_skipped_duplicate")
                 else:
-                    # No MFA methods to delete (user only has password method)
-                    taken.append("force_mfa_rereg_no_methods")
-                emp["mfa_methods_deleted"] = mfa_result["methods_deleted"]
-                emp["mfa_methods_skipped"] = mfa_result["methods_skipped"]
-                actions += 1
+                    mfa_result = entra.force_mfa_reregistration(user_id, graph_headers)
+                    if mfa_result["permission_denied"]:
+                        logger.warning(
+                            "[%s] force_mfa_rereg skipped — UserAuthenticationMethod.ReadWrite.All not granted",
+                            source_name.upper()
+                        )
+                        taken.append("force_mfa_rereg_no_permission")
+                    elif mfa_result["methods_deleted"] > 0:
+                        taken.append("force_mfa_rereg")
+                        # Only a real deletion is recorded — an MFA reset
+                        # cannot be undone, so it above all must never repeat.
+                        ledger.record(source_name, email, "force_mfa_rereg", window_id)
+                    elif mfa_result.get("errors"):
+                        taken.append("force_mfa_rereg_failed")
+                    else:
+                        # No MFA methods to delete (user only has password method)
+                        taken.append("force_mfa_rereg_no_methods")
+                    emp["mfa_methods_deleted"] = mfa_result["methods_deleted"]
+                    emp["mfa_methods_skipped"] = mfa_result["methods_skipped"]
+                    actions += 1
 
             if conf["enable_create_incident"]:
-                sent.create_incident(conf, email, source_name, emp.get("severity", "MEDIUM"), credential=credential)
+                if ledger.already_applied(source_name, email, "create_incident", window_id):
+                    taken.append("create_incident_skipped_duplicate")
+                else:
+                    sent.create_incident(conf, email, source_name, emp.get("severity", "MEDIUM"), credential=credential)
+                    ledger.record(source_name, email, "create_incident", window_id)
 
             # Resolve SOCRadar alarm if user found in Entra ID
             alarm_id = emp.get("alarm_id")
             if conf.get("enable_resolve_alarm") and alarm_id:
-                ok = socradar_api.resolve_alarm(
-                    api_key=conf["socradar_api_key"],
-                    company_id=conf["socradar_company_id"],
-                    alarm_id=alarm_id,
-                    comment=f"User {email} found in Entra ID — auto-resolved by SOCRadar Entra ID Integration",
-                    base_url=conf.get("socradar_base_url", "https://platform.socradar.com")
-                )
-                taken.append("resolve_alarm" if ok else "resolve_alarm_failed")
-                actions += 1
+                if _apply_once(ledger, source_name, window_id, email, "resolve_alarm",
+                               lambda: socradar_api.resolve_alarm(
+                                   api_key=conf["socradar_api_key"],
+                                   company_id=conf["socradar_company_id"],
+                                   alarm_id=alarm_id,
+                                   comment=f"User {email} found in Entra ID — auto-resolved by SOCRadar Entra ID Integration",
+                                   base_url=conf.get("socradar_base_url", "https://platform.socradar.com")
+                               ), taken):
+                    actions += 1
 
             emp["actions_taken"] = taken
             emp.pop("_checkpoint_update", None)  # internal key — must not reach LAW
@@ -544,6 +603,9 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
     elif new_checkpoint:
         cp.save(conf["storage_account_name"], credential, source_name,
                 {**new_checkpoint, "consecutive_holds": 0})
+
+    # Ledger rows no re-read can reach anymore only grow the table.
+    ledger.purge_old(conf.get("action_ledger_retention_days", 90))
 
     # Duration is set by the caller (socradar_entra_id_import) after this returns,
     # so it always reflects real wall-clock time. Not included here to avoid a
