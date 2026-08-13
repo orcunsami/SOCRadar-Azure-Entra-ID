@@ -1,0 +1,1362 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0",
+    "metadata": {
+        "title": "SOCRadar Entra ID Integration",
+        "description": "Monitor leaked employee credentials via SOCRadar Identity Intelligence and take automated remediation actions in Microsoft Entra ID.",
+        "version": "1.0.0",
+        "author": "SOCRadar",
+        "lastUpdateTime": "2026-03-26T00:00:00.000Z"
+    },
+    "parameters": {
+        "_triggerStartTime": {
+            "type": "string",
+            "defaultValue": "[dateTimeAdd(utcNow(), 'PT3M')]",
+            "metadata": {
+                "description": "Internal: Logic App starts 3 min after deploy for role propagation"
+            }
+        },
+        "SocradarApiKey": {
+            "type": "securestring",
+            "metadata": {
+                "description": "SOCRadar Identity Intelligence API Key (pay-per-use key, separate from platform key)"
+            }
+        },
+        "SocradarCompanyId": {
+            "type": "string",
+            "metadata": {
+                "description": "SOCRadar Company ID"
+            }
+        },
+        "MonitoredDomain": {
+            "type": "string",
+            "metadata": {
+                "description": "Domain to monitor for leaked employee credentials (e.g. contoso.com)"
+            }
+        },
+        "EntraIdTenantId": {
+            "type": "string",
+            "metadata": {
+                "description": "Microsoft Entra ID Tenant ID"
+            }
+        },
+        "EntraIdClientId": {
+            "type": "string",
+            "metadata": {
+                "description": "App Registration Client ID with Entra ID permissions"
+            }
+        },
+        "EntraIdClientSecret": {
+            "type": "securestring",
+            "metadata": {
+                "description": "App Registration Client Secret"
+            }
+        },
+        "SecurityGroupId": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Entra ID Security Group Object ID for affected users (required if EnableAddToGroup=true)"
+            }
+        },
+        "WorkspaceId": {
+            "type": "string",
+            "metadata": {
+                "description": "Log Analytics Workspace ID for credential and audit logging"
+            }
+        },
+        "WorkspaceKey": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Log Analytics Workspace Primary Key"
+            }
+        },
+        "EnablePasswordValidation": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Validate leaked password via ROPC flow (requires Allow public client flows on App Registration). WARNING: Use only in isolated test tenants — ROPC is deprecated by Microsoft."
+            }
+        },
+        "EnableRevokeSession": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Revoke all active sign-in sessions for compromised users"
+            }
+        },
+        "EnablePasswordChange": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Force password change on next sign-in for compromised users (requires User.ReadWrite.All)"
+            }
+        },
+        "EnableDisableAccount": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Disable account for compromised users (requires User.ReadWrite.All). HIGH IMPACT — default off."
+            }
+        },
+        "EnableConfirmRisky": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Confirm user as risky in Microsoft Entra ID Identity Protection (requires P1/P2 license and IdentityRiskyUser.ReadWrite.All)"
+            }
+        },
+        "EnableAddToGroup": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Add compromised users to security group (requires SecurityGroupId parameter and Group.ReadWrite.All)"
+            }
+        },
+        "EnableCreateIncident": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Create Microsoft Sentinel incidents for credential findings (requires WorkspaceName, WorkspaceLocation, WorkspaceResourceGroup)"
+            }
+        },
+        "RecurrenceIntervalHours": {
+            "type": "int",
+            "defaultValue": 6,
+            "minValue": 1,
+            "maxValue": 168,
+            "metadata": {
+                "description": "How often to check for new leaked credentials (hours, default: 6)"
+            }
+        },
+        "WorkspaceName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Microsoft Sentinel Log Analytics Workspace Name (required if EnableCreateIncident=true)"
+            }
+        },
+        "WorkspaceLocation": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location of the Log Analytics workspace. Must match existing workspace region."
+            }
+        },
+        "WorkspaceResourceGroup": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]",
+            "metadata": {
+                "description": "Resource group of the Microsoft Sentinel workspace. Leave default if same RG."
+            }
+        }
+    },
+    "variables": {
+        "PlaybookName": "SOCRadar-EntraID-Import",
+        "StorageAccountName": "[take(concat('srentraid', uniqueString(resourceGroup().id)), 24)]",
+        "CheckpointTableName": "SOCRadarEntraIDCheckpoint",
+        "TablesConnectionName": "azuretables-entraid",
+        "LawConnectionName": "azureloganalyticsdatacollector-entraid",
+        "SentinelConnectionName": "azuresentinel-entraid",
+        "SentinelResponderRoleId": "3e150937-b8fe-4cfb-8069-0eaf05ecd056",
+        "workspaceResourceId": "[resourceId(parameters('WorkspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName'))]",
+        "isExternalWorkspace": "[not(equals(parameters('WorkspaceResourceGroup'), resourceGroup().name))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2023-05-01",
+            "name": "[variables('StorageAccountName')]",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "kind": "StorageV2",
+            "properties": {
+                "supportsHttpsTrafficOnly": true,
+                "minimumTlsVersion": "TLS1_2"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/tableServices",
+            "apiVersion": "2023-05-01",
+            "name": "[concat(variables('StorageAccountName'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('StorageAccountName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+            "apiVersion": "2023-05-01",
+            "name": "[concat(variables('StorageAccountName'), '/default/', variables('CheckpointTableName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', variables('StorageAccountName'), 'default')]"
+            ]
+        },
+        {
+            "type": "Microsoft.Web/connections",
+            "apiVersion": "2016-06-01",
+            "name": "[variables('TablesConnectionName')]",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "displayName": "SOCRadar EntraID Checkpoint Storage",
+                "api": {
+                    "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', resourceGroup().location, 'azuretables')]"
+                },
+                "parameterValues": {
+                    "storageaccount": "[variables('StorageAccountName')]",
+                    "sharedkey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('StorageAccountName')), '2023-05-01').keys[0].value]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('StorageAccountName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Web/connections",
+            "apiVersion": "2016-06-01",
+            "name": "[variables('LawConnectionName')]",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "displayName": "SOCRadar EntraID Log Analytics",
+                "api": {
+                    "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', resourceGroup().location, 'azureloganalyticsdatacollector')]"
+                },
+                "parameterValues": {
+                    "username": "[parameters('WorkspaceId')]",
+                    "password": "[parameters('WorkspaceKey')]"
+                }
+            }
+        },
+        {
+            "condition": "[parameters('EnableCreateIncident')]",
+            "type": "Microsoft.Web/connections",
+            "apiVersion": "2016-06-01",
+            "name": "[variables('SentinelConnectionName')]",
+            "location": "[resourceGroup().location]",
+            "kind": "V1",
+            "properties": {
+                "displayName": "[variables('SentinelConnectionName')]",
+                "api": {
+                    "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', resourceGroup().location, 'azuresentinel')]"
+                },
+                "parameterValueType": "Alternative"
+            }
+        },
+        {
+            "condition": "[and(parameters('EnableCreateIncident'), not(variables('isExternalWorkspace')))]",
+            "type": "Microsoft.OperationsManagement/solutions",
+            "apiVersion": "2015-11-01-preview",
+            "name": "[concat('SecurityInsights(', parameters('WorkspaceName'), ')')]",
+            "location": "[parameters('WorkspaceLocation')]",
+            "plan": {
+                "name": "[concat('SecurityInsights(', parameters('WorkspaceName'), ')')]",
+                "publisher": "Microsoft",
+                "product": "OMSGallery/SecurityInsights",
+                "promotionCode": ""
+            },
+            "properties": {
+                "workspaceResourceId": "[variables('workspaceResourceId')]"
+            }
+        },
+        {
+            "condition": "[and(parameters('EnableCreateIncident'), not(variables('isExternalWorkspace')))]",
+            "type": "Microsoft.OperationalInsights/workspaces/providers/onboardingStates",
+            "apiVersion": "2024-03-01",
+            "name": "[concat(parameters('WorkspaceName'), '/Microsoft.SecurityInsights/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationsManagement/solutions', concat('SecurityInsights(', parameters('WorkspaceName'), ')'))]"
+            ],
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2019-05-01",
+            "name": "[variables('PlaybookName')]",
+            "location": "[resourceGroup().location]",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/connections', variables('TablesConnectionName'))]",
+                "[resourceId('Microsoft.Web/connections', variables('LawConnectionName'))]",
+                "[resourceId('Microsoft.Web/connections', variables('SentinelConnectionName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices/tables', variables('StorageAccountName'), 'default', variables('CheckpointTableName'))]"
+            ],
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        },
+                        "SocradarApiKey": {
+                            "type": "SecureString"
+                        },
+                        "SocradarCompanyId": {
+                            "type": "String"
+                        },
+                        "MonitoredDomain": {
+                            "type": "String"
+                        },
+                        "EntraIdTenantId": {
+                            "type": "String"
+                        },
+                        "EntraIdClientId": {
+                            "type": "String"
+                        },
+                        "EntraIdClientSecret": {
+                            "type": "SecureString"
+                        },
+                        "SecurityGroupId": {
+                            "type": "String",
+                            "defaultValue": ""
+                        },
+                        "EnablePasswordValidation": {
+                            "type": "Bool",
+                            "defaultValue": false
+                        },
+                        "EnableRevokeSession": {
+                            "type": "Bool",
+                            "defaultValue": true
+                        },
+                        "EnablePasswordChange": {
+                            "type": "Bool",
+                            "defaultValue": false
+                        },
+                        "EnableDisableAccount": {
+                            "type": "Bool",
+                            "defaultValue": false
+                        },
+                        "EnableConfirmRisky": {
+                            "type": "Bool",
+                            "defaultValue": false
+                        },
+                        "EnableAddToGroup": {
+                            "type": "Bool",
+                            "defaultValue": true
+                        },
+                        "EnableCreateIncident": {
+                            "type": "Bool",
+                            "defaultValue": false
+                        },
+                        "WorkspaceName": {
+                            "type": "String",
+                            "defaultValue": ""
+                        },
+                        "WorkspaceResourceGroup": {
+                            "type": "String",
+                            "defaultValue": ""
+                        },
+                        "SubscriptionId": {
+                            "type": "String"
+                        }
+                    },
+                    "triggers": {
+                        "Recurrence": {
+                            "type": "Recurrence",
+                            "recurrence": {
+                                "frequency": "Hour",
+                                "interval": "[parameters('RecurrenceIntervalHours')]",
+                                "startTime": "[parameters('_triggerStartTime')]"
+                            },
+                            "operationOptions": "SingleInstance"
+                        }
+                    },
+                    "actions": {
+                        "Initialize_RunStart": {
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "RunStart",
+                                        "type": "string",
+                                        "value": "@{utcNow()}"
+                                    }
+                                ]
+                            },
+                            "runAfter": {}
+                        },
+                        "Initialize_AccessToken": {
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "AccessToken",
+                                        "type": "string",
+                                        "value": ""
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "Initialize_RunStart": ["Succeeded"]
+                            }
+                        },
+                        "Initialize_LastCheckpoint": {
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "LastCheckpoint",
+                                        "type": "string",
+                                        "value": "@{addDays(utcNow(), -1)}"
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "Initialize_AccessToken": ["Succeeded"]
+                            }
+                        },
+                        "Initialize_Counters": {
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "FoundCount",
+                                        "type": "integer",
+                                        "value": 0
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "Initialize_LastCheckpoint": ["Succeeded"]
+                            }
+                        },
+                        "Initialize_NotFoundCount": {
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "NotFoundCount",
+                                        "type": "integer",
+                                        "value": 0
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "Initialize_Counters": ["Succeeded"]
+                            }
+                        },
+                        "Initialize_DisabledCount": {
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "DisabledCount",
+                                        "type": "integer",
+                                        "value": 0
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "Initialize_NotFoundCount": ["Succeeded"]
+                            }
+                        },
+                        "Initialize_ValidPasswordCount": {
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "ValidPasswordCount",
+                                        "type": "integer",
+                                        "value": 0
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "Initialize_DisabledCount": ["Succeeded"]
+                            }
+                        },
+                        "Initialize_ApiCheckpoint": {
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "ApiCheckpoint",
+                                        "type": "string",
+                                        "value": ""
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "Initialize_ValidPasswordCount": ["Succeeded"]
+                            }
+                        },
+                        "Get_Entra_Access_Token": {
+                            "type": "Http",
+                            "inputs": {
+                                "method": "POST",
+                                "uri": "@{concat('https://login.microsoftonline.com/', parameters('EntraIdTenantId'), '/oauth2/v2.0/token')}",
+                                "headers": {
+                                    "Content-Type": "application/x-www-form-urlencoded"
+                                },
+                                "body": "@{concat('grant_type=client_credentials&client_id=', parameters('EntraIdClientId'), '&client_secret=', encodeURIComponent(parameters('EntraIdClientSecret')), '&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default')}"
+                            },
+                            "runtimeConfiguration": {
+                                "secureData": {
+                                    "properties": [
+                                        "inputs",
+                                        "outputs"
+                                    ]
+                                }
+                            },
+                            "runAfter": {
+                                "Initialize_ApiCheckpoint": ["Succeeded"]
+                            }
+                        },
+                        "Check_Token_Success": {
+                            "type": "If",
+                            "expression": {
+                                "and": [
+                                    {
+                                        "equals": [
+                                            "@outputs('Get_Entra_Access_Token')?['statusCode']",
+                                            200
+                                        ]
+                                    }
+                                ]
+                            },
+                            "actions": {
+                                "Set_AccessToken": {
+                                    "type": "SetVariable",
+                                    "inputs": {
+                                        "name": "AccessToken",
+                                        "value": "@{body('Get_Entra_Access_Token')?['access_token']}"
+                                    },
+                                    "runAfter": {}
+                                }
+                            },
+                            "else": {
+                                "actions": {
+                                    "Log_Token_Error": {
+                                        "type": "ApiConnection",
+                                        "inputs": {
+                                            "host": {
+                                                "connection": {
+                                                    "referenceName": "azureloganalyticsdatacollector"
+                                                }
+                                            },
+                                            "method": "post",
+                                            "body": "@{json(concat('{\"TimeGenerated\":\"', variables('RunStart'), '\",\"RunType\":\"Audit\",\"Status\":\"Error\",\"Message\":\"Failed to acquire Entra ID access token. Check EntraIdClientId/Secret parameters.\",\"MonitoredDomain\":\"', parameters('MonitoredDomain'), '\"}'))}",
+                                            "headers": {
+                                                "Log-Type": "SOCRadar_EntraID_Audit"
+                                            },
+                                            "path": "/api/logs"
+                                        },
+                                        "runAfter": {}
+                                    },
+                                    "Terminate_Token_Error": {
+                                        "type": "Terminate",
+                                        "inputs": {
+                                            "runStatus": "Failed",
+                                            "runError": {
+                                                "code": "TokenAcquisitionFailed",
+                                                "message": "Failed to acquire Entra ID access token"
+                                            }
+                                        },
+                                        "runAfter": {
+                                            "Log_Token_Error": ["Succeeded", "Failed"]
+                                        }
+                                    }
+                                }
+                            },
+                            "runAfter": {
+                                "Get_Entra_Access_Token": ["Succeeded", "Failed"]
+                            }
+                        },
+                        "Read_Checkpoint": {
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "referenceName": "azuretables"
+                                    }
+                                },
+                                "method": "get",
+                                "path": "[concat('/Tables/@{encodeURIComponent(''', variables('CheckpointTableName'), ''')}/Entities(PartitionKey=''checkpoint'',RowKey=''latest'')')]"
+                            },
+                            "runAfter": {
+                                "Check_Token_Success": ["Succeeded"]
+                            }
+                        },
+                        "Set_LastCheckpoint_From_Storage": {
+                            "type": "If",
+                            "expression": {
+                                "and": [
+                                    {
+                                        "equals": [
+                                            "@outputs('Read_Checkpoint')?['statusCode']",
+                                            200
+                                        ]
+                                    }
+                                ]
+                            },
+                            "actions": {
+                                "Use_Stored_Checkpoint": {
+                                    "type": "SetVariable",
+                                    "inputs": {
+                                        "name": "LastCheckpoint",
+                                        "value": "@{body('Read_Checkpoint')?['LastCheckpoint']}"
+                                    },
+                                    "runAfter": {}
+                                }
+                            },
+                            "else": {
+                                "actions": {}
+                            },
+                            "runAfter": {
+                                "Read_Checkpoint": ["Succeeded", "Failed"]
+                            }
+                        },
+                        "Call_SOCRadar_Identity_API": {
+                            "type": "Http",
+                            "inputs": {
+                                "method": "GET",
+                                "uri": "https://platform.socradar.com/api/identity/intelligence/query",
+                                "headers": {
+                                    "Api-Key": "@{parameters('SocradarApiKey')}",
+                                    "Accept": "application/json"
+                                },
+                                "queries": {
+                                    "query": "@{parameters('MonitoredDomain')}",
+                                    "query_type": "domain",
+                                    "is_employee": "true",
+                                    "log_start_date": "@{split(variables('LastCheckpoint'), 'T')[0]}",
+                                    "log_end_date": "@{split(utcNow(), 'T')[0]}",
+                                    "checkpoint": "@{variables('ApiCheckpoint')}"
+                                },
+                                "retryPolicy": {
+                                    "type": "exponential",
+                                    "count": 4,
+                                    "interval": "PT10S",
+                                    "maximumInterval": "PT1H"
+                                }
+                            },
+                            "runtimeConfiguration": {
+                                "secureData": {
+                                    "properties": [
+                                        "inputs"
+                                    ]
+                                }
+                            },
+                            "runAfter": {
+                                "Set_LastCheckpoint_From_Storage": ["Succeeded"]
+                            }
+                        },
+                        "Check_SOCRadar_Response": {
+                            "type": "If",
+                            "expression": {
+                                "and": [
+                                    {
+                                        "equals": [
+                                            "@body('Call_SOCRadar_Identity_API')?['is_success']",
+                                            true
+                                        ]
+                                    },
+                                    {
+                                        "greater": [
+                                            "@length(coalesce(body('Call_SOCRadar_Identity_API')?['data']?['result'], json('[]')))",
+                                            0
+                                        ]
+                                    }
+                                ]
+                            },
+                            "actions": {
+                                "Set_ApiCheckpoint": {
+                                    "type": "SetVariable",
+                                    "inputs": {
+                                        "name": "ApiCheckpoint",
+                                        "value": "@{coalesce(body('Call_SOCRadar_Identity_API')?['data']?['checkpoint'], '')}"
+                                    },
+                                    "runAfter": {}
+                                },
+                                "For_Each_Credential": {
+                                    "type": "Foreach",
+                                    "foreach": "@body('Call_SOCRadar_Identity_API')?['data']?['result']",
+                                    "actions": {
+                                        "Lookup_User_In_EntraID": {
+                                            "type": "Http",
+                                            "inputs": {
+                                                "method": "GET",
+                                                "uri": "@{concat('https://graph.microsoft.com/v1.0/users/', encodeURIComponent(items('For_Each_Credential')?['username']))}",
+                                                "headers": {
+                                                    "Authorization": "@{concat('Bearer ', variables('AccessToken'))}",
+                                                    "ConsistencyLevel": "eventual"
+                                                },
+                                                "queries": {
+                                                    "$select": "id,displayName,userPrincipalName,accountEnabled,mail"
+                                                }
+                                            },
+                                            "runAfter": {}
+                                        },
+                                        "Check_User_Status": {
+                                            "type": "If",
+                                            "expression": {
+                                                "and": [
+                                                    {
+                                                        "equals": [
+                                                            "@outputs('Lookup_User_In_EntraID')?['statusCode']",
+                                                            200
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "actions": {
+                                                "Check_Account_Enabled": {
+                                                    "type": "If",
+                                                    "expression": {
+                                                        "and": [
+                                                            {
+                                                                "equals": [
+                                                                    "@body('Lookup_User_In_EntraID')?['accountEnabled']",
+                                                                    true
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    "actions": {
+                                                        "Increment_FoundCount": {
+                                                            "type": "IncrementVariable",
+                                                            "inputs": {
+                                                                "name": "FoundCount",
+                                                                "value": 1
+                                                            },
+                                                            "runAfter": {}
+                                                        },
+                                                        "Password_Validation_Check": {
+                                                            "type": "If",
+                                                            "expression": {
+                                                                "and": [
+                                                                    {
+                                                                        "equals": [
+                                                                            "@parameters('EnablePasswordValidation')",
+                                                                            true
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "actions": {
+                                                                "Validate_Password_ROPC": {
+                                                                    "type": "Http",
+                                                                    "inputs": {
+                                                                        "method": "POST",
+                                                                        "uri": "@{concat('https://login.microsoftonline.com/', parameters('EntraIdTenantId'), '/oauth2/v2.0/token')}",
+                                                                        "headers": {
+                                                                            "Content-Type": "application/x-www-form-urlencoded"
+                                                                        },
+                                                                        "body": "@{concat('grant_type=password&client_id=', parameters('EntraIdClientId'), '&client_secret=', encodeURIComponent(parameters('EntraIdClientSecret')), '&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&username=', encodeURIComponent(items('For_Each_Credential')?['username']), '&password=', encodeURIComponent(items('For_Each_Credential')?['password']))}"
+                                                                    },
+                                                                    "runtimeConfiguration": {
+                                                                        "secureData": {
+                                                                            "properties": [
+                                                                                "inputs",
+                                                                                "outputs"
+                                                                            ]
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {}
+                                                                },
+                                                                "Check_Password_Valid": {
+                                                                    "type": "If",
+                                                                    "expression": {
+                                                                        "and": [
+                                                                            {
+                                                                                "equals": [
+                                                                                    "@outputs('Validate_Password_ROPC')?['statusCode']",
+                                                                                    200
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    "actions": {
+                                                                        "Increment_ValidPasswordCount": {
+                                                                            "type": "IncrementVariable",
+                                                                            "inputs": {
+                                                                                "name": "ValidPasswordCount",
+                                                                                "value": 1
+                                                                            },
+                                                                            "runAfter": {}
+                                                                        }
+                                                                    },
+                                                                    "else": {
+                                                                        "actions": {}
+                                                                    },
+                                                                    "runAfter": {
+                                                                        "Validate_Password_ROPC": ["Succeeded", "Failed"]
+                                                                    }
+                                                                }
+                                                            },
+                                                            "else": {
+                                                                "actions": {}
+                                                            },
+                                                            "runAfter": {
+                                                                "Increment_FoundCount": ["Succeeded"]
+                                                            }
+                                                        },
+                                                        "Action_AddToGroup": {
+                                                            "type": "If",
+                                                            "expression": {
+                                                                "and": [
+                                                                    {
+                                                                        "equals": [
+                                                                            "@parameters('EnableAddToGroup')",
+                                                                            true
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "not": {
+                                                                            "equals": [
+                                                                                "@parameters('SecurityGroupId')",
+                                                                                ""
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "actions": {
+                                                                "Add_User_To_Group": {
+                                                                    "type": "Http",
+                                                                    "inputs": {
+                                                                        "method": "POST",
+                                                                        "uri": "@{concat('https://graph.microsoft.com/v1.0/groups/', parameters('SecurityGroupId'), '/members/$ref')}",
+                                                                        "headers": {
+                                                                            "Authorization": "@{concat('Bearer ', variables('AccessToken'))}",
+                                                                            "Content-Type": "application/json"
+                                                                        },
+                                                                        "body": {
+                                                                            "@odata.id": "@{concat('https://graph.microsoft.com/v1.0/directoryObjects/', body('Lookup_User_In_EntraID')?['id'])}"
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {}
+                                                                }
+                                                            },
+                                                            "else": {
+                                                                "actions": {}
+                                                            },
+                                                            "runAfter": {
+                                                                "Password_Validation_Check": ["Succeeded"]
+                                                            }
+                                                        },
+                                                        "Action_RevokeSession": {
+                                                            "type": "If",
+                                                            "expression": {
+                                                                "and": [
+                                                                    {
+                                                                        "equals": [
+                                                                            "@parameters('EnableRevokeSession')",
+                                                                            true
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "actions": {
+                                                                "Revoke_Sign_In_Sessions": {
+                                                                    "type": "Http",
+                                                                    "inputs": {
+                                                                        "method": "POST",
+                                                                        "uri": "@{concat('https://graph.microsoft.com/v1.0/users/', body('Lookup_User_In_EntraID')?['id'], '/revokeSignInSessions')}",
+                                                                        "headers": {
+                                                                            "Authorization": "@{concat('Bearer ', variables('AccessToken'))}",
+                                                                            "Content-Type": "application/json"
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {}
+                                                                }
+                                                            },
+                                                            "else": {
+                                                                "actions": {}
+                                                            },
+                                                            "runAfter": {
+                                                                "Action_AddToGroup": ["Succeeded"]
+                                                            }
+                                                        },
+                                                        "Action_ForcePasswordChange": {
+                                                            "type": "If",
+                                                            "expression": {
+                                                                "and": [
+                                                                    {
+                                                                        "equals": [
+                                                                            "@parameters('EnablePasswordChange')",
+                                                                            true
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "actions": {
+                                                                "Force_Password_Change": {
+                                                                    "type": "Http",
+                                                                    "inputs": {
+                                                                        "method": "PATCH",
+                                                                        "uri": "@{concat('https://graph.microsoft.com/v1.0/users/', body('Lookup_User_In_EntraID')?['id'])}",
+                                                                        "headers": {
+                                                                            "Authorization": "@{concat('Bearer ', variables('AccessToken'))}",
+                                                                            "Content-Type": "application/json"
+                                                                        },
+                                                                        "body": {
+                                                                            "passwordProfile": {
+                                                                                "forceChangePasswordNextSignIn": true
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {}
+                                                                }
+                                                            },
+                                                            "else": {
+                                                                "actions": {}
+                                                            },
+                                                            "runAfter": {
+                                                                "Action_RevokeSession": ["Succeeded"]
+                                                            }
+                                                        },
+                                                        "Action_DisableAccount": {
+                                                            "type": "If",
+                                                            "expression": {
+                                                                "and": [
+                                                                    {
+                                                                        "equals": [
+                                                                            "@parameters('EnableDisableAccount')",
+                                                                            true
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "actions": {
+                                                                "Disable_Account": {
+                                                                    "type": "Http",
+                                                                    "inputs": {
+                                                                        "method": "PATCH",
+                                                                        "uri": "@{concat('https://graph.microsoft.com/v1.0/users/', body('Lookup_User_In_EntraID')?['id'])}",
+                                                                        "headers": {
+                                                                            "Authorization": "@{concat('Bearer ', variables('AccessToken'))}",
+                                                                            "Content-Type": "application/json"
+                                                                        },
+                                                                        "body": {
+                                                                            "accountEnabled": false
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {}
+                                                                }
+                                                            },
+                                                            "else": {
+                                                                "actions": {}
+                                                            },
+                                                            "runAfter": {
+                                                                "Action_ForcePasswordChange": ["Succeeded"]
+                                                            }
+                                                        },
+                                                        "Action_ConfirmRisky": {
+                                                            "type": "If",
+                                                            "expression": {
+                                                                "and": [
+                                                                    {
+                                                                        "equals": [
+                                                                            "@parameters('EnableConfirmRisky')",
+                                                                            true
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "actions": {
+                                                                "Confirm_User_Compromised": {
+                                                                    "type": "Http",
+                                                                    "inputs": {
+                                                                        "method": "POST",
+                                                                        "uri": "https://graph.microsoft.com/beta/riskyUsers/confirmCompromised",
+                                                                        "headers": {
+                                                                            "Authorization": "@{concat('Bearer ', variables('AccessToken'))}",
+                                                                            "Content-Type": "application/json"
+                                                                        },
+                                                                        "body": {
+                                                                            "userIds": [
+                                                                                "@{body('Lookup_User_In_EntraID')?['id']}"
+                                                                            ]
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {}
+                                                                }
+                                                            },
+                                                            "else": {
+                                                                "actions": {}
+                                                            },
+                                                            "runAfter": {
+                                                                "Action_DisableAccount": ["Succeeded"]
+                                                            }
+                                                        },
+                                                        "Create_Security_Incident": {
+                                                            "type": "If",
+                                                            "expression": {
+                                                                "and": [
+                                                                    {
+                                                                        "equals": [
+                                                                            "@parameters('EnableCreateIncident')",
+                                                                            true
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "actions": {
+                                                                "Create_Incident": {
+                                                                    "type": "Http",
+                                                                    "inputs": {
+                                                                        "method": "PUT",
+                                                                        "uri": "@{concat('https://management.azure.com/subscriptions/', parameters('SubscriptionId'), '/resourceGroups/', parameters('WorkspaceResourceGroup'), '/providers/Microsoft.OperationalInsights/workspaces/', parameters('WorkspaceName'), '/providers/Microsoft.SecurityInsights/incidents/', guid(), '?api-version=2023-11-01')}",
+                                                                        "authentication": {
+                                                                            "type": "ManagedServiceIdentity"
+                                                                        },
+                                                                        "headers": {
+                                                                            "Content-Type": "application/json"
+                                                                        },
+                                                                        "body": {
+                                                                            "properties": {
+                                                                                "title": "@{concat('[SOCRadar] Leaked Credential: ', items('For_Each_Credential')?['username'])}",
+                                                                                "description": "@{concat('SOCRadar Identity Intelligence detected a leaked credential for ', items('For_Each_Credential')?['username'], '. Source log date: ', items('For_Each_Credential')?['log_date'], '. URL: ', coalesce(items('For_Each_Credential')?['url'], 'N/A'))}",
+                                                                                "severity": "High",
+                                                                                "status": "New",
+                                                                                "labels": [
+                                                                                    {
+                                                                                        "labelName": "SOCRadar",
+                                                                                        "labelType": "User"
+                                                                                    },
+                                                                                    {
+                                                                                        "labelName": "LeakedCredential",
+                                                                                        "labelType": "User"
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {}
+                                                                }
+                                                            },
+                                                            "else": {
+                                                                "actions": {}
+                                                            },
+                                                            "runAfter": {
+                                                                "Action_ConfirmRisky": ["Succeeded"]
+                                                            }
+                                                        },
+                                                        "Log_Credential_Found": {
+                                                            "type": "ApiConnection",
+                                                            "inputs": {
+                                                                "host": {
+                                                                    "connection": {
+                                                                        "referenceName": "azureloganalyticsdatacollector"
+                                                                    }
+                                                                },
+                                                                "method": "post",
+                                                                "body": "@{json(concat('{\"TimeGenerated\":\"', variables('RunStart'), '\",\"Email\":\"', items('For_Each_Credential')?['username'], '\",\"UserStatus\":\"found_enabled\",\"EntraIdUserId\":\"', body('Lookup_User_In_EntraID')?['id'], '\",\"PasswordStatus\":\"', if(equals(parameters('EnablePasswordValidation'), true), if(equals(outputs('Validate_Password_ROPC')?['statusCode'], 200), 'valid', 'invalid_or_mfa'), 'not_checked'), '\",\"LogDate\":\"', items('For_Each_Credential')?['log_date'], '\",\"StealterId\":\"', items('For_Each_Credential')?['id'], '\",\"Country\":\"', coalesce(items('For_Each_Credential')?['country'], ''), '\",\"MonitoredDomain\":\"', parameters('MonitoredDomain'), '\"}'))}",
+                                                                "headers": {
+                                                                    "Log-Type": "SOCRadar_EntraID",
+                                                                    "time-generated-field": "TimeGenerated"
+                                                                },
+                                                                "path": "/api/logs"
+                                                            },
+                                                            "runAfter": {
+                                                                "Create_Security_Incident": ["Succeeded"]
+                                                            }
+                                                        }
+                                                    },
+                                                    "else": {
+                                                        "actions": {
+                                                            "Increment_DisabledCount": {
+                                                                "type": "IncrementVariable",
+                                                                "inputs": {
+                                                                    "name": "DisabledCount",
+                                                                    "value": 1
+                                                                },
+                                                                "runAfter": {}
+                                                            },
+                                                            "Log_Credential_Disabled": {
+                                                                "type": "ApiConnection",
+                                                                "inputs": {
+                                                                    "host": {
+                                                                        "connection": {
+                                                                            "referenceName": "azureloganalyticsdatacollector"
+                                                                        }
+                                                                    },
+                                                                    "method": "post",
+                                                                    "body": "@{json(concat('{\"TimeGenerated\":\"', variables('RunStart'), '\",\"Email\":\"', items('For_Each_Credential')?['username'], '\",\"UserStatus\":\"found_disabled\",\"EntraIdUserId\":\"', body('Lookup_User_In_EntraID')?['id'], '\",\"PasswordStatus\":\"not_checked\",\"LogDate\":\"', items('For_Each_Credential')?['log_date'], '\",\"StealterId\":\"', items('For_Each_Credential')?['id'], '\",\"Country\":\"', coalesce(items('For_Each_Credential')?['country'], ''), '\",\"MonitoredDomain\":\"', parameters('MonitoredDomain'), '\"}'))}",
+                                                                    "headers": {
+                                                                        "Log-Type": "SOCRadar_EntraID",
+                                                                        "time-generated-field": "TimeGenerated"
+                                                                    },
+                                                                    "path": "/api/logs"
+                                                                },
+                                                                "runAfter": {
+                                                                    "Increment_DisabledCount": ["Succeeded"]
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "runAfter": {}
+                                                }
+                                            },
+                                            "else": {
+                                                "actions": {
+                                                    "Increment_NotFoundCount": {
+                                                        "type": "IncrementVariable",
+                                                        "inputs": {
+                                                            "name": "NotFoundCount",
+                                                            "value": 1
+                                                        },
+                                                        "runAfter": {}
+                                                    },
+                                                    "Log_Credential_NotFound": {
+                                                        "type": "ApiConnection",
+                                                        "inputs": {
+                                                            "host": {
+                                                                "connection": {
+                                                                    "referenceName": "azureloganalyticsdatacollector"
+                                                                }
+                                                            },
+                                                            "method": "post",
+                                                            "body": "@{json(concat('{\"TimeGenerated\":\"', variables('RunStart'), '\",\"Email\":\"', items('For_Each_Credential')?['username'], '\",\"UserStatus\":\"not_found\",\"EntraIdUserId\":\"\",\"PasswordStatus\":\"not_checked\",\"LogDate\":\"', items('For_Each_Credential')?['log_date'], '\",\"StealterId\":\"', items('For_Each_Credential')?['id'], '\",\"Country\":\"', coalesce(items('For_Each_Credential')?['country'], ''), '\",\"MonitoredDomain\":\"', parameters('MonitoredDomain'), '\"}'))}",
+                                                            "headers": {
+                                                                "Log-Type": "SOCRadar_EntraID",
+                                                                "time-generated-field": "TimeGenerated"
+                                                            },
+                                                            "path": "/api/logs"
+                                                        },
+                                                        "runAfter": {
+                                                            "Increment_NotFoundCount": ["Succeeded"]
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "runAfter": {
+                                                "Lookup_User_In_EntraID": ["Succeeded", "Failed"]
+                                            }
+                                        }
+                                    },
+                                    "runtimeConfiguration": {
+                                        "concurrency": {
+                                            "repetitions": 1
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "Set_ApiCheckpoint": ["Succeeded"]
+                                    }
+                                },
+                                "Update_Checkpoint": {
+                                    "type": "ApiConnection",
+                                    "inputs": {
+                                        "host": {
+                                            "connection": {
+                                                "referenceName": "azuretables"
+                                            }
+                                        },
+                                        "method": "patch",
+                                        "path": "[concat('/Tables/@{encodeURIComponent(''', variables('CheckpointTableName'), ''')}/Entities(PartitionKey=''checkpoint'',RowKey=''latest'')')]",
+                                        "body": {
+                                            "LastCheckpoint": "@{variables('ApiCheckpoint')}",
+                                            "LastRunTime": "@{variables('RunStart')}",
+                                            "MonitoredDomain": "@{parameters('MonitoredDomain')}"
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "For_Each_Credential": ["Succeeded"]
+                                    }
+                                },
+                                "Write_Run_Audit": {
+                                    "type": "ApiConnection",
+                                    "inputs": {
+                                        "host": {
+                                            "connection": {
+                                                "referenceName": "azureloganalyticsdatacollector"
+                                            }
+                                        },
+                                        "method": "post",
+                                        "body": "@{json(concat('{\"TimeGenerated\":\"', variables('RunStart'), '\",\"RunType\":\"Audit\",\"Status\":\"Success\",\"TotalCredentials\":', length(body('Call_SOCRadar_Identity_API')?['data']?['result']), ',\"FoundCount\":', variables('FoundCount'), ',\"NotFoundCount\":', variables('NotFoundCount'), ',\"DisabledCount\":', variables('DisabledCount'), ',\"ValidPasswordCount\":', variables('ValidPasswordCount'), ',\"MonitoredDomain\":\"', parameters('MonitoredDomain'), '\",\"Checkpoint\":\"', variables('ApiCheckpoint'), '\"}'))}",
+                                        "headers": {
+                                            "Log-Type": "SOCRadar_EntraID_Audit",
+                                            "time-generated-field": "TimeGenerated"
+                                        },
+                                        "path": "/api/logs"
+                                    },
+                                    "runAfter": {
+                                        "Update_Checkpoint": ["Succeeded", "Failed"]
+                                    }
+                                }
+                            },
+                            "else": {
+                                "actions": {
+                                    "Write_Empty_Audit": {
+                                        "type": "ApiConnection",
+                                        "inputs": {
+                                            "host": {
+                                                "connection": {
+                                                    "referenceName": "azureloganalyticsdatacollector"
+                                                }
+                                            },
+                                            "method": "post",
+                                            "body": "@{json(concat('{\"TimeGenerated\":\"', variables('RunStart'), '\",\"RunType\":\"Audit\",\"Status\":\"NoResults\",\"TotalCredentials\":0,\"FoundCount\":0,\"NotFoundCount\":0,\"DisabledCount\":0,\"ValidPasswordCount\":0,\"MonitoredDomain\":\"', parameters('MonitoredDomain'), '\",\"Checkpoint\":\"\"}'))}",
+                                            "headers": {
+                                                "Log-Type": "SOCRadar_EntraID_Audit",
+                                                "time-generated-field": "TimeGenerated"
+                                            },
+                                            "path": "/api/logs"
+                                        },
+                                        "runAfter": {}
+                                    }
+                                }
+                            },
+                            "runAfter": {
+                                "Call_SOCRadar_Identity_API": ["Succeeded"]
+                            }
+                        }
+                    }
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "azuretables": {
+                                "connectionId": "[resourceId('Microsoft.Web/connections', variables('TablesConnectionName'))]",
+                                "connectionName": "[variables('TablesConnectionName')]",
+                                "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', resourceGroup().location, 'azuretables')]"
+                            },
+                            "azureloganalyticsdatacollector": {
+                                "connectionId": "[resourceId('Microsoft.Web/connections', variables('LawConnectionName'))]",
+                                "connectionName": "[variables('LawConnectionName')]",
+                                "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', resourceGroup().location, 'azureloganalyticsdatacollector')]"
+                            },
+                            "azuresentinel": {
+                                "connectionId": "[if(parameters('EnableCreateIncident'), resourceId('Microsoft.Web/connections', variables('SentinelConnectionName')), '')]",
+                                "connectionName": "[variables('SentinelConnectionName')]",
+                                "connectionProperties": {
+                                    "authentication": {
+                                        "type": "ManagedServiceIdentity"
+                                    }
+                                },
+                                "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', resourceGroup().location, 'azuresentinel')]"
+                            }
+                        }
+                    },
+                    "SocradarApiKey": {
+                        "value": "[parameters('SocradarApiKey')]"
+                    },
+                    "SocradarCompanyId": {
+                        "value": "[parameters('SocradarCompanyId')]"
+                    },
+                    "MonitoredDomain": {
+                        "value": "[parameters('MonitoredDomain')]"
+                    },
+                    "EntraIdTenantId": {
+                        "value": "[parameters('EntraIdTenantId')]"
+                    },
+                    "EntraIdClientId": {
+                        "value": "[parameters('EntraIdClientId')]"
+                    },
+                    "EntraIdClientSecret": {
+                        "value": "[parameters('EntraIdClientSecret')]"
+                    },
+                    "SecurityGroupId": {
+                        "value": "[parameters('SecurityGroupId')]"
+                    },
+                    "EnablePasswordValidation": {
+                        "value": "[parameters('EnablePasswordValidation')]"
+                    },
+                    "EnableRevokeSession": {
+                        "value": "[parameters('EnableRevokeSession')]"
+                    },
+                    "EnablePasswordChange": {
+                        "value": "[parameters('EnablePasswordChange')]"
+                    },
+                    "EnableDisableAccount": {
+                        "value": "[parameters('EnableDisableAccount')]"
+                    },
+                    "EnableConfirmRisky": {
+                        "value": "[parameters('EnableConfirmRisky')]"
+                    },
+                    "EnableAddToGroup": {
+                        "value": "[parameters('EnableAddToGroup')]"
+                    },
+                    "EnableCreateIncident": {
+                        "value": "[parameters('EnableCreateIncident')]"
+                    },
+                    "WorkspaceName": {
+                        "value": "[parameters('WorkspaceName')]"
+                    },
+                    "WorkspaceResourceGroup": {
+                        "value": "[parameters('WorkspaceResourceGroup')]"
+                    },
+                    "SubscriptionId": {
+                        "value": "[subscription().subscriptionId]"
+                    }
+                }
+            }
+        },
+        {
+            "condition": "[and(parameters('EnableCreateIncident'), not(variables('isExternalWorkspace')))]",
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2022-04-01",
+            "name": "[guid(variables('workspaceResourceId'), variables('PlaybookName'), variables('SentinelResponderRoleId'))]",
+            "scope": "[variables('workspaceResourceId')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Logic/workflows', variables('PlaybookName'))]"
+            ],
+            "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('SentinelResponderRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.Logic/workflows', variables('PlaybookName')), '2019-05-01', 'Full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+            }
+        },
+        {
+            "condition": "[and(parameters('EnableCreateIncident'), variables('isExternalWorkspace'))]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2021-04-01",
+            "name": "deploy-sentinel-roles",
+            "resourceGroup": "[parameters('WorkspaceResourceGroup')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Logic/workflows', variables('PlaybookName'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "outer"
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": [
+                        {
+                            "type": "Microsoft.Authorization/roleAssignments",
+                            "apiVersion": "2022-04-01",
+                            "name": "[guid(variables('workspaceResourceId'), variables('PlaybookName'), variables('SentinelResponderRoleId'))]",
+                            "scope": "[variables('workspaceResourceId')]",
+                            "properties": {
+                                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('SentinelResponderRoleId'))]",
+                                "principalId": "[reference(resourceId('Microsoft.Logic/workflows', variables('PlaybookName')), '2019-05-01', 'Full').identity.principalId]",
+                                "principalType": "ServicePrincipal"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "logicAppName": {
+            "type": "string",
+            "value": "[variables('PlaybookName')]"
+        },
+        "storageAccountName": {
+            "type": "string",
+            "value": "[variables('StorageAccountName')]"
+        },
+        "checkpointTableName": {
+            "type": "string",
+            "value": "[variables('CheckpointTableName')]"
+        },
+        "lawTableCredentials": {
+            "type": "string",
+            "value": "SOCRadar_EntraID_CL"
+        },
+        "lawTableAudit": {
+            "type": "string",
+            "value": "SOCRadar_EntraID_Audit_CL"
+        }
+    }
+}

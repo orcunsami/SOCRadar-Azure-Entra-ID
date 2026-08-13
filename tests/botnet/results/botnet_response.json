@@ -1,0 +1,315 @@
+{
+  "api": "Botnet Data v2",
+  "company_id": "1234567",
+  "results": [
+    {
+      "endpoint": "/company/1234567/dark-web-monitoring/botnet-data/v2",
+      "page": 1,
+      "limit": 10,
+      "start_date": null,
+      "status": 200,
+      "is_success": true,
+      "elapsed_seconds": 1.65,
+      "response_size_bytes": 6319,
+      "total_data_count": 24,
+      "page_count": 10,
+      "sample": [
+        {
+          "alarmId": 90000001,
+          "botnetId": 90000002,
+          "country": null,
+          "deviceIP": null,
+          "deviceOS": null,
+          "discoveryDate": "2026-04-04 08:14:32",
+          "history": [
+            {
+              "date": "2026-04-04 08:14",
+              "detail": "Botnet Market Finding was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": false,
+          "logDate": null,
+          "notificationId": 90000003,
+          "password": "Example-Pass-1!",
+          "relatedAlarm": {
+            "status": "Open",
+            "url": "https://platform.socradar.com/app/company/1234567/alarm-management?tab=approved&alarmId=90000001"
+          },
+          "status": "Open",
+          "statusReason": " Open",
+          "url": "https://login.microsoftonline.com",
+          "user": "user1@example.com"
+        },
+        {
+          "alarmId": 90000004,
+          "botnetId": 90000005,
+          "country": null,
+          "deviceIP": null,
+          "deviceOS": null,
+          "discoveryDate": "2025-02-26 10:40:27",
+          "history": [
+            {
+              "date": "2025-02-26 10:40",
+              "detail": "Black Market Finding was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "logDate": null,
+          "notificationId": 90000006,
+          "password": "Example-Pass-2!",
+          "relatedAlarm": {
+            "status": "Open",
+            "url": "https://platform.socradar.com/app/company/1234567/alarm-management?tab=approved&alarmId=90000001"
+          },
+          "status": "Open",
+          "statusReason": " Open",
+          "url": "https://vpn.example.com",
+          "user": "user1"
+        },
+        {
+          "alarmId": 90000007,
+          "botnetId": 90000008,
+          "country": null,
+          "deviceIP": null,
+          "deviceOS": null,
+          "discoveryDate": "2025-02-26 10:40:26",
+          "history": [
+            {
+              "date": "2025-02-26 10:40",
+              "detail": "Black Market Finding was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "logDate": null,
+          "notificationId": 90000006,
+          "password": "Example-Pass-3!",
+          "relatedAlarm": {
+            "status": "Open",
+            "url": "https://platform.socradar.com/app/company/1234567/alarm-management?tab=approved&alarmId=90000001"
+          },
+          "status": "Open",
+          "statusReason": " Open",
+          "url": "https://webmail.example.com/login",
+          "user": "user2@example.com"
+        }
+      ],
+      "fields": [
+        "alarmId",
+        "botnetId",
+        "country",
+        "deviceIP",
+        "deviceOS",
+        "discoveryDate",
+        "history",
+        "isEmployee",
+        "logDate",
+        "notificationId",
+        "password",
+        "relatedAlarm",
+        "status",
+        "statusReason",
+        "url",
+        "user"
+      ],
+      "password_masked": false,
+      "employee_count": 9,
+      "error": null
+    },
+    {
+      "endpoint": "/company/1234567/dark-web-monitoring/botnet-data/v2",
+      "page": 2,
+      "limit": 5,
+      "start_date": null,
+      "status": 200,
+      "is_success": true,
+      "elapsed_seconds": 0.55,
+      "response_size_bytes": 3293,
+      "total_data_count": 24,
+      "page_count": 5,
+      "sample": [
+        {
+          "alarmId": 90000009,
+          "botnetId": 90000010,
+          "country": null,
+          "deviceIP": null,
+          "deviceOS": null,
+          "discoveryDate": "2023-09-01 11:01:00",
+          "history": [
+            {
+              "date": "2025-02-04 13:13",
+              "detail": "Botnet Data Finding status was set to Closed (Reason: Resolved)",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2023-09-01 11:00",
+              "detail": "Botnet Data Finding was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "logDate": null,
+          "notificationId": 90000011,
+          "password": "Example-Pass-4!",
+          "relatedAlarm": {
+            "status": "Closed",
+            "url": "https://platform.socradar.com/app/company/1234567/alarm-management?tab=approved&alarmId=90000001"
+          },
+          "status": "Open",
+          "statusReason": " Open",
+          "url": "https://nicehash.com/my/login",
+          "user": "user3@example.com"
+        },
+        {
+          "alarmId": 90000012,
+          "botnetId": 90000013,
+          "country": null,
+          "deviceIP": null,
+          "deviceOS": null,
+          "discoveryDate": "2023-09-01 11:00:48",
+          "history": [
+            {
+              "date": "2023-09-01 11:00",
+              "detail": "Botnet Data Finding was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "logDate": null,
+          "notificationId": 90000011,
+          "password": "Example-Pass-5!",
+          "relatedAlarm": {
+            "status": "On Hold",
+            "url": "https://platform.socradar.com/app/company/1234567/alarm-management?tab=approved&alarmId=90000001"
+          },
+          "status": "Open",
+          "statusReason": " Open",
+          "url": "https://accounts.google.com/signin/v2/challenge/pwd",
+          "user": "user4@example.com"
+        },
+        {
+          "alarmId": 90000014,
+          "botnetId": 90000015,
+          "country": null,
+          "deviceIP": null,
+          "deviceOS": null,
+          "discoveryDate": "2023-08-25 11:00:19",
+          "history": [
+            {
+              "date": "2025-02-25 09:54",
+              "detail": "Botnet Data Finding status was set to On Hold (Reason: Investigating)",
+              "operator": "SOCRadar"
+            },
+            {
+              "date": "2023-08-25 11:00",
+              "detail": "Botnet Data Finding was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": true,
+          "logDate": null,
+          "notificationId": 90000016,
+          "password": "Example-Pass-4!",
+          "relatedAlarm": {
+            "status": "Open",
+            "url": "https://platform.socradar.com/app/company/1234567/alarm-management?tab=approved&alarmId=90000001"
+          },
+          "status": "Open",
+          "statusReason": " Open",
+          "url": "https://nicehash.com/my/login",
+          "user": "user5@example.com"
+        }
+      ],
+      "fields": [
+        "alarmId",
+        "botnetId",
+        "country",
+        "deviceIP",
+        "deviceOS",
+        "discoveryDate",
+        "history",
+        "isEmployee",
+        "logDate",
+        "notificationId",
+        "password",
+        "relatedAlarm",
+        "status",
+        "statusReason",
+        "url",
+        "user"
+      ],
+      "password_masked": false,
+      "employee_count": 5,
+      "error": null
+    },
+    {
+      "endpoint": "/company/1234567/dark-web-monitoring/botnet-data/v2",
+      "page": 1,
+      "limit": 10,
+      "start_date": "2026-03-01",
+      "status": 200,
+      "is_success": true,
+      "elapsed_seconds": 0.53,
+      "response_size_bytes": 698,
+      "total_data_count": 1,
+      "page_count": 1,
+      "sample": [
+        {
+          "alarmId": 90000001,
+          "botnetId": 90000002,
+          "country": null,
+          "deviceIP": null,
+          "deviceOS": null,
+          "discoveryDate": "2026-04-04 08:14:32",
+          "history": [
+            {
+              "date": "2026-04-04 08:14",
+              "detail": "Botnet Market Finding was discovered",
+              "operator": "SOCRadar"
+            }
+          ],
+          "isEmployee": false,
+          "logDate": null,
+          "notificationId": 90000003,
+          "password": "Example-Pass-1!",
+          "relatedAlarm": {
+            "status": "Open",
+            "url": "https://platform.socradar.com/app/company/1234567/alarm-management?tab=approved&alarmId=90000001"
+          },
+          "status": "Open",
+          "statusReason": " Open",
+          "url": "https://login.microsoftonline.com",
+          "user": "user1@example.com"
+        }
+      ],
+      "fields": [
+        "alarmId",
+        "botnetId",
+        "country",
+        "deviceIP",
+        "deviceOS",
+        "discoveryDate",
+        "history",
+        "isEmployee",
+        "logDate",
+        "notificationId",
+        "password",
+        "relatedAlarm",
+        "status",
+        "statusReason",
+        "url",
+        "user"
+      ],
+      "password_masked": false,
+      "employee_count": 0,
+      "error": null
+    },
+    {
+      "status": 403,
+      "error": null,
+      "expected": "401/403"
+    }
+  ]
+}

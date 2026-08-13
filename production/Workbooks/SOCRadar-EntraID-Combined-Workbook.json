@@ -1,0 +1,274 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "## SOCRadar Entra ID \u2014 Combined Dashboard\nAll employee credential exposures across SOCRadar sources (Botnet Data, PII Exposure, VIP Protection), enriched with Microsoft Entra ID status and remediation actions."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "tenant-id-param",
+            "version": "KqlParameterItem/1.0",
+            "name": "TenantId",
+            "label": "Entra ID Tenant",
+            "type": 2,
+            "isRequired": true,
+            "value": "All",
+            "typeSettings": {
+              "additionalResourceOptions": [],
+              "includeAll": false,
+              "showDefault": false
+            },
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where isnotempty(entra_tenant_id)\n| distinct entra_tenant_id\n| project value = entra_tenant_id, label = entra_tenant_id\n| union (datatable(value:string, label:string)['All','All'])\n| order by label asc"
+          }
+        ]
+      },
+      "name": "parameters - tenant"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n### Overall Overview"
+      },
+      "name": "overview-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| count\n| project Count",
+        "size": 4,
+        "title": "Total Records (All Sources)",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "auto"
+            }
+          },
+          "showBorder": false
+        }
+      },
+      "customWidth": "25",
+      "name": "total-all"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where entra_status == \"found\"\n| count\n| project Count",
+        "size": 4,
+        "title": "Employees Found in Entra ID",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "redBright"
+            }
+          },
+          "showBorder": false
+        }
+      },
+      "customWidth": "25",
+      "name": "found-all"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where entra_status == \"compromised\"\n| count\n| project Count",
+        "size": 4,
+        "title": "Confirmed Compromised",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "red"
+            }
+          },
+          "showBorder": false
+        }
+      },
+      "customWidth": "25",
+      "name": "compromised-all"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "SOCRadar_EntraID_Audit_CL\n| where TimeGenerated > ago(24h)\n| summarize Actions=sum(toint(actions_taken))\n| project Actions",
+        "size": 4,
+        "title": "Actions Taken (24h)",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Actions",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "green"
+            }
+          },
+          "showBorder": false
+        }
+      },
+      "customWidth": "25",
+      "name": "actions-24h"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n### Records by Source"
+      },
+      "name": "by-source-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n(SOCRadar_VIP_CL | extend Source=\"VIP\")\n| summarize Count=count() by Source\n| order by Count desc",
+        "size": 2,
+        "title": "Records by Source",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "piechart"
+      },
+      "customWidth": "50",
+      "name": "records-by-source"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n(SOCRadar_VIP_CL | extend Source=\"VIP\")\n| summarize Count=count() by entra_status, Source\n| order by Count desc",
+        "size": 2,
+        "title": "Entra ID Status by Source",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart"
+      },
+      "customWidth": "50",
+      "name": "status-by-source"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\"),\n(SOCRadar_VIP_CL | extend Source=\"VIP\")\n| summarize Count=count() by bin(TimeGenerated, 1d), Source\n| order by TimeGenerated asc",
+        "size": 0,
+        "title": "Records Over Time by Source",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "timeline-by-source"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n### Audit Log"
+      },
+      "name": "audit-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "SOCRadar_EntraID_Audit_CL\n| summarize Count=count() by source\n| order by Count desc",
+        "size": 2,
+        "title": "Import Runs by Source",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart"
+      },
+      "customWidth": "50",
+      "name": "audit-by-source"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "SOCRadar_EntraID_Audit_CL\n| summarize Found=sum(toint(found_count)), NotFound=sum(toint(not_found_count)), Actions=sum(toint(actions_taken)), Errors=sum(toint(error_count)) by bin(TimeGenerated, 1h)\n| order by TimeGenerated asc",
+        "size": 0,
+        "title": "Audit Metrics Over Time",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "customWidth": "50",
+      "name": "audit-metrics-timeline"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "SOCRadar_EntraID_Audit_CL\n| project TimeGenerated, source, total_records, employee_records, found_count, not_found_count, actions_taken, error_count, duration_sec\n| order by TimeGenerated desc\n| take 30",
+        "size": 0,
+        "title": "Recent Import Runs",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table"
+      },
+      "name": "recent-runs"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n### High-Risk Accounts"
+      },
+      "name": "highrisk-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true\n(SOCRadar_Botnet_CL | extend Source=\"Botnet\"),\n(SOCRadar_PII_CL | extend Source=\"PII\")\n| where entra_status in (\"found\", \"compromised\")\n| where password_present == true\n| project TimeGenerated, Source, email, entra_status, is_plaintext, actions_taken\n| order by TimeGenerated desc\n| take 50",
+        "size": 0,
+        "title": "Employees Found in Entra ID with Password",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table"
+      },
+      "name": "high-risk-accounts"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL\n| where '{TenantId}' == 'All' or entra_tenant_id == '{TenantId}'\n| where isnotempty(entra_tenant_id)\n| extend src = case(Type == 'SOCRadar_Botnet_CL', 'Botnet', Type == 'SOCRadar_PII_CL', 'PII', Type == 'SOCRadar_VIP_CL', 'VIP', 'Other')\n| summarize Records=count(), Found=countif(entra_status == 'found'), Compromised=countif(entra_status == 'compromised') by entra_tenant_id, src\n| order by Records desc",
+        "size": 1,
+        "title": "Tenant Breakdown",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table"
+      },
+      "name": "tenant-breakdown"
+    }
+  ],
+  "isLocked": false,
+  "fallbackResourceIds": [
+    "/subscriptions/{Subscription}/resourceGroups/{ResourceGroup}/providers/Microsoft.OperationalInsights/workspaces/{Workspace}"
+  ]
+}

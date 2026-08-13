@@ -1,0 +1,19 @@
+{
+  "envelope": {
+    "is_success": true,
+    "message": "Success",
+    "envelope_keys": [
+      "data",
+      "is_success",
+      "message",
+      "response_code"
+    ]
+  },
+  "data_keys": [
+    "data",
+    "total_data_count"
+  ],
+  "total_data_count": 0,
+  "records_in_response": 0,
+  "record_schema": {}
+}
