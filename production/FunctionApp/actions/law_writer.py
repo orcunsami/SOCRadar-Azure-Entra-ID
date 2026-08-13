@@ -85,25 +85,33 @@ def _clean_record(rec: dict, enable_log_plaintext: bool) -> dict:
     return out
 
 
-def write_records(conf: dict, source_name: str, records: list):
-    """Write source records to appropriate LAW table in batches via DCR Logs Ingestion API."""
+def write_records(conf: dict, source_name: str, records: list) -> bool:
+    """Write source records to appropriate LAW table in batches via DCR Logs
+    Ingestion API.
+
+    Returns True only when every batch landed. The caller holds the checkpoint
+    on False — records that never reached the table must be read again, not
+    silently retired with the window."""
     stream_name = STREAM_MAP.get(source_name)
     if not stream_name:
         logger.warning("[LAW] Unknown source: %s — skipping", source_name)
-        return
+        return False
 
     rule_id = conf.get("dcr_immutable_id")
     endpoint = conf.get("dcr_endpoint")
     if not rule_id or not endpoint:
         logger.error("[LAW] DCR_IMMUTABLE_ID or DCR_ENDPOINT missing — cannot write %s records", source_name)
-        return
+        return False
 
     enable_log_plaintext = conf.get("enable_log_plaintext_password", False)
     cleaned = [_clean_record(r, enable_log_plaintext) for r in records]
 
+    ok = True
     for i in range(0, len(cleaned), BATCH_SIZE):
         batch = cleaned[i:i + BATCH_SIZE]
-        _upload(rule_id, stream_name, batch, endpoint)
+        if not _upload(rule_id, stream_name, batch, endpoint):
+            ok = False
+    return ok
 
 
 def write_lifecycle_event(conf: dict, event_type: str, tenant_id: str = "", details: str = "", extra: dict = None):

@@ -35,6 +35,10 @@ app = func.FunctionApp()
 # Leave ~2 min headroom for cleanup (LAW write + checkpoint save).
 TIME_BUDGET_SECONDS = 8 * 60
 
+# A held window is retried, not retried forever: after this many consecutive
+# holds the window is abandoned with a lifecycle event and the source moves on.
+MAX_CONSECUTIVE_HOLDS = 5
+
 # Honour RUN_ON_STARTUP env var (ARM parameter). Default true.
 _RUN_ON_STARTUP = os.environ.get("RUN_ON_STARTUP", "true").strip().lower() in ("true", "1", "yes")
 
@@ -493,12 +497,53 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
 
     # Write source records to LAW (skip empty marker records)
     real_records = [r for r in records if not r.get("_empty_marker")]
+    law_ok = True
     if real_records:
-        law.write_records(conf, source_name, real_records)
+        law_ok = law.write_records(conf, source_name, real_records)
 
-    # Update checkpoint (extracted before the loop above)
-    if new_checkpoint:
-        cp.save(conf["storage_account_name"], credential, source_name, new_checkpoint)
+    # A window is only retired when this run really finished with it. Anything
+    # that left findings unprocessed, unchecked or unwritten HOLDS the
+    # checkpoint, so the same window is read again next run:
+    #   truncated     — the time budget cut the loop; the tail was never seen
+    #   not law_ok    — rows never reached Log Analytics
+    #   lookup_failed — findings nobody could check against a directory (403)
+    #   no_token      — same, for want of a single usable Graph token
+    #   errors        — records that raised before reaching the table
+    # Saving the checkpoint regardless used to retire all of those silently.
+    hold_checkpoint = (truncated or not law_ok or lookup_failed > 0
+                       or no_token > 0 or errors > 0)
+
+    holds = int(chk.get("consecutive_holds") or 0)
+    if hold_checkpoint:
+        holds += 1
+        if holds >= MAX_CONSECUTIVE_HOLDS and new_checkpoint:
+            # A permanently broken window must not wedge the source forever.
+            # Give it up loudly and move on.
+            logger.error(
+                "[%s] Window held %d consecutive runs — abandoning it and moving on.",
+                source_name.upper(), holds
+            )
+            law.write_lifecycle_event(
+                conf, event_type="import_window_abandoned",
+                details=f"source={source_name} holds={holds}"
+            )
+            cp.save(conf["storage_account_name"], credential, source_name,
+                    {**new_checkpoint, "consecutive_holds": 0})
+        else:
+            logger.warning(
+                "[%s] Holding the checkpoint (hold %d/%d) — truncated=%s law_ok=%s "
+                "lookup_failed=%d no_token=%d errors=%d. Window will be read again.",
+                source_name.upper(), holds, MAX_CONSECUTIVE_HOLDS, truncated,
+                law_ok, lookup_failed, no_token, errors
+            )
+            held = {k: v for k, v in chk.items()
+                    if k not in ("PartitionKey", "RowKey", "Timestamp", "etag")
+                    and not str(k).startswith("odata")}
+            held["consecutive_holds"] = holds
+            cp.save(conf["storage_account_name"], credential, source_name, held)
+    elif new_checkpoint:
+        cp.save(conf["storage_account_name"], credential, source_name,
+                {**new_checkpoint, "consecutive_holds": 0})
 
     # Duration is set by the caller (socradar_entra_id_import) after this returns,
     # so it always reflects real wall-clock time. Not included here to avoid a
@@ -521,4 +566,5 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
         "no_token":   no_token,
         "lookup_failed": lookup_failed,
         "truncated":  truncated,
+        "held":       hold_checkpoint,
     }
