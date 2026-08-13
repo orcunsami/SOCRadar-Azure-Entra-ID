@@ -835,6 +835,14 @@ resource WorkspaceName_SOCRadar_VIP_CL 'Microsoft.OperationalInsights/workspaces
           name: 'actions_taken'
           type: 'dynamic'
         }
+        {
+          name: 'mfa_methods_deleted'
+          type: 'int'
+        }
+        {
+          name: 'mfa_methods_skipped'
+          type: 'int'
+        }
       ]
     }
     retentionInDays: 30
@@ -1157,6 +1165,14 @@ resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
             name: 'actions_taken'
             type: 'dynamic'
           }
+        {
+          name: 'mfa_methods_deleted'
+          type: 'int'
+        }
+        {
+          name: 'mfa_methods_skipped'
+          type: 'int'
+        }
         ]
       }
       'Custom-SOCRadar_EntraID_Audit_CL': {

@@ -1060,6 +1060,14 @@
             {
               "name": "actions_taken",
               "type": "dynamic"
+            },
+            {
+              "name": "mfa_methods_deleted",
+              "type": "int"
+            },
+            {
+              "name": "mfa_methods_skipped",
+              "type": "int"
             }
           ]
         },
@@ -1389,6 +1397,14 @@
               {
                 "name": "actions_taken",
                 "type": "dynamic"
+              },
+              {
+                "name": "mfa_methods_deleted",
+                "type": "int"
+              },
+              {
+                "name": "mfa_methods_skipped",
+                "type": "int"
               }
             ]
           },
