@@ -196,6 +196,7 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
             found=r["found"], not_found=r["not_found"], actions=r["actions"],
             errors=r["errors"], duration_sec=r.get("duration", 0),
             domain_filtered=r.get("domain_filtered", 0),
+            no_address=r.get("no_address", 0),
         )
 
     if conf.get("dcr_immutable_id") and conf.get("dcr_endpoint"):
@@ -232,7 +233,7 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
         return {"source": source_name, "total": 0, "employees": 0,
                 "found": 0, "not_found": 0, "actions": 0, "errors": 0}
 
-    found = not_found = actions = errors = domain_filtered = 0
+    found = not_found = actions = errors = domain_filtered = no_address = 0
     records = []
     # Per-tenant 403 counter: if a tenant returns 403 three times in a row,
     # drop it from the lookup map (admin consent missing — no point retrying).
@@ -256,6 +257,16 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
         try:
             email = emp.get("email") or emp.get("user", "")
             if not email:
+                # A finding without an address (VIP records often name a
+                # person, not an account) used to be dropped on the floor —
+                # not written, not counted. It cannot be matched, but it is
+                # still a finding someone may want to read.
+                no_address += 1
+                emp["entra_status"] = "skipped_no_address"
+                emp["entra_tenant_id"] = ""
+                emp["actions_taken"] = []
+                emp.pop("_checkpoint_update", None)
+                records.append(emp)
                 continue
 
             # User lookup in Entra ID (skipped if Graph token unavailable or permissions missing)
@@ -487,4 +498,5 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
         "actions":    actions,
         "errors":     errors,
         "domain_filtered": domain_filtered,
+        "no_address": no_address,
     }

@@ -3,7 +3,10 @@ Configuration loader — reads all settings from Azure App Settings (environment
 Validates required fields and provides typed accessors.
 """
 
+import logging
 import os
+
+_logger = logging.getLogger("socradar.entra.config")
 
 
 def _get(key: str, default=None, required: bool = False):
@@ -14,19 +17,41 @@ def _get(key: str, default=None, required: bool = False):
 
 
 def _bool(key: str, default: bool = False) -> bool:
-    val = os.environ.get(key, "").lower()
-    if val in ("true", "1", "yes"):
+    raw = os.environ.get(key, "")
+    val = raw.strip().lower()
+    if val in ("true", "1", "yes", "on"):
         return True
-    if val in ("false", "0", "no"):
+    if val in ("false", "0", "no", "off"):
+        return False
+    if val:
+        # Several of these switches arm directory mutations and default to on.
+        # A value we do not recognise used to fall through to that default, so
+        # "ENABLE_REVOKE_SESSION=disabled" left the action ARMED with only the
+        # operator's intention to say otherwise. Between the two wrong guesses
+        # only one changes somebody's directory: an unrecognised value now
+        # reads as False.
+        _logger.error(
+            "App Setting %s has an unrecognised value %r; treating it as "
+            "false. Use true or false.", key, raw.strip())
         return False
     return default
 
 
-def _int(key: str, default: int = 0) -> int:
-    try:
-        return int(os.environ.get(key, str(default)))
-    except (ValueError, TypeError):
+def _int(key: str, default: int = 0, on_invalid: int = None) -> int:
+    """on_invalid: what an unparseable value becomes. Ceilings should pass 0
+    so that a typo in a limit closes the gate rather than silently restoring
+    the default."""
+    raw = os.environ.get(key, "")
+    if not raw.strip():
         return default
+    try:
+        return int(raw)
+    except (ValueError, TypeError):
+        fallback = default if on_invalid is None else on_invalid
+        _logger.error(
+            "App Setting %s has a non-numeric value %r; using %d.",
+            key, raw.strip(), fallback)
+        return fallback
 
 
 def _list(key: str, default: str = "") -> list:
