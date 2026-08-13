@@ -115,6 +115,14 @@ class ColumnCoupling(unittest.TestCase):
             self.assertEqual(diff, set(),
                              f"{name}: stream and table disagree on {sorted(diff)}")
 
+    # The accounting buckets the audit row must carry. Dropping one of these
+    # from write_audit silently blinds the run summary — a removal is as wrong
+    # as sending an undeclared field.
+    AUDIT_REQUIRED = {"total_records", "found_count", "not_found_count",
+                      "domain_filtered", "no_address_count",
+                      "lookup_disabled_count", "no_token_count",
+                      "lookup_failed_count", "truncated", "error_count"}
+
     def test_audit_summary_fields_are_declared(self):
         src = (APP / "actions" / "law_writer.py").read_text()
         body = src.split("def write_audit", 1)[1].split("\ndef ", 1)[0]
@@ -123,6 +131,9 @@ class ColumnCoupling(unittest.TestCase):
         cols = _dcr_streams()["Custom-SOCRadar_EntraID_Audit_CL"]
         self.assertEqual(sent - cols, set(),
                          "write_audit sends fields the audit stream drops")
+        missing = self.AUDIT_REQUIRED - sent
+        self.assertEqual(missing, set(),
+                         f"write_audit stopped sending {sorted(missing)}")
 
     def test_every_source_the_code_writes_has_a_stream(self):
         from actions import law_writer

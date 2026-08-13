@@ -894,6 +894,30 @@ resource WorkspaceName_SOCRadar_EntraID_Audit_CL 'Microsoft.OperationalInsights/
           type: 'real'
         }
         {
+          name: 'domain_filtered'
+          type: 'int'
+        }
+        {
+          name: 'no_address_count'
+          type: 'int'
+        }
+        {
+          name: 'lookup_disabled_count'
+          type: 'int'
+        }
+        {
+          name: 'no_token_count'
+          type: 'int'
+        }
+        {
+          name: 'lookup_failed_count'
+          type: 'int'
+        }
+        {
+          name: 'truncated'
+          type: 'boolean'
+        }
+        {
           name: 'event_type'
           type: 'string'
         }
@@ -1213,6 +1237,30 @@ resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
             name: 'duration_sec'
             type: 'real'
           }
+        {
+          name: 'domain_filtered'
+          type: 'int'
+        }
+        {
+          name: 'no_address_count'
+          type: 'int'
+        }
+        {
+          name: 'lookup_disabled_count'
+          type: 'int'
+        }
+        {
+          name: 'no_token_count'
+          type: 'int'
+        }
+        {
+          name: 'lookup_failed_count'
+          type: 'int'
+        }
+        {
+          name: 'truncated'
+          type: 'boolean'
+        }
           {
             name: 'event_type'
             type: 'string'

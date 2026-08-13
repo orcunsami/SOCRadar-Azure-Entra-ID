@@ -242,10 +242,13 @@ class TestProcessSourceMultiTenant(unittest.TestCase):
         # 4th email: only tenant-good tried (1 call).
         # Total: 6 + 1 = 7 calls.
         self.assertEqual(mock_lookup.call_count, 7)
-        # First 3 emails saw at least one 403 → lookup_permission_denied (errors++).
+        # First 3 emails saw at least one 403 → lookup_permission_denied.
+        # These count as lookup_failed, not errors: nobody looked at those
+        # findings, which is different from something breaking while looking.
         # 4th email only saw 404 (tenant-bad already dropped) → genuine not_found.
         self.assertEqual(result["not_found"], 1)
-        self.assertEqual(result["errors"], 3)
+        self.assertEqual(result["lookup_failed"], 3)
+        self.assertEqual(result["errors"], 0)
         # Verify the per-record statuses on the actual employee dicts:
         self.assertEqual([e["entra_status"] for e in emps], [
             "lookup_permission_denied",

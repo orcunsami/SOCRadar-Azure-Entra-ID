@@ -148,6 +148,17 @@ def write_audit(conf: dict, audit_results: list):
             "employee_records": r.get("employees", 0),
             "found_count":      r.get("found", 0),
             "not_found_count":  r.get("not_found", 0),
+            # Every record a finished run handled falls into exactly one of
+            # found / not_found / domain_filtered / no_address /
+            # lookup_disabled / no_token / lookup_failed (errors are the
+            # exception path). If the parts do not add up to total_records,
+            # the summary is hiding something.
+            "domain_filtered":       r.get("domain_filtered", 0),
+            "no_address_count":      r.get("no_address", 0),
+            "lookup_disabled_count": r.get("lookup_disabled", 0),
+            "no_token_count":        r.get("no_token", 0),
+            "lookup_failed_count":   r.get("lookup_failed", 0),
+            "truncated":             bool(r.get("truncated", False)),
             "actions_taken":    r.get("actions", 0),
             "error_count":      r.get("errors", 0),
             "duration_sec":     float(r.get("duration", 0)),

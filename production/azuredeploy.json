@@ -1137,6 +1137,30 @@
             {
               "name": "aadsts_code",
               "type": "string"
+            },
+            {
+              "name": "domain_filtered",
+              "type": "int"
+            },
+            {
+              "name": "no_address_count",
+              "type": "int"
+            },
+            {
+              "name": "lookup_disabled_count",
+              "type": "int"
+            },
+            {
+              "name": "no_token_count",
+              "type": "int"
+            },
+            {
+              "name": "lookup_failed_count",
+              "type": "int"
+            },
+            {
+              "name": "truncated",
+              "type": "boolean"
             }
           ]
         },
@@ -1461,6 +1485,30 @@
               {
                 "name": "aadsts_code",
                 "type": "string"
+              },
+              {
+                "name": "domain_filtered",
+                "type": "int"
+              },
+              {
+                "name": "no_address_count",
+                "type": "int"
+              },
+              {
+                "name": "lookup_disabled_count",
+                "type": "int"
+              },
+              {
+                "name": "no_token_count",
+                "type": "int"
+              },
+              {
+                "name": "lookup_failed_count",
+                "type": "int"
+              },
+              {
+                "name": "truncated",
+                "type": "boolean"
               }
             ]
           }

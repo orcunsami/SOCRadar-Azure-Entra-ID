@@ -197,6 +197,10 @@ def socradar_entra_id_import(timer: func.TimerRequest) -> None:
             errors=r["errors"], duration_sec=r.get("duration", 0),
             domain_filtered=r.get("domain_filtered", 0),
             no_address=r.get("no_address", 0),
+            lookup_disabled=r.get("lookup_disabled", 0),
+            no_token=r.get("no_token", 0),
+            lookup_failed=r.get("lookup_failed", 0),
+            truncated=r.get("truncated", False),
         )
 
     if conf.get("dcr_immutable_id") and conf.get("dcr_endpoint"):
@@ -234,6 +238,8 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
                 "found": 0, "not_found": 0, "actions": 0, "errors": 0}
 
     found = not_found = actions = errors = domain_filtered = no_address = 0
+    lookup_disabled = no_token = lookup_failed = 0
+    truncated = False
     records = []
     # Per-tenant 403 counter: if a tenant returns 403 three times in a row,
     # drop it from the lookup map (admin consent missing — no point retrying).
@@ -252,6 +258,9 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
                 "[%s] Time budget (%ds) exhausted mid-source. Stopping early — %d records processed so far. Remaining will resume next run.",
                 source_name.upper(), TIME_BUDGET_SECONDS, len(records)
             )
+            # The unprocessed tail is real: the summary must say so rather
+            # than account for fewer records as if nothing were left.
+            truncated = True
             break
 
         try:
@@ -271,6 +280,7 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
 
             # User lookup in Entra ID (skipped if Graph token unavailable or permissions missing)
             if not conf["enable_user_lookup"]:
+                lookup_disabled += 1
                 emp["entra_status"] = "skipped_user_lookup_disabled"
                 emp["entra_tenant_id"] = ""
                 emp["actions_taken"] = []
@@ -279,6 +289,7 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
                 continue
 
             if not tenant_headers_map:
+                no_token += 1
                 emp["entra_status"] = "skipped_no_token"
                 emp["entra_tenant_id"] = ""
                 emp["actions_taken"] = []
@@ -333,7 +344,10 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
 
             # Fully exhausted lookup map (all tenants 403'd out mid-loop)
             if not tenant_headers_map and user_info is None:
-                errors += 1
+                # A permission-denied lookup is its own bucket, not a generic
+                # error: nobody looked at this finding, which is different
+                # from something going wrong while looking.
+                lookup_failed += 1
                 logger.warning(
                     "[%s] %s → all tenants exhausted permission errors (403). Marking as lookup_permission_denied. Admin consent likely missing.",
                     source_name.upper(), email
@@ -350,7 +364,7 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
                     # User wasn't found in any tenant but at least one tenant returned 403.
                     # Treat as permission denied, not "not_found" — prevents silent false negatives
                     # when admin consent has not yet been granted on Path 1.
-                    errors += 1
+                    lookup_failed += 1
                     logger.warning(
                         "[%s] %s → lookup returned 403 (no 200/404 from any tenant). entra_status=lookup_permission_denied",
                         source_name.upper(), email
@@ -489,6 +503,10 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
     # Duration is set by the caller (socradar_entra_id_import) after this returns,
     # so it always reflects real wall-clock time. Not included here to avoid a
     # silent-zero trap if a future caller forgets to overwrite it.
+    # On a finished, error-free run these buckets have to close:
+    # found + not_found + domain_filtered + no_address + lookup_disabled +
+    # no_token + lookup_failed + errors == total. A truncated run legitimately
+    # accounts for less — the unprocessed tail is read again next run.
     return {
         "source":     source_name,
         "total":      len(employees),
@@ -499,4 +517,8 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
         "errors":     errors,
         "domain_filtered": domain_filtered,
         "no_address": no_address,
+        "lookup_disabled": lookup_disabled,
+        "no_token":   no_token,
+        "lookup_failed": lookup_failed,
+        "truncated":  truncated,
     }
