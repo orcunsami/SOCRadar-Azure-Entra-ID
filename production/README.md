@@ -144,11 +144,43 @@ After deployment, query the audit table to confirm the Function App is running:
 ```kql
 SOCRadar_EntraID_Audit_CL
 | where TimeGenerated > ago(2h)
-| project TimeGenerated, source, total_records, found_count, error_count, duration_sec
+| project TimeGenerated, source, total_records, found_count, not_found_count,
+          domain_filtered, no_address_count, lookup_disabled_count,
+          no_token_count, lookup_failed_count, error_count,
+          truncated, capped, duration_sec
 | order by TimeGenerated desc
 ```
 
-For matched users and the actions taken:
+Every record a **finished** run handled falls into exactly one of those
+buckets, and together with `error_count` they add up to `total_records`.
+A run that reports `truncated` legitimately accounts for less — the tail is
+read again next run. If the parts do not close on a finished run, the summary
+is hiding something:
+
+```kql
+SOCRadar_EntraID_Audit_CL
+| where TimeGenerated > ago(7d) and not(truncated) and isnotempty(total_records)
+| extend accounted = found_count + not_found_count + domain_filtered
+                   + no_address_count + lookup_disabled_count + no_token_count
+                   + lookup_failed_count + error_count
+| where accounted != total_records
+| project TimeGenerated, source, total_records, accounted
+```
+
+Anything that went wrong recently — each of these also means the window was
+held and will be read again (`import_window_abandoned` in the same table says
+a window was given up after too many holds):
+
+```kql
+SOCRadar_EntraID_Audit_CL
+| where TimeGenerated > ago(1d)
+        and (error_count > 0 or truncated or capped or lookup_failed_count > 0)
+| project TimeGenerated, source, error_count, lookup_failed_count, truncated, capped
+```
+
+For matched users and the actions taken (`*_skipped_duplicate` means a re-read
+window found the action already applied; `skipped_capped` means the per-run
+action ceiling was reached and the account gets its turn on the re-read):
 
 ```kql
 union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL
