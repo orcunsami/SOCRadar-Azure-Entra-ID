@@ -306,6 +306,13 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
     # will be popped from emp before appending to LAW records below.
     new_checkpoint = employees[-1].get("_checkpoint_update", {}) if employees else {}
 
+    # A source with nothing to report still hands back one record so the
+    # checkpoint can move. It carries a date, not a person. Counting it made
+    # every empty run report one record with no address — and "findings we
+    # could not match to an account" is exactly the number an operator chases.
+    # It is already kept out of the table; keep it out of the arithmetic too.
+    employees = [e for e in employees if not e.get("_empty_marker")]
+
     for emp in employees:
         # Per-employee time budget check — graceful exit so LAW write +
         # checkpoint save finish within the 10 min function timeout.

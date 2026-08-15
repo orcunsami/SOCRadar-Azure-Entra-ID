@@ -127,6 +127,30 @@ class AccountingTests(unittest.TestCase):
                              conf_extra={"enable_user_lookup": False})
         self.assertFalse(audit["truncated"])
 
+    def test_the_empty_marker_is_a_carrier_not_a_finding(self):
+        # A source with no data still returns one record so the checkpoint can
+        # advance. Counting it reported one address-less finding on every quiet
+        # run, which is the number an operator chases.
+        audit, written = self._run(
+            [{"_checkpoint_update": {"last_page": 0}, "_empty_marker": True}],
+            conf_extra={"enable_user_lookup": False})
+        self.assertEqual(audit["total"], 0)
+        self.assertEqual(audit["employees"], 0)
+        self.assertEqual(audit["no_address"], 0)
+        self.assertEqual(written, [])
+        self.assertEqual(_accounted(audit), audit["total"])
+
+    def test_the_marker_still_does_not_hide_a_real_address_less_finding(self):
+        # Guarding against over-correction: dropping the carrier must not drop
+        # a genuine record that simply has no address on it.
+        audit, written = self._run(
+            [{"name": "someone with no account"},
+             {"_checkpoint_update": {"last_page": 0}, "_empty_marker": True}],
+            conf_extra={"enable_user_lookup": False})
+        self.assertEqual(audit["total"], 1)
+        self.assertEqual(audit["no_address"], 1)
+        self.assertEqual(len(written), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

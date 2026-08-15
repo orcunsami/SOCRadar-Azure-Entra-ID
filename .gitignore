@@ -56,3 +56,12 @@ docs/socradar-identity-api.md
 soru-cevap.txt
 production/docs/demo-runbook.md
 to-Radargoger/
+
+# The lines above name internal files one by one, so anything added to docs/
+# later arrives untracked and a single `git add -A` publishes it. The whole
+# directory is internal; nothing under it has ever been tracked.
+docs/
+
+# Written by tooling, quotes the working session verbatim. Never publish it.
+HANDOFF-AUTO.md
+scripts/video-helper.sh
