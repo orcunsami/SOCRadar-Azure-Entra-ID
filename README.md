@@ -37,6 +37,33 @@ On the Azure side, the deployer needs **Contributor** (or Owner) on the target s
 
 See [`production/README.md` → Required Permissions](production/README.md#required-permissions) for the full prerequisite list, including pre-deploy info you must gather (tenant IDs, verified domains, SOCRadar API key, etc.).
 
+### Reusing an App Registration you already consented
+
+Put its client ID in `EntraIdClientId` and the deployment stops creating a new
+one. Set **`SkipFicCreation=true`** as well. The federated credential is added
+by the deployment's own managed identity, and that identity owns only an App
+Registration it created itself — against yours it gets *Insufficient
+privileges*, and that failure fails the whole deployment.
+
+Then an owner of the App Registration adds the credential once:
+
+```bash
+RG=<resource group>            # the one you deployed into
+APP=<EntraIdClientId>
+TENANT=$(az account show --query tenantId -o tsv)
+PRINCIPAL=$(az identity show -g "$RG" -n SOCRadar-EntraID-MI --query principalId -o tsv)
+
+az ad app federated-credential create --id "$APP" --parameters "{
+  \"name\": \"socradar-entraid-$RG-uami\",
+  \"issuer\": \"https://login.microsoftonline.com/$TENANT/v2.0\",
+  \"subject\": \"$PRINCIPAL\",
+  \"audiences\": [\"api://AzureADTokenExchange\"]
+}"
+```
+
+Restart the Function App afterwards. Being an owner of the App Registration is
+enough here; no directory admin role is needed.
+
 ## Deploy
 
 Click **Deploy to Azure** at the top. Fill the form. Click **Review + create** → **Create**. Function App starts polling on its next timer cycle (default: every 6 hours).
