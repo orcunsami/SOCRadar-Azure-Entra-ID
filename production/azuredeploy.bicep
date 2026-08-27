@@ -15,7 +15,7 @@ param WorkspaceLocation string = ''
 @description('Resource group of the Log Analytics workspace. Leave empty to use the current deployment resource group (default — same RG as Function App).')
 param WorkspaceResourceGroup string = ''
 
-@description('Create a new Log Analytics workspace with WorkspaceName (default: true). Set to false ONLY if you already have an existing workspace you want to use. Only valid when WorkspaceResourceGroup is empty (same RG as deployment). Sentinel will be onboarded automatically on the created/existing workspace.')
+@description('Create a new Log Analytics workspace with WorkspaceName (default: true). Set to false ONLY if you already have an existing workspace you want to use. Only valid when WorkspaceResourceGroup is empty (same RG as deployment). The workspace resource states no workspace-level settings, so a mistaken true against an existing workspace cannot touch its pricing tier, retention or daily cap -- a genuinely new workspace still gets the platform defaults (PerGB2018, 30-day retention, resource-permissions-only log access), measured identical to what this template used to set explicitly. Sentinel will be onboarded automatically on the created/existing workspace.')
 param CreateWorkspace bool = true
 
 @description('SOCRadar Platform API Key (used for Botnet, PII Exposure, VIP Protection sources)')
@@ -143,15 +143,7 @@ var dcrName = 'socradar-ei-dcr-${uniqueString(resourceGroup().id)}'
 resource Workspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = if (CreateWorkspace && empty(WorkspaceResourceGroup)) {
   name: WorkspaceName
   location: (empty(WorkspaceLocation) ? resourceGroup().location : WorkspaceLocation)
-  properties: {
-    sku: {
-      name: 'PerGB2018'
-    }
-    retentionInDays: 30
-    features: {
-      enableLogAccessUsingOnlyResourcePermissions: true
-    }
-  }
+  properties: {}
 }
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {

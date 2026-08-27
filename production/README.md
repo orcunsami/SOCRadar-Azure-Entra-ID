@@ -90,8 +90,29 @@ For a controlled customer acceptance test with 9 test users × 3 sources, see [C
 | `EntraIdVerifiedDomains` | (empty) | Optional comma-separated allowlist of verified domains attached to the tenant (e.g. `acme.com,acme.io,acme.onmicrosoft.com`). When set, only emails on these domains are looked up in Microsoft Graph; others land in LAW with `entra_status=skipped_domain_allowlist`. Leave empty to query every record (v1.0 behavior). Exact match, case-insensitive, no subdomain wildcards. |
 | `WorkspaceLocation` | (deployment region) | Region for the Log Analytics workspace |
 | `WorkspaceResourceGroup` | (current RG) | Resource group of the workspace (for cross-RG deployments) |
+| `CreateWorkspace` | `true` | Create a new Log Analytics workspace with `WorkspaceName`. Set `false` to attach to an existing workspace instead. Only applies when `WorkspaceResourceGroup` is empty. The workspace resource states no workspace-level settings, so leaving this `true` by mistake against an existing workspace never touches its pricing tier, retention or daily cap. |
 | `HostingPlanSku` | `Y1` | App Service Plan SKU. `Y1` = Consumption (best-effort timer). `B1` = Basic with Always-On (recommended for production reliability). `EP1` = Elastic Premium. |
 | `SocradarBaseUrl` | `https://platform.socradar.com` | SOCRadar Platform base URL |
+
+## Existing installations
+
+Deployments made before this template stopped stating workspace-level settings wrote a
+pricing tier, retention and log-access mode on every deploy, and a template overwrites
+every field it states. If the target workspace was on a **commitment tier**, that reset it
+to `PerGB2018` (pay-as-you-go).
+
+Check the current tier:
+
+```bash
+az monitor log-analytics workspace show -g <resource-group> -n <workspace> \
+  --query "{sku:sku.name, lastSkuUpdate:sku.lastSkuUpdate}" -o json
+```
+
+If `lastSkuUpdate` lines up with when you deployed this integration and the tier isn't the
+one you picked, reset your commitment tier from **Log Analytics workspaces > Usage and
+estimated costs > Pricing tier**. The current template states no workspace-level settings at
+all, so redeploying or upgrading an existing install — even with `CreateWorkspace=true` left
+at its default by mistake — cannot change its pricing tier, retention or daily cap.
 
 ## What Gets Deployed
 
