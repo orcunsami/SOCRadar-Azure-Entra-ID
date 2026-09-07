@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **A deployment pointed at a workspace that does not exist no longer leaves a
+  half install behind.** Measured on the previous template: `CreateWorkspace=false`
+  with a misspelled `WorkspaceName` returned `Failed` and left **11 resources**
+  standing, among them a running Function App and its storage account. The install
+  now stops in its first step, `precheck-workspace-exists`, and creates nothing.
+- **Cross-resource-group installs never worked.** With the workspace in another
+  resource group, the four `SOCRadar_*_CL` tables were addressed in the deployment's
+  own resource group and failed with `ParentResourceNotFound` — again leaving 11
+  resources behind. The tables are now created by a module scoped to the workspace's
+  resource group.
+
+### Changed
+
+- `SkipFicCreation` is documented. With the default (`false`) and an App
+  Registration the deployment identity does not own, the federated credential step
+  fails; see *Reusing an existing App Registration* in the README.
+
 ## [1.0.0] — 2026-05-14
 
 Initial public release.

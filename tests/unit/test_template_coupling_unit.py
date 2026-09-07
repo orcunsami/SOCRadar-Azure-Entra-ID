@@ -45,14 +45,32 @@ def _dcr_streams():
     raise AssertionError("no dataCollectionRules resource in template")
 
 
+def _every_resource(doc):
+    """Root resources plus the ones inside nested deployments.
+
+    The four tables moved into a module in task_azure_0062 so a
+    cross-resource-group install lands them next to the workspace. Reading only
+    the root would have made this file's assertions vacuous - it raised instead,
+    which is why the move did not go unnoticed."""
+    res = doc.get("resources")
+    items = list(res.values()) if isinstance(res, dict) else list(res or [])
+    for r in list(items):
+        if r.get("type") == "Microsoft.Resources/deployments":
+            inner = r.get("properties", {}).get("template")
+            if inner:
+                items.extend(_every_resource(inner))
+    return items
+
+
 def _law_tables():
     out = {}
-    for r in TEMPLATE["resources"].values():
+    for r in _every_resource(TEMPLATE):
         if r.get("type", "").endswith("workspaces/tables"):
             name = re.search(r"SOCRadar_[A-Za-z_]+", str(r["name"])).group(0)
             out[name] = {c["name"] for c in r["properties"]["schema"]["columns"]}
     if not out:
-        raise AssertionError("no workspaces/tables resources in template")
+        raise AssertionError("no workspaces/tables resources in template or in "
+                             "any nested deployment")
     return out
 
 

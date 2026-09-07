@@ -92,7 +92,42 @@ For a controlled customer acceptance test with 9 test users × 3 sources, see [C
 | `WorkspaceResourceGroup` | (current RG) | Resource group of the workspace (for cross-RG deployments) |
 | `CreateWorkspace` | `true` | Create a new Log Analytics workspace with `WorkspaceName`. Set `false` to attach to an existing workspace instead. Only applies when `WorkspaceResourceGroup` is empty. The workspace resource states no workspace-level settings, so leaving this `true` by mistake against an existing workspace never touches its pricing tier, retention or daily cap. |
 | `HostingPlanSku` | `Y1` | App Service Plan SKU. `Y1` = Consumption (best-effort timer). `B1` = Basic with Always-On (recommended for production reliability). `EP1` = Elastic Premium. |
+| `SkipFicCreation` | `false` | Only used when you reuse an existing App Registration (`EntraIdClientId` set). The default asks the deployment to add the federated credential for the new managed identity itself, which needs the identity to be an **owner** of that App Registration. A freshly created identity is not, so the default fails the deployment with `Insufficient privileges` (measured 7 Sep 2026). Set this `true`, then run the one command printed in the deployment Outputs. Without that credential the Function App cannot get a Graph token, so this step is required, not optional. |
 | `SocradarBaseUrl` | `https://platform.socradar.com` | SOCRadar Platform base URL |
+
+### Reusing an existing App Registration
+
+If your tenant already has a consented SOCRadar App Registration, pass its client ID and
+do not create a second one - a duplicate means asking your IT or security team for admin
+consent again, and it leaves the tenant with two registrations that drift apart:
+
+```bash
+CreateAppRegistration=false
+EntraIdClientId=<existing app id>
+SkipFicCreation=true
+```
+
+Then add the federated credential for the identity this deployment created. The exact
+command, with the identity's principal ID already filled in, is in the deployment's
+`ficCommandToRun` output. Confirm it landed before you rely on the integration:
+
+```bash
+az ad app federated-credential list --id <existing app id> --query "[].name" -o tsv
+```
+
+## The workspace has to exist before you deploy
+
+If you point the deployment at a workspace it does not create — `CreateWorkspace=false`,
+or any `WorkspaceResourceGroup` — that workspace has to be there first. A wrong
+`WorkspaceName` fails the deployment in its first step, `precheck-workspace-exists`,
+and creates nothing. It used to create the storage account, the App Service Plan,
+Application Insights, the identity and the Function App before failing, and leave them
+standing.
+
+Note that `WorkspaceResourceGroup` and `CreateWorkspace=true` together mean *use the
+existing workspace in that resource group* — the template never creates a workspace
+outside its own resource group. That combination now fails early and cleanly if the
+workspace is not there.
 
 ## Existing installations
 
@@ -217,3 +252,11 @@ union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL
 - **Checkpoint**: Each source stores its last processed date in Azure Table Storage. Subsequent runs only fetch records after that date — no duplicates.
 - **Workspace soft-delete**: If you delete and recreate a workspace with the same name within 14 days, old data reappears. Use a different name or wait 14 days.
 - **Network requirements**: Outbound HTTPS access from the Function App to `platform.socradar.com` and `graph.microsoft.com`. If your network uses a proxy or firewall, whitelist these domains.
+- **A failed `Failure-Anomalies-Alert-Rule-Deployment` is Azure's, not ours**: after a
+  successful install the resource group's deployment history may show one. Azure creates
+  that smart detection rule by itself when Application Insights appears, and it fails with
+  `MissingSubscriptionRegistration` on a subscription that has not registered the
+  `Microsoft.AlertsManagement` provider (measured 7 Sep 2026, present even in a healthy
+  production resource group). Nothing in this template refers to it and the integration
+  works without it. Register that provider if you want the alert:
+  `az provider register --namespace Microsoft.AlertsManagement`.

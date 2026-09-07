@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "12668428337619823157"
+      "templateHash": "206848696647858263"
     },
     "title": "SOCRadar Entra ID Integration for Microsoft Sentinel",
     "description": "Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
@@ -310,6 +310,7 @@
     "WebsiteContributorRoleId": "de139f84-1756-47ae-9be6-808fbbe84772",
     "MonitoringMetricsPublisherRoleId": "3913510d-42f4-4e42-8a64-420c390055eb",
     "workspaceResourceId": "[if(empty(parameters('WorkspaceResourceGroup')), resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')), resourceId(parameters('WorkspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')))]",
+    "workspaceIsCreatedHere": "[and(parameters('CreateWorkspace'), empty(parameters('WorkspaceResourceGroup')))]",
     "pollingSchedule": "[format('0 0 */{0} * * *', string(parameters('PollingIntervalHours')))]",
     "dcrName": "[format('socradar-ei-dcr-{0}', uniqueString(resourceGroup().id))]",
     "graphUniqueAppName": "[format('socradar-entraid-{0}', uniqueString(resourceGroup().id))]",
@@ -333,12 +334,15 @@
   },
   "resources": {
     "Workspace": {
-      "condition": "[and(parameters('CreateWorkspace'), empty(parameters('WorkspaceResourceGroup')))]",
+      "condition": "[variables('workspaceIsCreatedHere')]",
       "type": "Microsoft.OperationalInsights/workspaces",
       "apiVersion": "2023-09-01",
       "name": "[parameters('WorkspaceName')]",
       "location": "[if(empty(parameters('WorkspaceLocation')), resourceGroup().location, parameters('WorkspaceLocation'))]",
-      "properties": {}
+      "properties": {},
+      "dependsOn": [
+        "precheck_workspace_exists"
+      ]
     },
     "storageAccount": {
       "type": "Microsoft.Storage/storageAccounts",
@@ -352,13 +356,17 @@
       "properties": {
         "supportsHttpsTrafficOnly": true,
         "minimumTlsVersion": "TLS1_2"
-      }
+      },
+      "dependsOn": [
+        "precheck_workspace_exists"
+      ]
     },
     "storageAccountName_default": {
       "type": "Microsoft.Storage/storageAccounts/tableServices",
       "apiVersion": "2023-05-01",
       "name": "[format('{0}/{1}', variables('storageAccountName'), 'default')]",
       "dependsOn": [
+        "precheck_workspace_exists",
         "storageAccount"
       ]
     },
@@ -367,6 +375,7 @@
       "apiVersion": "2023-05-01",
       "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', variables('tableName'))]",
       "dependsOn": [
+        "precheck_workspace_exists",
         "storageAccountName_default"
       ]
     },
@@ -375,6 +384,7 @@
       "apiVersion": "2023-05-01",
       "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', 'EntraIDActionLedger')]",
       "dependsOn": [
+        "precheck_workspace_exists",
         "storageAccountName_default"
       ]
     },
@@ -382,7 +392,10 @@
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
       "name": "[variables('managedIdentityName')]",
-      "location": "[resourceGroup().location]"
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "precheck_workspace_exists"
+      ]
     },
     "appReg": {
       "condition": "[parameters('CreateAppRegistration')]",
@@ -427,7 +440,10 @@
             ]
           }
         ]
-      }
+      },
+      "dependsOn": [
+        "precheck_workspace_exists"
+      ]
     },
     "appSp": {
       "condition": "[parameters('CreateAppRegistration')]",
@@ -437,7 +453,8 @@
         "appId": "[reference('appReg').appId]"
       },
       "dependsOn": [
-        "appReg"
+        "appReg",
+        "precheck_workspace_exists"
       ]
     },
     "fic": {
@@ -454,7 +471,8 @@
       },
       "dependsOn": [
         "appReg",
-        "managedIdentity"
+        "managedIdentity",
+        "precheck_workspace_exists"
       ]
     },
     "graphSpRef": {
@@ -481,7 +499,8 @@
       },
       "dependsOn": [
         "appSp",
-        "graphSpRef"
+        "graphSpRef",
+        "precheck_workspace_exists"
       ]
     },
     "addFicToExistingApp": {
@@ -523,7 +542,8 @@
         "scriptContent": "      set -e\n      FIC_NAME=\"socradar-entraid-${RG_NAME}-uami\"\n      # Check if FIC already exists for this UAMI\n      EXISTING=$(az ad app federated-credential list --id \"$APP_ID\" --query \"[?subject=='${UAMI_PRINCIPAL}'].name\" -o tsv 2>/dev/null || echo \"\")\n      if [ -n \"$EXISTING\" ]; then\n        echo \"FIC already exists for UAMI ${UAMI_PRINCIPAL} on app ${APP_ID}: ${EXISTING}\"\n      else\n        echo \"Adding FIC ${FIC_NAME} to existing app ${APP_ID}...\"\n        az ad app federated-credential create --id \"$APP_ID\" --parameters \"{\n          \\\"name\\\": \\\"${FIC_NAME}\\\",\n          \\\"issuer\\\": \\\"https://login.microsoftonline.com/${TENANT_ID}/v2.0\\\",\n          \\\"subject\\\": \\\"${UAMI_PRINCIPAL}\\\",\n          \\\"audiences\\\": [\\\"api://AzureADTokenExchange\\\"]\n        }\"\n        echo \"FIC added successfully\"\n      fi\n    "
       },
       "dependsOn": [
-        "managedIdentity"
+        "managedIdentity",
+        "precheck_workspace_exists"
       ]
     },
     "hostingPlan": {
@@ -538,7 +558,10 @@
       "kind": "functionapp",
       "properties": {
         "reserved": true
-      }
+      },
+      "dependsOn": [
+        "precheck_workspace_exists"
+      ]
     },
     "appInsights": {
       "type": "Microsoft.Insights/components",
@@ -549,7 +572,10 @@
       "properties": {
         "Application_Type": "web",
         "RetentionInDays": 30
-      }
+      },
+      "dependsOn": [
+        "precheck_workspace_exists"
+      ]
     },
     "functionApp": {
       "type": "Microsoft.Web/sites",
@@ -775,6 +801,7 @@
         "dcr",
         "hostingPlan",
         "managedIdentity",
+        "precheck_workspace_exists",
         "storageAccount",
         "storageAccountName_default_table",
         "Workspace"
@@ -792,6 +819,7 @@
       },
       "dependsOn": [
         "managedIdentity",
+        "precheck_workspace_exists",
         "storageAccount"
       ]
     },
@@ -807,395 +835,8 @@
       },
       "dependsOn": [
         "functionApp",
-        "managedIdentity"
-      ]
-    },
-    "WorkspaceName_SOCRadar_Botnet_CL": {
-      "type": "Microsoft.OperationalInsights/workspaces/tables",
-      "apiVersion": "2022-10-01",
-      "name": "[format('{0}/{1}', parameters('WorkspaceName'), 'SOCRadar_Botnet_CL')]",
-      "properties": {
-        "schema": {
-          "name": "SOCRadar_Botnet_CL",
-          "columns": [
-            {
-              "name": "TimeGenerated",
-              "type": "dateTime"
-            },
-            {
-              "name": "email",
-              "type": "string"
-            },
-            {
-              "name": "url",
-              "type": "string"
-            },
-            {
-              "name": "device_ip",
-              "type": "string"
-            },
-            {
-              "name": "device_os",
-              "type": "string"
-            },
-            {
-              "name": "country",
-              "type": "string"
-            },
-            {
-              "name": "log_date",
-              "type": "string"
-            },
-            {
-              "name": "is_employee",
-              "type": "boolean"
-            },
-            {
-              "name": "source",
-              "type": "string"
-            },
-            {
-              "name": "alarm_id",
-              "type": "int"
-            },
-            {
-              "name": "password_present",
-              "type": "boolean"
-            },
-            {
-              "name": "password_masked",
-              "type": "string"
-            },
-            {
-              "name": "is_plaintext",
-              "type": "boolean"
-            },
-            {
-              "name": "password",
-              "type": "string"
-            },
-            {
-              "name": "entra_status",
-              "type": "string"
-            },
-            {
-              "name": "entra_tenant_id",
-              "type": "string"
-            },
-            {
-              "name": "entra_account_enabled",
-              "type": "boolean"
-            },
-            {
-              "name": "severity",
-              "type": "string"
-            },
-            {
-              "name": "actions_taken",
-              "type": "dynamic"
-            },
-            {
-              "name": "mfa_methods_deleted",
-              "type": "int"
-            },
-            {
-              "name": "mfa_methods_skipped",
-              "type": "int"
-            }
-          ]
-        },
-        "retentionInDays": 30,
-        "plan": "Analytics"
-      },
-      "dependsOn": [
-        "Workspace"
-      ]
-    },
-    "WorkspaceName_SOCRadar_PII_CL": {
-      "type": "Microsoft.OperationalInsights/workspaces/tables",
-      "apiVersion": "2022-10-01",
-      "name": "[format('{0}/{1}', parameters('WorkspaceName'), 'SOCRadar_PII_CL')]",
-      "properties": {
-        "schema": {
-          "name": "SOCRadar_PII_CL",
-          "columns": [
-            {
-              "name": "TimeGenerated",
-              "type": "dateTime"
-            },
-            {
-              "name": "email",
-              "type": "string"
-            },
-            {
-              "name": "source_name",
-              "type": "string"
-            },
-            {
-              "name": "breach_date",
-              "type": "string"
-            },
-            {
-              "name": "discovery_date",
-              "type": "string"
-            },
-            {
-              "name": "is_employee",
-              "type": "boolean"
-            },
-            {
-              "name": "source",
-              "type": "string"
-            },
-            {
-              "name": "alarm_id",
-              "type": "int"
-            },
-            {
-              "name": "password_present",
-              "type": "boolean"
-            },
-            {
-              "name": "password_masked",
-              "type": "string"
-            },
-            {
-              "name": "is_plaintext",
-              "type": "boolean"
-            },
-            {
-              "name": "password",
-              "type": "string"
-            },
-            {
-              "name": "entra_status",
-              "type": "string"
-            },
-            {
-              "name": "entra_tenant_id",
-              "type": "string"
-            },
-            {
-              "name": "entra_account_enabled",
-              "type": "boolean"
-            },
-            {
-              "name": "severity",
-              "type": "string"
-            },
-            {
-              "name": "actions_taken",
-              "type": "dynamic"
-            },
-            {
-              "name": "mfa_methods_deleted",
-              "type": "int"
-            },
-            {
-              "name": "mfa_methods_skipped",
-              "type": "int"
-            }
-          ]
-        },
-        "retentionInDays": 30,
-        "plan": "Analytics"
-      },
-      "dependsOn": [
-        "Workspace"
-      ]
-    },
-    "WorkspaceName_SOCRadar_VIP_CL": {
-      "type": "Microsoft.OperationalInsights/workspaces/tables",
-      "apiVersion": "2022-10-01",
-      "name": "[format('{0}/{1}', parameters('WorkspaceName'), 'SOCRadar_VIP_CL')]",
-      "properties": {
-        "schema": {
-          "name": "SOCRadar_VIP_CL",
-          "columns": [
-            {
-              "name": "TimeGenerated",
-              "type": "dateTime"
-            },
-            {
-              "name": "email",
-              "type": "string"
-            },
-            {
-              "name": "keyword",
-              "type": "string"
-            },
-            {
-              "name": "vip_name",
-              "type": "string"
-            },
-            {
-              "name": "status",
-              "type": "string"
-            },
-            {
-              "name": "discovery_date",
-              "type": "string"
-            },
-            {
-              "name": "source_name",
-              "type": "string"
-            },
-            {
-              "name": "is_employee",
-              "type": "boolean"
-            },
-            {
-              "name": "source",
-              "type": "string"
-            },
-            {
-              "name": "alarm_id",
-              "type": "int"
-            },
-            {
-              "name": "password_present",
-              "type": "boolean"
-            },
-            {
-              "name": "password_masked",
-              "type": "string"
-            },
-            {
-              "name": "is_plaintext",
-              "type": "boolean"
-            },
-            {
-              "name": "entra_status",
-              "type": "string"
-            },
-            {
-              "name": "entra_tenant_id",
-              "type": "string"
-            },
-            {
-              "name": "entra_account_enabled",
-              "type": "boolean"
-            },
-            {
-              "name": "severity",
-              "type": "string"
-            },
-            {
-              "name": "actions_taken",
-              "type": "dynamic"
-            },
-            {
-              "name": "mfa_methods_deleted",
-              "type": "int"
-            },
-            {
-              "name": "mfa_methods_skipped",
-              "type": "int"
-            }
-          ]
-        },
-        "retentionInDays": 30,
-        "plan": "Analytics"
-      },
-      "dependsOn": [
-        "Workspace"
-      ]
-    },
-    "WorkspaceName_SOCRadar_EntraID_Audit_CL": {
-      "type": "Microsoft.OperationalInsights/workspaces/tables",
-      "apiVersion": "2022-10-01",
-      "name": "[format('{0}/{1}', parameters('WorkspaceName'), 'SOCRadar_EntraID_Audit_CL')]",
-      "properties": {
-        "schema": {
-          "name": "SOCRadar_EntraID_Audit_CL",
-          "columns": [
-            {
-              "name": "TimeGenerated",
-              "type": "dateTime"
-            },
-            {
-              "name": "source",
-              "type": "string"
-            },
-            {
-              "name": "total_records",
-              "type": "int"
-            },
-            {
-              "name": "employee_records",
-              "type": "int"
-            },
-            {
-              "name": "found_count",
-              "type": "int"
-            },
-            {
-              "name": "not_found_count",
-              "type": "int"
-            },
-            {
-              "name": "actions_taken",
-              "type": "int"
-            },
-            {
-              "name": "error_count",
-              "type": "int"
-            },
-            {
-              "name": "duration_sec",
-              "type": "real"
-            },
-            {
-              "name": "domain_filtered",
-              "type": "int"
-            },
-            {
-              "name": "no_address_count",
-              "type": "int"
-            },
-            {
-              "name": "lookup_disabled_count",
-              "type": "int"
-            },
-            {
-              "name": "no_token_count",
-              "type": "int"
-            },
-            {
-              "name": "lookup_failed_count",
-              "type": "int"
-            },
-            {
-              "name": "truncated",
-              "type": "boolean"
-            },
-            {
-              "name": "capped",
-              "type": "boolean"
-            },
-            {
-              "name": "event_type",
-              "type": "string"
-            },
-            {
-              "name": "tenant_id",
-              "type": "string"
-            },
-            {
-              "name": "details",
-              "type": "string"
-            },
-            {
-              "name": "aadsts_code",
-              "type": "string"
-            }
-          ]
-        },
-        "retentionInDays": 30,
-        "plan": "Analytics"
-      },
-      "dependsOn": [
-        "Workspace"
+        "managedIdentity",
+        "precheck_workspace_exists"
       ]
     },
     "dcr": {
@@ -1592,11 +1233,9 @@
         ]
       },
       "dependsOn": [
-        "Workspace",
-        "WorkspaceName_SOCRadar_Botnet_CL",
-        "WorkspaceName_SOCRadar_EntraID_Audit_CL",
-        "WorkspaceName_SOCRadar_PII_CL",
-        "WorkspaceName_SOCRadar_VIP_CL"
+        "lawTables",
+        "precheck_workspace_exists",
+        "Workspace"
       ]
     },
     "Microsoft_Insights_dataCollectionRules_dcrName_managedIdentityName_MonitoringMetricsPublisherRoleId": {
@@ -1611,7 +1250,8 @@
       },
       "dependsOn": [
         "dcr",
-        "managedIdentity"
+        "managedIdentity",
+        "precheck_workspace_exists"
       ]
     },
     "triggerFirstRun_id": {
@@ -1655,7 +1295,8 @@
       "dependsOn": [
         "functionApp",
         "managedIdentity",
-        "Microsoft_Web_sites_functionAppName_managedIdentityName_WebsiteContributorRoleId"
+        "Microsoft_Web_sites_functionAppName_managedIdentityName_WebsiteContributorRoleId",
+        "precheck_workspace_exists"
       ]
     },
     "WorkspaceName_Microsoft_SecurityInsights_default": {
@@ -1665,6 +1306,7 @@
       "name": "[format('{0}/Microsoft.SecurityInsights/default', parameters('WorkspaceName'))]",
       "properties": {},
       "dependsOn": [
+        "precheck_workspace_exists",
         "Workspace"
       ]
     },
@@ -1682,6 +1324,7 @@
         "category": "sentinel"
       },
       "dependsOn": [
+        "precheck_workspace_exists",
         "Workspace"
       ]
     },
@@ -1699,6 +1342,7 @@
         "category": "sentinel"
       },
       "dependsOn": [
+        "precheck_workspace_exists",
         "Workspace"
       ]
     },
@@ -1716,6 +1360,7 @@
         "category": "sentinel"
       },
       "dependsOn": [
+        "precheck_workspace_exists",
         "Workspace"
       ]
     },
@@ -1733,6 +1378,469 @@
         "category": "sentinel"
       },
       "dependsOn": [
+        "precheck_workspace_exists",
+        "Workspace"
+      ]
+    },
+    "precheck_workspace_exists": {
+      "condition": "[not(variables('workspaceIsCreatedHere'))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "precheck-workspace-exists",
+      "resourceGroup": "[if(empty(parameters('WorkspaceResourceGroup')), resourceGroup().name, parameters('WorkspaceResourceGroup'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "WorkspaceName": {
+            "value": "[parameters('WorkspaceName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.43.8.12551",
+              "templateHash": "12271954942913283844"
+            }
+          },
+          "parameters": {
+            "WorkspaceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace that must already exist before the install starts."
+              }
+            }
+          },
+          "resources": [],
+          "outputs": {
+            "customerId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')), '2023-09-01').customerId]"
+            }
+          }
+        }
+      }
+    },
+    "lawTables": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "socradar-law-tables",
+      "resourceGroup": "[if(empty(parameters('WorkspaceResourceGroup')), resourceGroup().name, parameters('WorkspaceResourceGroup'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "WorkspaceName": {
+            "value": "[parameters('WorkspaceName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.43.8.12551",
+              "templateHash": "7258666042162147472"
+            }
+          },
+          "parameters": {
+            "WorkspaceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace that receives these tables. Must already exist or be created by the caller."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/tables",
+              "apiVersion": "2022-10-01",
+              "name": "[format('{0}/{1}', parameters('WorkspaceName'), 'SOCRadar_Botnet_CL')]",
+              "properties": {
+                "schema": {
+                  "name": "SOCRadar_Botnet_CL",
+                  "columns": [
+                    {
+                      "name": "TimeGenerated",
+                      "type": "dateTime"
+                    },
+                    {
+                      "name": "email",
+                      "type": "string"
+                    },
+                    {
+                      "name": "url",
+                      "type": "string"
+                    },
+                    {
+                      "name": "device_ip",
+                      "type": "string"
+                    },
+                    {
+                      "name": "device_os",
+                      "type": "string"
+                    },
+                    {
+                      "name": "country",
+                      "type": "string"
+                    },
+                    {
+                      "name": "log_date",
+                      "type": "string"
+                    },
+                    {
+                      "name": "is_employee",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "source",
+                      "type": "string"
+                    },
+                    {
+                      "name": "alarm_id",
+                      "type": "int"
+                    },
+                    {
+                      "name": "password_present",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "password_masked",
+                      "type": "string"
+                    },
+                    {
+                      "name": "is_plaintext",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "password",
+                      "type": "string"
+                    },
+                    {
+                      "name": "entra_status",
+                      "type": "string"
+                    },
+                    {
+                      "name": "entra_tenant_id",
+                      "type": "string"
+                    },
+                    {
+                      "name": "entra_account_enabled",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "severity",
+                      "type": "string"
+                    },
+                    {
+                      "name": "actions_taken",
+                      "type": "dynamic"
+                    },
+                    {
+                      "name": "mfa_methods_deleted",
+                      "type": "int"
+                    },
+                    {
+                      "name": "mfa_methods_skipped",
+                      "type": "int"
+                    }
+                  ]
+                },
+                "retentionInDays": 30,
+                "plan": "Analytics"
+              }
+            },
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/tables",
+              "apiVersion": "2022-10-01",
+              "name": "[format('{0}/{1}', parameters('WorkspaceName'), 'SOCRadar_PII_CL')]",
+              "properties": {
+                "schema": {
+                  "name": "SOCRadar_PII_CL",
+                  "columns": [
+                    {
+                      "name": "TimeGenerated",
+                      "type": "dateTime"
+                    },
+                    {
+                      "name": "email",
+                      "type": "string"
+                    },
+                    {
+                      "name": "source_name",
+                      "type": "string"
+                    },
+                    {
+                      "name": "breach_date",
+                      "type": "string"
+                    },
+                    {
+                      "name": "discovery_date",
+                      "type": "string"
+                    },
+                    {
+                      "name": "is_employee",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "source",
+                      "type": "string"
+                    },
+                    {
+                      "name": "alarm_id",
+                      "type": "int"
+                    },
+                    {
+                      "name": "password_present",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "password_masked",
+                      "type": "string"
+                    },
+                    {
+                      "name": "is_plaintext",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "password",
+                      "type": "string"
+                    },
+                    {
+                      "name": "entra_status",
+                      "type": "string"
+                    },
+                    {
+                      "name": "entra_tenant_id",
+                      "type": "string"
+                    },
+                    {
+                      "name": "entra_account_enabled",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "severity",
+                      "type": "string"
+                    },
+                    {
+                      "name": "actions_taken",
+                      "type": "dynamic"
+                    },
+                    {
+                      "name": "mfa_methods_deleted",
+                      "type": "int"
+                    },
+                    {
+                      "name": "mfa_methods_skipped",
+                      "type": "int"
+                    }
+                  ]
+                },
+                "retentionInDays": 30,
+                "plan": "Analytics"
+              }
+            },
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/tables",
+              "apiVersion": "2022-10-01",
+              "name": "[format('{0}/{1}', parameters('WorkspaceName'), 'SOCRadar_VIP_CL')]",
+              "properties": {
+                "schema": {
+                  "name": "SOCRadar_VIP_CL",
+                  "columns": [
+                    {
+                      "name": "TimeGenerated",
+                      "type": "dateTime"
+                    },
+                    {
+                      "name": "email",
+                      "type": "string"
+                    },
+                    {
+                      "name": "keyword",
+                      "type": "string"
+                    },
+                    {
+                      "name": "vip_name",
+                      "type": "string"
+                    },
+                    {
+                      "name": "status",
+                      "type": "string"
+                    },
+                    {
+                      "name": "discovery_date",
+                      "type": "string"
+                    },
+                    {
+                      "name": "source_name",
+                      "type": "string"
+                    },
+                    {
+                      "name": "is_employee",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "source",
+                      "type": "string"
+                    },
+                    {
+                      "name": "alarm_id",
+                      "type": "int"
+                    },
+                    {
+                      "name": "password_present",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "password_masked",
+                      "type": "string"
+                    },
+                    {
+                      "name": "is_plaintext",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "entra_status",
+                      "type": "string"
+                    },
+                    {
+                      "name": "entra_tenant_id",
+                      "type": "string"
+                    },
+                    {
+                      "name": "entra_account_enabled",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "severity",
+                      "type": "string"
+                    },
+                    {
+                      "name": "actions_taken",
+                      "type": "dynamic"
+                    },
+                    {
+                      "name": "mfa_methods_deleted",
+                      "type": "int"
+                    },
+                    {
+                      "name": "mfa_methods_skipped",
+                      "type": "int"
+                    }
+                  ]
+                },
+                "retentionInDays": 30,
+                "plan": "Analytics"
+              }
+            },
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/tables",
+              "apiVersion": "2022-10-01",
+              "name": "[format('{0}/{1}', parameters('WorkspaceName'), 'SOCRadar_EntraID_Audit_CL')]",
+              "properties": {
+                "schema": {
+                  "name": "SOCRadar_EntraID_Audit_CL",
+                  "columns": [
+                    {
+                      "name": "TimeGenerated",
+                      "type": "dateTime"
+                    },
+                    {
+                      "name": "source",
+                      "type": "string"
+                    },
+                    {
+                      "name": "total_records",
+                      "type": "int"
+                    },
+                    {
+                      "name": "employee_records",
+                      "type": "int"
+                    },
+                    {
+                      "name": "found_count",
+                      "type": "int"
+                    },
+                    {
+                      "name": "not_found_count",
+                      "type": "int"
+                    },
+                    {
+                      "name": "actions_taken",
+                      "type": "int"
+                    },
+                    {
+                      "name": "error_count",
+                      "type": "int"
+                    },
+                    {
+                      "name": "duration_sec",
+                      "type": "real"
+                    },
+                    {
+                      "name": "domain_filtered",
+                      "type": "int"
+                    },
+                    {
+                      "name": "no_address_count",
+                      "type": "int"
+                    },
+                    {
+                      "name": "lookup_disabled_count",
+                      "type": "int"
+                    },
+                    {
+                      "name": "no_token_count",
+                      "type": "int"
+                    },
+                    {
+                      "name": "lookup_failed_count",
+                      "type": "int"
+                    },
+                    {
+                      "name": "truncated",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "capped",
+                      "type": "boolean"
+                    },
+                    {
+                      "name": "event_type",
+                      "type": "string"
+                    },
+                    {
+                      "name": "tenant_id",
+                      "type": "string"
+                    },
+                    {
+                      "name": "details",
+                      "type": "string"
+                    },
+                    {
+                      "name": "aadsts_code",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "retentionInDays": 30,
+                "plan": "Analytics"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "precheck_workspace_exists",
         "Workspace"
       ]
     },
@@ -1779,7 +1887,10 @@
             }
           ]
         }
-      }
+      },
+      "dependsOn": [
+        "precheck_workspace_exists"
+      ]
     }
   },
   "outputs": {

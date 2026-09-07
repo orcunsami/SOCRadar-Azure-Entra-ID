@@ -143,13 +143,35 @@ var MonitoringMetricsPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
 var workspaceResourceId = (empty(WorkspaceResourceGroup)
   ? Workspace.id
   : resourceId(WorkspaceResourceGroup, 'Microsoft.OperationalInsights/workspaces', WorkspaceName))
+// The workspace must already exist before anything is created, UNLESS this
+// deployment is the thing creating it. Named once: the guard's condition is
+// this expression negated, and two copies of the same condition drift
+// (EXP-AZURE-0178).
+var workspaceIsCreatedHere = CreateWorkspace && empty(WorkspaceResourceGroup)
+
 var pollingSchedule = '0 0 */${string(PollingIntervalHours)} * * *'
 var dcrName = 'socradar-ei-dcr-${uniqueString(resourceGroup().id)}'
 
-resource Workspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = if (CreateWorkspace && empty(WorkspaceResourceGroup)) {
+// Reads the workspace so a wrong name or a wrong resource group fails the
+// deployment before the first resource is submitted. `dependsOn: [Workspace]`
+// cannot do this: a resource whose condition is false still satisfies a
+// dependsOn, which is how a misspelled name used to leave a half install
+// (EXP-AZURE-0198, measured on this template in task_azure_0062).
+module precheck_workspace_exists './nested_workspace_precheck.bicep' = if (!workspaceIsCreatedHere) {
+  name: 'precheck-workspace-exists'
+  scope: resourceGroup(empty(WorkspaceResourceGroup) ? resourceGroup().name : WorkspaceResourceGroup)
+  params: {
+    WorkspaceName: WorkspaceName
+  }
+}
+
+resource Workspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = if (workspaceIsCreatedHere) {
   name: WorkspaceName
   location: (empty(WorkspaceLocation) ? resourceGroup().location : WorkspaceLocation)
   properties: {}
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
@@ -163,26 +185,41 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     supportsHttpsTrafficOnly: true
     minimumTlsVersion: 'TLS1_2'
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource storageAccountName_default 'Microsoft.Storage/storageAccounts/tableServices@2023-05-01' = {
   parent: storageAccount
   name: 'default'
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource storageAccountName_default_table 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
   parent: storageAccountName_default
   name: tableName
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource storageAccountName_default_ledger_table 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
   parent: storageAccountName_default
   name: 'EntraIDActionLedger'
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: managedIdentityName
   location: resourceGroup().location
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 // ============================================================================
@@ -213,10 +250,16 @@ resource appReg 'Microsoft.Graph/applications@v1.0' = if (CreateAppRegistration)
       ]
     }
   ]
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource appSp 'Microsoft.Graph/servicePrincipals@v1.0' = if (CreateAppRegistration) {
   appId: appReg.appId
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource fic 'Microsoft.Graph/applications/federatedIdentityCredentials@v1.0' = if (CreateAppRegistration) {
@@ -224,6 +267,9 @@ resource fic 'Microsoft.Graph/applications/federatedIdentityCredentials@v1.0' = 
   audiences: ['api://AzureADTokenExchange']
   issuer: 'https://login.microsoftonline.com/${tenant().tenantId}/v2.0'
   subject: managedIdentity.properties.principalId
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 // Admin consent automation: grant each Graph application permission to the
@@ -251,6 +297,9 @@ resource adminConsentGrants 'Microsoft.Graph/appRoleAssignedTo@v1.0' = [for role
   appRoleId: roleId
   principalId: appSp.id
   resourceId: graphSpRef.id
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }]
 
 // Resolved app client ID — either newly created or provided as parameter
@@ -303,6 +352,7 @@ resource addFicToExistingApp 'Microsoft.Resources/deploymentScripts@2020-10-01' 
     '''
   }
   dependsOn: [
+    precheck_workspace_exists
     managedIdentity
   ]
 }
@@ -323,6 +373,9 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   properties: {
     reserved: true
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
@@ -333,6 +386,9 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
     Application_Type: 'web'
     RetentionInDays: 30
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
@@ -559,6 +615,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     }
   }
   dependsOn: [
+    precheck_workspace_exists
     storageAccountName_default_table
   ]
 }
@@ -574,6 +631,9 @@ resource Microsoft_Storage_storageAccounts_storageAccountName_managedIdentityNam
     principalId: reference(managedIdentity.id, '2023-01-31').principalId
     principalType: 'ServicePrincipal'
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource Microsoft_Web_sites_functionAppName_managedIdentityName_WebsiteContributorRoleId 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -584,383 +644,28 @@ resource Microsoft_Web_sites_functionAppName_managedIdentityName_WebsiteContribu
     principalId: reference(managedIdentity.id, '2023-01-31').principalId
     principalType: 'ServicePrincipal'
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
-resource WorkspaceName_SOCRadar_Botnet_CL 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = {
-  parent: Workspace
-  name: 'SOCRadar_Botnet_CL'
-  properties: {
-    schema: {
-      name: 'SOCRadar_Botnet_CL'
-      columns: [
-        {
-          name: 'TimeGenerated'
-          type: 'dateTime'
-        }
-        {
-          name: 'email'
-          type: 'string'
-        }
-        {
-          name: 'url'
-          type: 'string'
-        }
-        {
-          name: 'device_ip'
-          type: 'string'
-        }
-        {
-          name: 'device_os'
-          type: 'string'
-        }
-        {
-          name: 'country'
-          type: 'string'
-        }
-        {
-          name: 'log_date'
-          type: 'string'
-        }
-        {
-          name: 'is_employee'
-          type: 'boolean'
-        }
-        {
-          name: 'source'
-          type: 'string'
-        }
-        {
-          name: 'alarm_id'
-          type: 'int'
-        }
-        {
-          name: 'password_present'
-          type: 'boolean'
-        }
-        {
-          name: 'password_masked'
-          type: 'string'
-        }
-        {
-          name: 'is_plaintext'
-          type: 'boolean'
-        }
-        {
-          name: 'password'
-          type: 'string'
-        }
-        {
-          name: 'entra_status'
-          type: 'string'
-        }
-        {
-          name: 'entra_tenant_id'
-          type: 'string'
-        }
-        {
-          name: 'entra_account_enabled'
-          type: 'boolean'
-        }
-        {
-          name: 'severity'
-          type: 'string'
-        }
-        {
-          name: 'actions_taken'
-          type: 'dynamic'
-        }
-        {
-          name: 'mfa_methods_deleted'
-          type: 'int'
-        }
-        {
-          name: 'mfa_methods_skipped'
-          type: 'int'
-        }
-      ]
-    }
-    retentionInDays: 30
-    plan: 'Analytics'
+// Scoped to the workspace's resource group so a cross-resource-group
+// install lands the tables next to the workspace instead of next to the
+// Function App (task_azure_0062).
+module lawTables './nested_law_tables.bicep' = {
+  name: 'socradar-law-tables'
+  scope: resourceGroup(empty(WorkspaceResourceGroup) ? resourceGroup().name : WorkspaceResourceGroup)
+  params: {
+    WorkspaceName: WorkspaceName
   }
+  dependsOn: [
+    precheck_workspace_exists
+    Workspace
+  ]
 }
 
-resource WorkspaceName_SOCRadar_PII_CL 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = {
-  parent: Workspace
-  name: 'SOCRadar_PII_CL'
-  properties: {
-    schema: {
-      name: 'SOCRadar_PII_CL'
-      columns: [
-        {
-          name: 'TimeGenerated'
-          type: 'dateTime'
-        }
-        {
-          name: 'email'
-          type: 'string'
-        }
-        {
-          name: 'source_name'
-          type: 'string'
-        }
-        {
-          name: 'breach_date'
-          type: 'string'
-        }
-        {
-          name: 'discovery_date'
-          type: 'string'
-        }
-        {
-          name: 'is_employee'
-          type: 'boolean'
-        }
-        {
-          name: 'source'
-          type: 'string'
-        }
-        {
-          name: 'alarm_id'
-          type: 'int'
-        }
-        {
-          name: 'password_present'
-          type: 'boolean'
-        }
-        {
-          name: 'password_masked'
-          type: 'string'
-        }
-        {
-          name: 'is_plaintext'
-          type: 'boolean'
-        }
-        {
-          name: 'password'
-          type: 'string'
-        }
-        {
-          name: 'entra_status'
-          type: 'string'
-        }
-        {
-          name: 'entra_tenant_id'
-          type: 'string'
-        }
-        {
-          name: 'entra_account_enabled'
-          type: 'boolean'
-        }
-        {
-          name: 'severity'
-          type: 'string'
-        }
-        {
-          name: 'actions_taken'
-          type: 'dynamic'
-        }
-        {
-          name: 'mfa_methods_deleted'
-          type: 'int'
-        }
-        {
-          name: 'mfa_methods_skipped'
-          type: 'int'
-        }
-      ]
-    }
-    retentionInDays: 30
-    plan: 'Analytics'
-  }
-}
 
-resource WorkspaceName_SOCRadar_VIP_CL 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = {
-  parent: Workspace
-  name: 'SOCRadar_VIP_CL'
-  properties: {
-    schema: {
-      name: 'SOCRadar_VIP_CL'
-      columns: [
-        {
-          name: 'TimeGenerated'
-          type: 'dateTime'
-        }
-        {
-          name: 'email'
-          type: 'string'
-        }
-        {
-          name: 'keyword'
-          type: 'string'
-        }
-        {
-          name: 'vip_name'
-          type: 'string'
-        }
-        {
-          name: 'status'
-          type: 'string'
-        }
-        {
-          name: 'discovery_date'
-          type: 'string'
-        }
-        {
-          name: 'source_name'
-          type: 'string'
-        }
-        {
-          name: 'is_employee'
-          type: 'boolean'
-        }
-        {
-          name: 'source'
-          type: 'string'
-        }
-        {
-          name: 'alarm_id'
-          type: 'int'
-        }
-        {
-          name: 'password_present'
-          type: 'boolean'
-        }
-        {
-          name: 'password_masked'
-          type: 'string'
-        }
-        {
-          name: 'is_plaintext'
-          type: 'boolean'
-        }
-        {
-          name: 'entra_status'
-          type: 'string'
-        }
-        {
-          name: 'entra_tenant_id'
-          type: 'string'
-        }
-        {
-          name: 'entra_account_enabled'
-          type: 'boolean'
-        }
-        {
-          name: 'severity'
-          type: 'string'
-        }
-        {
-          name: 'actions_taken'
-          type: 'dynamic'
-        }
-        {
-          name: 'mfa_methods_deleted'
-          type: 'int'
-        }
-        {
-          name: 'mfa_methods_skipped'
-          type: 'int'
-        }
-      ]
-    }
-    retentionInDays: 30
-    plan: 'Analytics'
-  }
-}
 
-resource WorkspaceName_SOCRadar_EntraID_Audit_CL 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = {
-  parent: Workspace
-  name: 'SOCRadar_EntraID_Audit_CL'
-  properties: {
-    schema: {
-      name: 'SOCRadar_EntraID_Audit_CL'
-      columns: [
-        {
-          name: 'TimeGenerated'
-          type: 'dateTime'
-        }
-        {
-          name: 'source'
-          type: 'string'
-        }
-        {
-          name: 'total_records'
-          type: 'int'
-        }
-        {
-          name: 'employee_records'
-          type: 'int'
-        }
-        {
-          name: 'found_count'
-          type: 'int'
-        }
-        {
-          name: 'not_found_count'
-          type: 'int'
-        }
-        {
-          name: 'actions_taken'
-          type: 'int'
-        }
-        {
-          name: 'error_count'
-          type: 'int'
-        }
-        {
-          name: 'duration_sec'
-          type: 'real'
-        }
-        {
-          name: 'domain_filtered'
-          type: 'int'
-        }
-        {
-          name: 'no_address_count'
-          type: 'int'
-        }
-        {
-          name: 'lookup_disabled_count'
-          type: 'int'
-        }
-        {
-          name: 'no_token_count'
-          type: 'int'
-        }
-        {
-          name: 'lookup_failed_count'
-          type: 'int'
-        }
-        {
-          name: 'truncated'
-          type: 'boolean'
-        }
-        {
-          name: 'capped'
-          type: 'boolean'
-        }
-        {
-          name: 'event_type'
-          type: 'string'
-        }
-        {
-          name: 'tenant_id'
-          type: 'string'
-        }
-        {
-          name: 'details'
-          type: 'string'
-        }
-        {
-          name: 'aadsts_code'
-          type: 'string'
-        }
-      ]
-    }
-    retentionInDays: 30
-    plan: 'Analytics'
-  }
-}
 
 resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
   name: dcrName
@@ -1354,10 +1059,8 @@ resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
     ]
   }
   dependsOn: [
-    WorkspaceName_SOCRadar_Botnet_CL
-    WorkspaceName_SOCRadar_PII_CL
-    WorkspaceName_SOCRadar_VIP_CL
-    WorkspaceName_SOCRadar_EntraID_Audit_CL
+    precheck_workspace_exists
+    lawTables
   ]
 }
 
@@ -1372,6 +1075,9 @@ resource Microsoft_Insights_dataCollectionRules_dcrName_managedIdentityName_Moni
     principalId: reference(managedIdentity.id, '2023-01-31').principalId
     principalType: 'ServicePrincipal'
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource triggerFirstRun_id 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
@@ -1417,6 +1123,7 @@ resource triggerFirstRun_id 'Microsoft.Resources/deploymentScripts@2020-10-01' =
     ]
   }
   dependsOn: [
+    precheck_workspace_exists
     functionApp
     Microsoft_Web_sites_functionAppName_managedIdentityName_WebsiteContributorRoleId
   ]
@@ -1430,6 +1137,7 @@ resource WorkspaceName_Microsoft_SecurityInsights_default 'Microsoft.Operational
   name: '${WorkspaceName}/Microsoft.SecurityInsights/default'
   properties: {}
   dependsOn: [
+    precheck_workspace_exists
     Workspace
   ]
 }
@@ -1440,6 +1148,9 @@ module sentinel_onboard_id './nested_sentinel_onboard_id.bicep' = if (!empty(Wor
   params: {
     WorkspaceName: WorkspaceName
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource id_SOCRadar_EntraID_Botnet_Workbook 'Microsoft.Insights/workbooks@2022-04-01' = {
@@ -1455,6 +1166,9 @@ resource id_SOCRadar_EntraID_Botnet_Workbook 'Microsoft.Insights/workbooks@2022-
       : resourceId(WorkspaceResourceGroup, 'Microsoft.OperationalInsights/workspaces', WorkspaceName))
     category: 'sentinel'
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource id_SOCRadar_EntraID_PII_Workbook 'Microsoft.Insights/workbooks@2022-04-01' = {
@@ -1470,6 +1184,9 @@ resource id_SOCRadar_EntraID_PII_Workbook 'Microsoft.Insights/workbooks@2022-04-
       : resourceId(WorkspaceResourceGroup, 'Microsoft.OperationalInsights/workspaces', WorkspaceName))
     category: 'sentinel'
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource id_SOCRadar_EntraID_VIP_Workbook 'Microsoft.Insights/workbooks@2022-04-01' = {
@@ -1485,6 +1202,9 @@ resource id_SOCRadar_EntraID_VIP_Workbook 'Microsoft.Insights/workbooks@2022-04-
       : resourceId(WorkspaceResourceGroup, 'Microsoft.OperationalInsights/workspaces', WorkspaceName))
     category: 'sentinel'
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 resource id_SOCRadar_EntraID_Combined_Workbook 'Microsoft.Insights/workbooks@2022-04-01' = {
@@ -1500,6 +1220,9 @@ resource id_SOCRadar_EntraID_Combined_Workbook 'Microsoft.Insights/workbooks@202
       : resourceId(WorkspaceResourceGroup, 'Microsoft.OperationalInsights/workspaces', WorkspaceName))
     category: 'sentinel'
   }
+  dependsOn: [
+    precheck_workspace_exists
+  ]
 }
 
 output functionAppName string = functionAppName
