@@ -92,7 +92,7 @@ For a controlled customer acceptance test with 9 test users × 3 sources, see [C
 | `WorkspaceResourceGroup` | (current RG) | Resource group of the workspace (for cross-RG deployments) |
 | `CreateWorkspace` | `true` | Create a new Log Analytics workspace with `WorkspaceName`. Set `false` to attach to an existing workspace instead. Only applies when `WorkspaceResourceGroup` is empty. The workspace resource states no workspace-level settings, so leaving this `true` by mistake against an existing workspace never touches its pricing tier, retention or daily cap. |
 | `HostingPlanSku` | `Y1` | App Service Plan SKU. `Y1` = Consumption (best-effort timer). `B1` = Basic with Always-On (recommended for production reliability). `EP1` = Elastic Premium. |
-| `SkipFicCreation` | `false` | Only used when you reuse an existing App Registration (`EntraIdClientId` set). The default asks the deployment to add the federated credential for the new managed identity itself, which needs the identity to be an **owner** of that App Registration. A freshly created identity is not, so the default fails the deployment with `Insufficient privileges` (measured 7 Sep 2026). Set this `true`, then run the one command printed in the deployment Outputs. Without that credential the Function App cannot get a Graph token, so this step is required, not optional. |
+| `SkipFicCreation` | `false` | Only used when you reuse an existing App Registration (`EntraIdClientId` set). The default asks the deployment to add the federated credential for the new managed identity itself, and that cannot work: the deployment script runs as a managed identity, which calls Microsoft Graph with an app-only token, and writing a federated credential with an app-only token requires the `Application.ReadWrite.OwnedBy` application permission. Making the identity an **owner** of the App Registration is not enough - measured 8 Sep 2026 with three attempts over ten minutes, none of which wrote the credential; the two attempts whose script log could be read both returned `Insufficient privileges`, and with ownership granted the identity could not even read the App Registration. So set this `true` and add the credential yourself after the deployment (Outputs prints the exact command). Without that credential the Function App cannot get a Graph token, so this step is required, not optional. |
 | `SocradarBaseUrl` | `https://platform.socradar.com` | SOCRadar Platform base URL |
 
 ### Reusing an existing App Registration
@@ -107,9 +107,19 @@ EntraIdClientId=<existing app id>
 SkipFicCreation=true
 ```
 
-Then add the federated credential for the identity this deployment created. The exact
-command, with the identity's principal ID already filled in, is in the deployment's
-`ficCommandToRun` output. Confirm it landed before you rely on the integration:
+Then add the federated credential for the identity this deployment created. Whoever does
+this needs to be an **owner of that App Registration** - that path is the one we measured.
+Application Administrator and Cloud Application Administrator also cover it per the
+Microsoft Graph documentation, though we did not test those. The person running the
+deployment is not always one of them, so check before you start.
+
+The exact command, with the identity's principal ID already filled in, is in the
+deployment's `ficCommandToRun` output. If you would rather click than paste, the portal
+path is: Microsoft Entra ID -> App registrations -> your app -> Certificates & secrets ->
+Federated credentials -> Add credential -> scenario **Managed identity**, then pick the
+`SOCRadar-EntraID-MI` identity from this deployment's resource group.
+
+Confirm it landed before you rely on the integration:
 
 ```bash
 az ad app federated-credential list --id <existing app id> --query "[].name" -o tsv
