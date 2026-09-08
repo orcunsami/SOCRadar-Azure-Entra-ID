@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "206848696647858263"
+      "templateHash": "4760764051019570101"
     },
     "title": "SOCRadar Entra ID Integration for Microsoft Sentinel",
     "description": "Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
@@ -84,9 +84,9 @@
     },
     "SkipFicCreation": {
       "type": "bool",
-      "defaultValue": false,
+      "defaultValue": true,
       "metadata": {
-        "description": "Skip automatic Federated Identity Credential (FIC) creation. Recommended for reuse path: when EntraIdClientId points to an existing App Registration that you (the deployer) OWN, set this true and add the FIC manually after deployment with one Azure CLI command (the command will be shown in deployment Outputs). The default false attempts to add the FIC automatically using the UAMI identity, which only succeeds if the UAMI is an App Registration owner — typically it is not, so the addFic deployment script fails with \"Insufficient privileges\" and the overall deployment shows Failed. Setting SkipFicCreation=true keeps the deployment clean (Succeeded) and you run the manual command shown in Outputs. Has no effect when CreateAppRegistration=true (greenfield path creates FIC inline via Microsoft Graph extension and never uses the addFic script)."
+        "description": "Reuse path only (CreateAppRegistration=false). true: the deployment does not touch the App Registration; you add the federated credential for the new managed identity afterwards with the command in the ficCommandToRun output. false: a deployment script adds it for you, which only works when the deployment identity holds the Application.ReadWrite.OwnedBy application permission on top of ownership - ownership alone was measured insufficient. Ignored when CreateAppRegistration=true."
       }
     },
     "EntraIdTenantIds": {
@@ -1916,11 +1916,11 @@
     },
     "ficCommandToRun": {
       "type": "string",
-      "value": "[if(parameters('CreateAppRegistration'), 'No manual FIC step needed — App Registration and Federated Identity Credential created automatically by ARM.', format('az ad app federated-credential create --id {0} --parameters ''{{\"name\":\"socradar-entraid-uami\",\"issuer\":\"https://login.microsoftonline.com/{1}/v2.0\",\"subject\":\"{2}\",\"audiences\":[\"api://AzureADTokenExchange\"]}}''', parameters('EntraIdClientId'), if(empty(parameters('EntraIdTenantId')), subscription().tenantId, parameters('EntraIdTenantId')), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31', 'Full').properties.principalId))]"
+      "value": "[if(parameters('CreateAppRegistration'), 'No manual FIC step needed - App Registration and Federated Identity Credential created automatically by ARM.', if(not(parameters('SkipFicCreation')), format('No manual FIC step needed - the addFic deployment script added the federated credential. Verify: az ad app federated-credential list --id {0} --query \"[].name\" -o tsv', parameters('EntraIdClientId')), format('az ad app federated-credential create --id {0} --parameters ''{{\"name\":\"socradar-entraid-{1}-uami\",\"issuer\":\"https://login.microsoftonline.com/{2}/v2.0\",\"subject\":\"{3}\",\"audiences\":[\"api://AzureADTokenExchange\"]}}''', parameters('EntraIdClientId'), resourceGroup().name, if(empty(parameters('EntraIdTenantId')), subscription().tenantId, parameters('EntraIdTenantId')), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31', 'Full').properties.principalId)))]"
     },
     "nextStep": {
       "type": "string",
-      "value": "[if(not(parameters('CreateAppRegistration')), 'Copy ficCommandToRun and run it in Azure CLI to enable Federated Identity Credential. Then Function App starts working on next timer cycle.', if(parameters('GrantAdminConsent'), 'Zero-touch deployment complete. App Registration, Federated Identity Credential, and Graph admin consent all granted by ARM. Function App starts on next timer cycle.', 'Final manual step (1 portal click): Portal → Microsoft Entra ID → App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent. Then Function App starts on next timer cycle. (To skip this step on next deployment, set GrantAdminConsent=true and ensure deployer has Cloud Application Administrator role.)'))]"
+      "value": "[if(not(parameters('CreateAppRegistration')), if(parameters('SkipFicCreation'), 'Copy ficCommandToRun and run it in Azure CLI as an owner of the App Registration. Without the federated credential the Function App cannot get a Graph token. Then it starts working on the next timer cycle.', 'The deployment script added the federated credential. Confirm with the command in ficCommandToRun, then the Function App starts on the next timer cycle.'), if(parameters('GrantAdminConsent'), 'Zero-touch deployment complete. App Registration, Federated Identity Credential, and Graph admin consent all granted by ARM. Function App starts on next timer cycle.', 'Final manual step (1 portal click): Portal → Microsoft Entra ID → App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent. Then Function App starts on next timer cycle. (To skip this step on next deployment, set GrantAdminConsent=true and ensure deployer has Cloud Application Administrator role.)'))]"
     }
   }
 }

@@ -25,9 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `SkipFicCreation` is documented. With the default (`false`) and an App
-  Registration the deployment identity does not own, the federated credential step
-  fails; see *Reusing an existing App Registration* in the README.
+- `SkipFicCreation` defaults to `true`: reusing an App Registration finishes
+  clean and the federated credential is added afterwards with the
+  `ficCommandToRun` output. `false` (a script adds it) needs
+  `Application.ReadWrite.OwnedBy`; see *Reusing an existing App Registration*.
 
 ## [1.0.0] — 2026-05-14
 

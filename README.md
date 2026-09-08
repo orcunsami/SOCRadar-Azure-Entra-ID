@@ -40,12 +40,10 @@ See [`production/README.md` → Required Permissions](production/README.md#requi
 ### Reusing an App Registration you already consented
 
 Put its client ID in `EntraIdClientId` and the deployment stops creating a new
-one. Set **`SkipFicCreation=true`** as well. The federated credential is added
-by the deployment's own managed identity, and that identity owns only an App
-Registration it created itself — against yours it gets *Insufficient
-privileges*, and that failure fails the whole deployment.
-
-Then an owner of the App Registration adds the credential once:
+one. It does not touch your App Registration either (`SkipFicCreation` defaults
+to `true`), so it finishes clean and one step is left for an owner of the App
+Registration: add the federated credential for the identity the deployment
+created. The exact command is in the `ficCommandToRun` output, or:
 
 ```bash
 RG=<resource group>            # the one you deployed into

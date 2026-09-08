@@ -17,10 +17,9 @@
 # not removed by `az group delete`, and it needs consent. The FIC and App Reg
 # counts are compared before and after so litter cannot go unnoticed.
 #
-# SkipFicCreation=true on every path: the default (false) makes the reuse path
-# fail, which the parameter's own description admits. That is defect 3 in
-# task_azure_0062 and it is not what these paths measure, so it is turned off
-# here - a known-good carrier, so a failure means the guard.
+# SkipFicCreation=true on every path, stated even though it is the default
+# since 8 Sep 2026: the FIC step is not what these paths measure, and pinning
+# it keeps the carrier known-good if the default ever moves again.
 set -uo pipefail
 
 # No subscription or App Registration id is written down here. The active
