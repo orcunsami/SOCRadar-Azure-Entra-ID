@@ -117,7 +117,11 @@ The exact command, with the identity's principal ID already filled in, is in the
 deployment's `ficCommandToRun` output. If you would rather click than paste, the portal
 path is: Microsoft Entra ID -> App registrations -> your app -> Certificates & secrets ->
 Federated credentials -> Add credential -> scenario **Managed identity**, then pick the
-`SOCRadar-EntraID-MI` identity from this deployment's resource group.
+`SOCRadar-EntraID-MI` identity from this deployment's resource group. Wizard labels move
+around between tenants; if there is no managed-identity scenario, choose **Other issuer**
+and type the three values instead - issuer `https://login.microsoftonline.com/<your tenant
+id>/v2.0`, subject the `managedIdentityPrincipalId` output, audience
+`api://AzureADTokenExchange`. The CLI command sends exactly those three.
 
 Confirm it landed before you rely on the integration:
 
