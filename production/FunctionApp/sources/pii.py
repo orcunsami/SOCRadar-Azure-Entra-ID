@@ -56,6 +56,7 @@ def fetch(conf: dict, checkpoint: dict) -> list:
     # checkpoint advances to today and the remaining backlog is lost.
     total_pages = page
     total_data_count = None
+    fetch_failed = False
     pages_this_run = 0
 
     while page <= total_pages and pages_this_run < MAX_PAGES_PER_RUN:
@@ -69,15 +70,18 @@ def fetch(conf: dict, checkpoint: dict) -> list:
             resp = requests.get(url, headers=headers, params=params, timeout=30)
         except requests.RequestException as e:
             logger.error(f"Request failed on page {page}: {e}")
+            fetch_failed = True
             break
 
         if resp.status_code != 200:
             logger.error(f"API error {resp.status_code} on page {page}: {resp.text[:200]}")
+            fetch_failed = True
             break
 
         data = resp.json()
         if not data.get("is_success"):
             logger.error(f"API returned is_success=false: {data.get('message', 'unknown')}")
+            fetch_failed = True
             break
 
         payload = data.get("data", {})
@@ -155,5 +159,14 @@ def fetch(conf: dict, checkpoint: dict) -> list:
         all_records[-1]["_checkpoint_update"] = checkpoint_update
     else:
         all_records.append({"_checkpoint_update": checkpoint_update, "_empty_marker": True})
+
+
+    # A fetch that stopped on an HTTP error, a transport error or is_success=false must not
+    # read as "no records": the run's audit row counts it under errors and the checkpoint
+    # holds (EXP-AZURE-0214). The marker rides on the last record like _checkpoint_update.
+    if fetch_failed:
+        if not all_records:
+            all_records.append({"_empty_marker": True})
+        all_records[-1]["_fetch_failed"] = True
 
     return all_records

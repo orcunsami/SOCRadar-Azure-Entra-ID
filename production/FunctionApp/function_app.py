@@ -311,7 +311,13 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
     # every empty run report one record with no address — and "findings we
     # could not match to an account" is exactly the number an operator chases.
     # It is already kept out of the table; keep it out of the arithmetic too.
+    # The source could not finish reading SOCRadar (HTTP error, transport error or
+    # is_success=false). "0 records, 0 errors" would be a lie: count it, so the audit
+    # row shows error_count>0 and the checkpoint holds (EXP-AZURE-0214).
+    fetch_failed = any(e.get("_fetch_failed") for e in employees)
     employees = [e for e in employees if not e.get("_empty_marker")]
+    for e in employees:
+        e.pop("_fetch_failed", None)
 
     for emp in employees:
         # Per-employee time budget check — graceful exit so LAW write +
@@ -584,6 +590,11 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
         except Exception as e:
             logger.error("[%s] Error processing %s: %s", source_name.upper(), emp.get("email", "?"), e)
             errors += 1
+
+    if fetch_failed:
+        logger.error("[%s] SOCRadar fetch did not finish — counted as an error, checkpoint will hold",
+                     source_name.upper())
+        errors += 1
 
     # Write source records to LAW (skip empty marker records)
     real_records = [r for r in records if not r.get("_empty_marker")]
