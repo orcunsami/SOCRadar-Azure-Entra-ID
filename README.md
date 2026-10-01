@@ -29,8 +29,8 @@ Microsoft   Microsoft Sentinel
 
 | Deployer's Microsoft Entra ID role | Post-deploy experience | Form values |
 |------------------------------------|------------------------|-------------|
-| **Cloud Application Administrator** (or Global Admin) | 🟢 Zero post-deploy steps — App Registration, federated credential, and admin consent are all granted inline | `GrantAdminConsent=true` |
-| **Application Administrator** | 🟡 One manual click after deploy: **App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent** | `GrantAdminConsent=false` *(default)* |
+| **Global Administrator** or **Privileged Role Administrator** | 🟢 Zero post-deploy steps — App Registration, federated credential, and admin consent are all granted inline | `GrantAdminConsent=true` |
+| **Application Administrator** or **Cloud Application Administrator** | 🟡 Creates the App Registration, but cannot consent to Microsoft Graph application permissions (Microsoft excludes them). A Global Administrator or Privileged Role Administrator clicks **App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent** after deploy | `GrantAdminConsent=false` *(default)* |
 | **No Entra ID admin role** | 🔴 Fallback only — contact SOCRadar for the reuse-path setup | — |
 
 On the Azure side, the deployer needs **Contributor** (or Owner) on the target subscription / resource group. **Owner is not required.**
@@ -145,23 +145,27 @@ When a leaked identity is found in Entra ID, any combination can run automatical
 | **Add to quarantine group** + restricted Conditional Access policy | off | Medium |
 | **Remove from group** | off | — |
 | **Mark as Confirmed Compromised** — feeds Identity Protection (Entra ID P1/P2) | off | Low |
-| **Create Microsoft Sentinel incident** | off | — |
+| **Create Microsoft Sentinel incident** | off | — (the template does not give the identity a Sentinel role: assign **Microsoft Sentinel Responder** on the workspace to the `SOCRadar-EntraID-MI` identity, otherwise the call fails with 403 and is logged as `create_incident_failed`) |
 | **Resolve SOCRadar alarm** on successful remediation | off | — |
-| **ROPC password validation** (advanced) | off | — |
+| **ROPC password validation** (advanced) | off | — (signs in with the leaked password for real: it can lock the account and shows up in sign-in logs; needs **Allow public client flows** turned on by hand on the App Registration) |
 
-Defaults are conservative — only **Revoke session** runs out of the box. Flip the rest on after validating with the [Customer Acceptance Test runbook](../to-Radargoger/CUSTOMER-TEST-RUNBOOK.md) (shipped with the Standalone delivery bundle).
+Defaults are conservative — only **Revoke session** runs out of the box. Flip the rest on after trying them on a test user.
+
+Lookup is by `users/{address}`, so the leaked address has to match the user's UPN. An address that is only an alias (`mail` / `proxyAddresses`) is reported as `not_found`. VIP records name a person, not an address, so they usually end up as `skipped_no_address`.
 
 See [`production/README.md` → Capabilities](production/README.md#capabilities) for the full feature inventory including DCR schema, workbook tiles, lifecycle events, and operational guarantees.
 
 ## Security
 
 - **Secretless authentication** — uses Workload Identity Federation (UAMI + Federated Identity Credential). No client secrets, no password rotation, no expiring keys.
-- **Least-privilege** — only the Microsoft Graph permissions for enabled actions are requested. Disabled actions = no permission required at runtime.
+- **Permissions** — all seven Microsoft Graph application permissions are requested on the App Registration, whichever actions are enabled. A disabled action does not use its permission; remove the ones you do not need from the App Registration after deployment.
 - **Password handling** — passwords are sanitized at fetch time. Only `password_masked` and `password_present` are written to Log Analytics by default.
 
 ## Multi-Tenant (MSSP / Holdings)
 
 For monitoring multiple Entra directories from a single deployment, set `EntraIdTenantIds` to a comma-separated list of tenant IDs. The primary tenant (first in the list) hosts the multi-tenant App Registration; secondary tenants grant admin consent to the same App Registration in their own portals.
+
+The App Registration the template creates is single-tenant (`AzureADMyOrg`), so secondary tenants fail with `AADSTS700016` until it is switched to multi-tenant. For a multi-tenant setup create the multi-tenant App Registration yourself first and pass it as `EntraIdClientId` (see [`production/docs/multi-tenant-setup.md`](production/docs/multi-tenant-setup.md)).
 
 See **[production/README.md](production/README.md)** for details.
 

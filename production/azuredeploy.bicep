@@ -34,7 +34,7 @@ param EntraIdClientId string = ''
 @description('Create a new App Registration inline during deployment. Auto-derived: false when EntraIdClientId is provided (reuse existing), true when empty (create new). You normally do NOT set this manually.')
 param CreateAppRegistration bool = empty(EntraIdClientId)
 
-@description('Grant admin consent to the Microsoft Graph application permissions during deployment (default: false). Only applies when CreateAppRegistration=true (i.e. when ARM is creating a new App Registration). When the new App Registration is being created AND deployer holds Cloud Application Administrator role, set true for fully zero-touch deploy. When reusing an existing App Registration with consent already granted, this parameter has no effect.')
+@description('Grant admin consent to the Microsoft Graph application permissions during deployment (default: false). Only applies when CreateAppRegistration=true (i.e. when ARM is creating a new App Registration). When the new App Registration is being created AND the deployer holds Global Administrator or Privileged Role Administrator (Application Administrator and Cloud Application Administrator cannot consent to Microsoft Graph application permissions), set true for fully zero-touch deploy. When reusing an existing App Registration with consent already granted, this parameter has no effect.')
 param GrantAdminConsent bool = false
 
 @description('Reuse path only (CreateAppRegistration=false). true: the deployment does not touch the App Registration; you add the federated credential for the new managed identity afterwards with the command in the ficCommandToRun output. false: a deployment script adds it for you, which only works when the deployment identity holds the Application.ReadWrite.OwnedBy application permission on top of ownership - ownership alone was measured insufficient. Ignored when CreateAppRegistration=true.')
@@ -225,9 +225,10 @@ resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-
 // ============================================================================
 // Microsoft Graph: inline App Registration + Service Principal + FIC binding
 // Eliminates the manual `az ad app federated-credential create` step.
-// Customer permission required: Application Administrator role (typical for
-// tenant admins deploying integrations). Falls back to existing App Reg
-// when CreateAppRegistration=false.
+// Customer permission required: Application Administrator or Cloud Application
+// Administrator to create the App Registration. Granting consent to the Graph
+// application permissions needs Global Administrator or Privileged Role Administrator
+// (GrantAdminConsent). Falls back to existing App Reg when CreateAppRegistration=false.
 // ============================================================================
 
 var graphUniqueAppName = 'socradar-entraid-${uniqueString(resourceGroup().id)}'
@@ -273,8 +274,10 @@ resource fic 'Microsoft.Graph/applications/federatedIdentityCredentials@v1.0' = 
 }
 
 // Admin consent automation: grant each Graph application permission to the
-// app's service principal. Requires the deploying user to have
-// AppRoleAssignment.ReadWrite.All (Application Administrator role provides this).
+// app's service principal. Requires a deploying user who may consent to Microsoft Graph
+// application permissions: Global Administrator or Privileged Role Administrator.
+// Application Administrator and Cloud Application Administrator are explicitly excluded
+// from Graph application permissions (Microsoft Entra built-in roles reference).
 // Eliminates the "Grant admin consent" portal click.
 // Conditional existing: portal preflight eager-evaluates existing references and
 // requires Application.Read.All for the signed-in user; gating by the same
@@ -328,7 +331,8 @@ resource addFicToExistingApp 'Microsoft.Resources/deploymentScripts@2020-10-01' 
     timeout: 'PT5M'
     environmentVariables: [
       { name: 'APP_ID', value: EntraIdClientId }
-      { name: 'TENANT_ID', value: empty(EntraIdTenantId) ? subscription().tenantId : EntraIdTenantId }
+      // FIC issuer = the tenant that issues the managed identity's token = the subscription's tenant
+      { name: 'TENANT_ID', value: subscription().tenantId }
       { name: 'UAMI_PRINCIPAL', value: managedIdentity.properties.principalId }
       { name: 'RG_NAME', value: resourceGroup().name }
     ]
@@ -1230,5 +1234,5 @@ output storageAccountName string = storageAccountName
 output pollingSchedule string = pollingSchedule
 output managedIdentityPrincipalId string = reference(managedIdentity.id, '2023-01-31', 'Full').properties.principalId
 output entraIdClientId string = resolvedAppClientId
-output ficCommandToRun string = CreateAppRegistration ? 'No manual FIC step needed - App Registration and Federated Identity Credential created automatically by ARM.' : (!SkipFicCreation ? 'No manual FIC step needed - the addFic deployment script added the federated credential. Verify: az ad app federated-credential list --id ${EntraIdClientId} --query "[].name" -o tsv' : 'az ad app federated-credential create --id ${EntraIdClientId} --parameters \'{"name":"socradar-entraid-${resourceGroup().name}-uami","issuer":"https://login.microsoftonline.com/${(empty(EntraIdTenantId)?subscription().tenantId:EntraIdTenantId)}/v2.0","subject":"${reference(managedIdentity.id,'2023-01-31','Full').properties.principalId}","audiences":["api://AzureADTokenExchange"]}\'')
-output nextStep string = (!CreateAppRegistration) ? (SkipFicCreation ? 'Copy ficCommandToRun and run it in Azure CLI as an owner of the App Registration. Without the federated credential the Function App cannot get a Graph token. Then it starts working on the next timer cycle.' : 'The deployment script added the federated credential. Confirm with the command in ficCommandToRun, then the Function App starts on the next timer cycle.') : (GrantAdminConsent ? 'Zero-touch deployment complete. App Registration, Federated Identity Credential, and Graph admin consent all granted by ARM. Function App starts on next timer cycle.' : 'Final manual step (1 portal click): Portal → Microsoft Entra ID → App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent. Then Function App starts on next timer cycle. (To skip this step on next deployment, set GrantAdminConsent=true and ensure deployer has Cloud Application Administrator role.)')
+output ficCommandToRun string = CreateAppRegistration ? 'No manual FIC step needed - App Registration and Federated Identity Credential created automatically by ARM.' : (!SkipFicCreation ? 'No manual FIC step needed - the addFic deployment script added the federated credential. Verify: az ad app federated-credential list --id ${EntraIdClientId} --query "[].name" -o tsv' : 'az ad app federated-credential create --id ${EntraIdClientId} --parameters \'{"name":"socradar-entraid-${resourceGroup().name}-uami","issuer":"https://login.microsoftonline.com/${subscription().tenantId}/v2.0","subject":"${reference(managedIdentity.id,'2023-01-31','Full').properties.principalId}","audiences":["api://AzureADTokenExchange"]}\'')
+output nextStep string = (!CreateAppRegistration) ? (SkipFicCreation ? 'Copy ficCommandToRun and run it in Azure CLI as an owner of the App Registration. Without the federated credential the Function App cannot get a Graph token. Then it starts working on the next timer cycle.' : 'The deployment script added the federated credential. Confirm with the command in ficCommandToRun, then the Function App starts on the next timer cycle.') : (GrantAdminConsent ? 'Zero-touch deployment complete. App Registration, Federated Identity Credential, and Graph admin consent all granted by ARM. Function App starts on next timer cycle.' : 'Final manual step (1 portal click): Portal → Microsoft Entra ID → App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent. Then Function App starts on next timer cycle. (To skip this step on next deployment, set GrantAdminConsent=true and ensure the deployer is a Global Administrator or Privileged Role Administrator.)')

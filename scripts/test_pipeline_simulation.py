@@ -36,7 +36,7 @@ DOMAIN = os.environ.get("TENANT_DOMAIN", "example.onmicrosoft.com")
 TEST1 = os.environ.get("TEST1_UPN", f"socradar.test1@{DOMAIN}")
 TEST2 = os.environ.get("TEST2_UPN", f"socradar.test2@{DOMAIN}")
 TEST3 = os.environ.get("TEST3_UPN", f"socradar.test3@{DOMAIN}")
-TEST_PW = os.environ.get("TEST_PASSWORD", "SoCr@dar!Test2026#xQ")
+TEST_PW = os.environ.get("TEST_PASSWORD", "")
 
 RESULTS_DIR = SCRIPT_DIR / "results" / "pipeline"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -58,6 +58,8 @@ def info(m): print(f"  INFO {m}")
 
 
 def main():
+    if not TEST_PW:
+        sys.exit("TEST_PASSWORD is not set (see setup_test_env.sh); refusing to run with an empty password")
     print(f"""
 {'=' * 60}
   SOCRadar Entra ID — Pipeline Simulation

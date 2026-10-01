@@ -51,8 +51,8 @@ class TestClassifyTokenError(unittest.TestCase):
 
 
 class TestGetGraphTokenWithFIC(unittest.TestCase):
-    TENANT = "01a14909-test"
-    CLIENT = "b0afca82-test"
+    TENANT = "tenant-test"
+    CLIENT = "client-test"
 
     def setUp(self):
         entra_id._graph_credential = None

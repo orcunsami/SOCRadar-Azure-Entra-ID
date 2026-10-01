@@ -30,7 +30,9 @@ from sources import botnet, pii, vip  # noqa: E402
 CONF = {
     "socradar_api_key": "k", "socradar_company_id": "1",
     "socradar_base_url": "https://example.invalid",
-    "initial_lookback_days": 1, "initial_start_date": "",
+    # Fixed start date: the test must not depend on the wall clock (it failed after 10:00 UTC
+    # when the default 600-minute lookback rolled start_date over to "today").
+    "initial_start_date": "2020-01-01",
     "enable_log_plaintext_password": False,
 }
 
@@ -76,8 +78,8 @@ class SourceMarksFailedFetch(unittest.TestCase):
     def test_failed_fetch_does_not_advance_the_checkpoint(self):
         records = self._fetch(botnet, resp=_resp(401))
         cp_update = records[-1]["_checkpoint_update"]
-        self.assertNotEqual(cp_update["last_start_date"], time.strftime("%Y-%m-%d"),
-                            "a window nobody read must not be retired")
+        self.assertEqual(cp_update["last_start_date"], CONF["initial_start_date"],
+                         "a window nobody read must not be retired")
 
 
 class CallerCountsFailedFetch(unittest.TestCase):

@@ -3,12 +3,14 @@ Microsoft Entra ID actions via Microsoft Graph API.
 Graph auth uses Workload Identity Federation: UAMI → App Registration (secretless).
 UAMI provides the identity, App Registration provides the Graph permissions.
 Permissions are managed in the portal — no CLI script needed.
-ROPC is optional and requires a separate public-client App Registration.
+ROPC is optional and uses the same App Registration, which needs "Allow public client flows" turned on by hand.
 """
 
 import logging
 import os
+import re
 import time
+from urllib.parse import quote
 import requests
 
 try:
@@ -145,6 +147,16 @@ def get_graph_token(tenant_id: str, client_id: str) -> str:
         raise RuntimeError(f"Workload Identity Federation error: {e}")
 
 
+# One "@", no path/query/fragment/escape characters, no whitespace. The address comes
+# from an external feed and is placed in the Graph URL path: "x@y.com/../../groups"
+# would otherwise resolve to a different endpoint.
+_SAFE_ADDRESS = re.compile(r"^[^@\s/?#\\%]+@[^@\s/?#\\%]+$")
+
+
+def is_safe_address(email) -> bool:
+    return isinstance(email, str) and bool(_SAFE_ADDRESS.match(email))
+
+
 def lookup_user(email: str, graph_headers: dict) -> tuple:
     """
     Look up a user in Entra ID by email (UPN).
@@ -154,7 +166,10 @@ def lookup_user(email: str, graph_headers: dict) -> tuple:
     Caller uses status to distinguish 404 (not found) from 403 (permission denied)
     without relying on module-level state (thread-safe for future MSSP concurrency).
     """
-    url = f"{GRAPH_BASE}/users/{email}"
+    if not is_safe_address(email):
+        logger.warning("[ENTRA] lookup skipped — not a plain address")
+        return None, 0
+    url = f"{GRAPH_BASE}/users/{quote(email, safe='@')}"
     try:
         resp = _graph_request("GET", url, graph_headers, timeout=15)
         if resp.status_code == 200:

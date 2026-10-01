@@ -50,8 +50,10 @@ by the number of customer tenants.
 
 ## Prerequisites
 
-- One Entra ID tenant where you have **App registrations administrator** or
-  higher privileges. This is the "primary" tenant — typically your
+- One Entra ID tenant where you can create an App Registration (**Application Administrator**,
+  **Cloud Application Administrator** or higher), and where a **Global Administrator** or
+  **Privileged Role Administrator** can grant admin consent (those two are the only built-in
+  roles that may consent to Microsoft Graph application permissions). This is the "primary" tenant — typically your
   subscription tenant.
 - Tenant admin contact for every additional Entra tenant you want to
   monitor. They need to click an admin-consent link.
@@ -82,10 +84,11 @@ by the number of customer tenants.
 6. Copy the **Application (client) ID** — you'll feed this to the ARM
    template as `EntraIdClientId`.
 
-The Federated Identity Credential will be created by the deployment script
-(or by the ARM template, depending on how you deploy). Its issuer is the
-**subscription tenant**, and its subject is the UAMI's `principalId`. You
-do not need to add any further FICs.
+With the app reused through `EntraIdClientId`, the template does not create the
+Federated Identity Credential by default (`SkipFicCreation=true`): run the command in
+the `ficCommandToRun` output once, as an owner of the App Registration (see the main
+README). Its issuer is the **subscription tenant**, and its subject is the UAMI's
+`principalId`. You do not need to add any further FICs.
 
 ---
 
@@ -100,6 +103,10 @@ https://login.microsoftonline.com/{TENANT_ID}/adminconsent?client_id={APP_CLIENT
 
 Replace `{TENANT_ID}` with the additional tenant's Directory ID and
 `{APP_CLIENT_ID}` with the App Registration client ID from step 1.
+
+The admin who accepts must be able to consent to Microsoft Graph application
+permissions: Global Administrator or Privileged Role Administrator (Application
+Administrator and Cloud Application Administrator cannot).
 
 When the admin clicks **Accept**, Azure creates a service principal for
 your app in their tenant — without modifying any password or secret. The
@@ -209,7 +216,7 @@ union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL
 | User found in primary tenant only, never in additional tenants | Consent missing in additional tenant | Send the admin the consent URL again; verify the SP appears in Enterprise Applications. |
 | `consent_revoked` lifecycle event in `SOCRadar_EntraID_Audit_CL` | Admin revoked the app's consent in that tenant | Re-consent. |
 | Token acquisition fails with `AADSTS700016` (app not found) | Multi-tenant app is single-tenant in the additional tenant's directory | Verify the App Registration's `signInAudience` is `AzureADMultipleOrgs` in the **primary** tenant. |
-| `AADSTS70001` (app disabled in tenant) | The additional tenant disabled the service principal | Tenant admin re-enables in Enterprise Applications. |
+| `AADSTS7000112` (app disabled in tenant) | The additional tenant disabled the service principal | Tenant admin re-enables in Enterprise Applications. |
 | Workbook's `TenantId` dropdown is empty | No records with `entra_tenant_id` yet (first run) | Wait for the first poll cycle to complete, or query the source tables directly. |
 
 For deeper diagnostics see [troubleshooting.md](./troubleshooting.md).

@@ -16,14 +16,14 @@ Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Prote
 
 That's it. The Function App starts polling SOCRadar on its next timer cycle (default: every 6 hours).
 
-> **Tip:** If the user performing the deployment holds the **Cloud Application Administrator** role, set `GrantAdminConsent=true` in the form. ARM will grant consent automatically and step 4 is skipped — fully zero-touch deployment.
+> **Tip:** If the user performing the deployment is a **Global Administrator** or **Privileged Role Administrator**, set `GrantAdminConsent=true` in the form. ARM will grant consent automatically and step 4 is skipped — fully zero-touch deployment. Application Administrator and Cloud Application Administrator cannot consent to Microsoft Graph application permissions, so they cannot use this switch.
 
 ## Required Permissions
 
 | Deployer's Entra ID role | Post-deploy experience | Form switches |
 |--------------------------|------------------------|---------------|
-| **Cloud App Admin** (or Global Admin) | 🟢 Zero steps — App Reg + FIC + admin consent all inline | `GrantAdminConsent=true` |
-| **Application Admin** | 🟡 One click — admin consent button in App Registrations | defaults |
+| **Global Admin** or **Privileged Role Admin** | 🟢 Zero steps — App Reg + FIC + admin consent all inline | `GrantAdminConsent=true` |
+| **Application Admin** or **Cloud App Admin** | 🟡 Creates the App Reg but cannot consent to Graph application permissions; a Global Admin / Privileged Role Admin does the consent click afterwards | defaults |
 | **No admin role** | 🔴 Fallback only — contact SOCRadar | reuse path |
 
 Azure side: **Contributor** (not Owner) on the target subscription / resource group is enough. For an existing workspace in another RG, the deployer also needs Contributor on that RG.
@@ -36,8 +36,6 @@ Azure side: **Contributor** (not Owner) on the target subscription / resource gr
 - **4 LAW tables** via DCR-based ingestion (`SOCRadar_Botnet_CL`, `SOCRadar_PII_CL`, `SOCRadar_VIP_CL`, `SOCRadar_EntraID_Audit_CL`) + **4 Sentinel workbooks** with multi-tenant filter.
 - **Secretless auth** — Workload Identity Federation (UAMI → FIC → App Reg). No client secrets, no key rotation.
 - **Resilience** — per-tenant 403 dropout, per-employee + per-source time budgets, pagination resume across function timeouts, App Insights tracing, lifecycle events on `consent_revoked`.
-
-For a controlled customer acceptance test with 9 test users × 3 sources, see [CUSTOMER-TEST-RUNBOOK.md](../to-Radargoger/CUSTOMER-TEST-RUNBOOK.md) (shipped with the Standalone delivery bundle).
 
 ## Parameters
 
@@ -63,7 +61,8 @@ For a controlled customer acceptance test with 9 test users × 3 sources, see [C
 |-----------|---------|-------------|
 | `EnableUserLookup` | `true` | Look up leaked identity in Entra ID before taking action |
 | `EnableRevokeSession` | `true` | Revoke all active sign-in sessions |
-| `EnableAddToGroup` | `false` | Add user to a quarantine security group (requires `SecurityGroupId`) |
+| `EnableAddToGroup` | `false` | Add user to a quarantine security group (requires `SecurityGroupId`; without it the action is skipped and `add_to_group_no_group_configured` is recorded) |
+| `SecurityGroupId` | (empty) | Object ID of the quarantine security group |
 | `EnableRemoveFromGroup` | `false` | Remove user from a security group |
 | `EnablePasswordChange` | `false` | Force password change at next sign-in |
 | `EnableDisableAccount` | `false` | Disable the user account (high impact) |
@@ -71,12 +70,16 @@ For a controlled customer acceptance test with 9 test users × 3 sources, see [C
 | `EnableForceMfaReregistration` | `false` | Delete all non-password MFA methods to force re-registration (high impact) |
 | `EnableConfirmRisky` | `false` | Mark user as confirmed compromised in Identity Protection (requires Entra ID P1/P2) |
 | `EnableResolveAlarm` | `false` | Mark the SOCRadar alarm as RESOLVED when remediation succeeds |
+| `EnableCreateIncident` | `false` | Create a Microsoft Sentinel incident per match. The template assigns the identity no Microsoft Sentinel role: give `SOCRadar-EntraID-MI` **Microsoft Sentinel Responder** on the workspace, otherwise the PUT fails with 403 (recorded as `create_incident_failed`, retried on the next read). While the role is missing, each retry counts as an attempted action against the per-run action ceiling, so every re-read spends one slot per record on it |
+| `EnableROPC` | `false` | Check the leaked password with a real sign-in (ROPC). It can lock the account and appears in sign-in logs. Turn on **Allow public client flows** on the App Registration by hand; the template does not |
+| `EnableLogPlaintextPassword` | `false` | Write plaintext passwords to the LAW tables (not recommended) |
 
 ### Polling
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `PollingIntervalHours` | `6` | How often the Function App polls SOCRadar |
+| `InitialStartDate` | (empty) | First-fetch date, `YYYY-MM-DD`. Takes priority over `InitialLookbackMinutes` |
 | `InitialLookbackMinutes` | `43200` | Lookback window for the first run (default: 30 days). Set higher (e.g. `129600` = 90 days) for initial backlog import. |
 | `MaxPagesPerRun` | `50` | Pagination cap per run |
 | `RunOnStartup` | `true` | Run an immediate poll after deployment instead of waiting for the first timer cycle |
@@ -85,6 +88,10 @@ For a controlled customer acceptance test with 9 test users × 3 sources, see [C
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
+| `EntraIdClientId` | (empty) | Client ID of an existing, already consented App Registration to reuse. Empty = the template creates one (see [Reusing an existing App Registration](#reusing-an-existing-app-registration)) |
+| `CreateAppRegistration` | derived | `true` when `EntraIdClientId` is empty. Normally not set by hand |
+| `GrantAdminConsent` | `false` | Grant the Graph application permissions inline. Needs a Global Administrator or Privileged Role Administrator; only applies when the template creates the App Registration |
+| `PackageUri` | release `v1.0.0` `FunctionApp.zip` | Zip the deployment script stages for the Function App. An installation keeps the package it was installed with |
 | `EntraIdTenantId` | (current subscription tenant) | Target Microsoft Entra ID tenant ID. Leave empty to auto-detect. |
 | `EntraIdTenantIds` | (empty) | Comma-separated tenant IDs for multi-tenant monitoring (MSSP / holding scenarios). When set, overrides `EntraIdTenantId`. |
 | `EntraIdVerifiedDomains` | (empty) | Optional comma-separated allowlist of verified domains attached to the tenant (e.g. `acme.com,acme.io,acme.onmicrosoft.com`). When set, only emails on these domains are looked up in Microsoft Graph; others land in LAW with `entra_status=skipped_domain_allowlist`. Leave empty to query every record (v1.0 behavior). Exact match, case-insensitive, no subdomain wildcards. |
@@ -177,11 +184,12 @@ at its default by mistake — cannot change its pricing tier, retention or daily
 | 4 custom LAW tables | `SOCRadar_Botnet_CL`, `SOCRadar_PII_CL`, `SOCRadar_VIP_CL`, `SOCRadar_EntraID_Audit_CL` |
 | Data Collection Rule (DCR) | DCR-based Logs Ingestion API |
 | 4 Sentinel workbooks | Dashboards for Botnet, PII, VIP, Combined |
-| Role assignments | Function App → LAW (write), UAMI → DCR (publish) |
+| Role assignments | UAMI → Storage Table Data Contributor (checkpoint + ledger tables), UAMI → Website Contributor on the Function App (package staging), UAMI → Monitoring Metrics Publisher on the DCR (log ingestion). No Microsoft Sentinel role (see `EnableCreateIncident`) |
+| LAW tables | Created with `retentionInDays: 30`, `Analytics` plan, whatever the workspace retention is. Change the table retention afterwards if you need more; a redeploy resets it to 30 |
 
 ## Microsoft Graph Permissions
 
-The App Registration receives only the Graph Application permissions required by the actions you enable. Each permission is granted at deployment time (when `GrantAdminConsent=true`) or after deployment via the portal click.
+The App Registration is created with all seven Graph Application permissions below, whichever actions you enable. Each is granted at deployment time (when `GrantAdminConsent=true`, Global Administrator or Privileged Role Administrator only) or after deployment via the portal click.
 
 | Permission | Required For |
 |------------|-------------|
@@ -262,7 +270,8 @@ union SOCRadar_Botnet_CL, SOCRadar_PII_CL, SOCRadar_VIP_CL
 ## Notes
 
 - **Password handling**: Passwords are sanitized immediately on fetch. By default only `password_present` (bool) and `password_masked` are written to Log Analytics. Set `EnableLogPlaintextPassword=true` only if you have a compelling reason (not recommended).
-- **Checkpoint**: Each source stores its last processed date in Azure Table Storage. Subsequent runs only fetch records after that date — no duplicates.
+- **Checkpoint**: Each source stores its last processed date (`YYYY-MM-DD`) in Azure Table Storage. A run that did not finish cleanly (errors, failed lookups, time budget, action ceiling) keeps the checkpoint and reads the same window again, so the same record can be written to the LAW tables more than once (`summarize arg_max(TimeGenerated, *) by email, log_date` in KQL gives the latest). Remediation actions are not repeated: an idempotency ledger records each applied action per person and window.
+- **Lookup**: users are looked up by UPN only (`users/{address}`); an address that is only an alias is reported as `not_found`. Values that are not a plain address (no `@`, more than one `@`, or containing `/ ? # \ %` or whitespace) are not sent to Graph and land as `skipped_no_address`. Username-style botnet records are in this group; they were `not_found` before.
 - **Workspace soft-delete**: If you delete and recreate a workspace with the same name within 14 days, old data reappears. Use a different name or wait 14 days.
 - **Network requirements**: Outbound HTTPS access from the Function App to `platform.socradar.com` and `graph.microsoft.com`. If your network uses a proxy or firewall, whitelist these domains.
 - **A failed `Failure-Anomalies-Alert-Rule-Deployment` is Azure's, not ours**: after a

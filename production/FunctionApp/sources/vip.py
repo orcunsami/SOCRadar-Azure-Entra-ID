@@ -94,7 +94,8 @@ def fetch(conf: dict, checkpoint: dict) -> list:
         for rec in records_raw:
             related = rec.get("relatedAlarm", {}) or {}
             entry = {
-                "email":          rec.get("vipName", rec.get("email", "")),
+                # vipName is a person's name, not an address: never feed it to the Graph lookup.
+                "email":          rec.get("email", ""),
                 "keyword":        rec.get("keyword", ""),
                 "vip_name":       rec.get("vipName", ""),
                 "status":         rec.get("status", ""),

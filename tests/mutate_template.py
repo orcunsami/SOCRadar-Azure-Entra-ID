@@ -23,9 +23,11 @@ BICEP = os.path.join(REPO, "production", "azuredeploy.bicep")
 JSON = os.path.join(REPO, "production", "azuredeploy.json")
 MODULE = os.path.join(REPO, "production", "nested_workspace_precheck.bicep")
 TABLES = os.path.join(REPO, "production", "nested_law_tables.bicep")
+RELEASE = os.path.join(REPO, ".github", "workflows", "release.yml")
 
 GATE = "test_workspace_guard_unit.py"
 COUPLING = "test_template_coupling_unit.py"
+ISSUER = "test_lookup_and_actions_unit.py"
 
 # (label, file, find, replace, test pattern)
 MUTATIONS = [
@@ -61,6 +63,20 @@ MUTATIONS = [
      "          name: 'TimeGenerated'\n          type: 'dateTime'",
      "          name: 'TimeGenerated_x'\n          type: 'dateTime'",
      COUPLING),
+    ("FIC script issuer follows EntraIdTenantId", BICEP,
+     "{ name: 'TENANT_ID', value: subscription().tenantId }",
+     "{ name: 'TENANT_ID', value: empty(EntraIdTenantId) ? subscription().tenantId : EntraIdTenantId }",
+     ISSUER),
+    ("printed FIC command issuer follows EntraIdTenantId", BICEP,
+     '"issuer":"https://login.microsoftonline.com/${subscription().tenantId}/v2.0"',
+     '"issuer":"https://login.microsoftonline.com/${(empty(EntraIdTenantId)?subscription().tenantId:EntraIdTenantId)}/v2.0"',
+     ISSUER),
+    ("release gate: refusal no longer fails the job", RELEASE,
+     "            exit 1\n", "            exit 0\n", ISSUER),
+    ("release gate: comparison inverted", RELEASE,
+     '[ "$GITHUB_SHA" != "$TIP" ]', '[ "$GITHUB_SHA" = "$TIP" ]', ISSUER),
+    ("release gate: compares against HEAD (always the tag in CI)", RELEASE,
+     "TIP=$(git rev-parse origin/master)", "TIP=$(git rev-parse HEAD)", ISSUER),
 ]
 
 
@@ -81,7 +97,7 @@ def run_gate(pattern):
 
 
 def main():
-    backups = {p: p + ".mutbak" for p in (BICEP, JSON, MODULE, TABLES)}
+    backups = {p: p + ".mutbak" for p in (BICEP, JSON, MODULE, TABLES, RELEASE)}
     for src, dst in backups.items():
         shutil.copy2(src, dst)
 
@@ -103,7 +119,7 @@ def main():
                 print("ANCHOR GONE  %s" % label)
                 continue
             open(path, "w", encoding="utf-8").write(text.replace(find, repl, 1))
-            compiled, cerr = compile_template()
+            compiled, cerr = (True, "") if path == RELEASE else compile_template()
             if not compiled:
                 print("caught (build) %s" % label)
             elif run_gate(pattern):

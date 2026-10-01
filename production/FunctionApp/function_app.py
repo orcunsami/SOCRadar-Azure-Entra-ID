@@ -296,6 +296,7 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
     lookup_disabled = no_token = lookup_failed = 0
     truncated = False
     capped = False
+    warned_no_group = False
     records = []
     # Per-tenant 403 counter: if a tenant returns 403 three times in a row,
     # drop it from the lookup map (admin consent missing — no point retrying).
@@ -334,7 +335,7 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
 
         try:
             email = emp.get("email") or emp.get("user", "")
-            if not email:
+            if not email or not entra.is_safe_address(email):
                 # A finding without an address (VIP records often name a
                 # person, not an account) used to be dropped on the floor —
                 # not written, not counted. It cannot be matched, but it is
@@ -513,6 +514,13 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
                                lambda: entra.add_to_group(user_id, conf["security_group_id"], graph_headers), taken):
                     actions += 1
 
+            if conf["enable_add_to_group"] and not conf["security_group_id"]:
+                if not warned_no_group:
+                    logger.warning("[%s] EnableAddToGroup is on but SecurityGroupId is empty — add_to_group skipped",
+                                   source_name.upper())
+                    warned_no_group = True
+                taken.append("add_to_group_no_group_configured")
+
             if conf["enable_remove_from_group"] and conf["security_group_id"]:
                 if _apply_once(ledger, source_name, window_id, email, "remove_from_group",
                                lambda: entra.remove_from_group(user_id, conf["security_group_id"], graph_headers), taken):
@@ -561,14 +569,17 @@ def _process_source(source_name: str, conf: dict, credential, tenant_headers_map
                         taken.append("force_mfa_rereg_no_methods")
                     emp["mfa_methods_deleted"] = mfa_result["methods_deleted"]
                     emp["mfa_methods_skipped"] = mfa_result["methods_skipped"]
-                    actions += 1
+                    if mfa_result["methods_deleted"] > 0:
+                        actions += 1
 
             if conf["enable_create_incident"]:
-                if ledger.already_applied(source_name, email, "create_incident", window_id):
-                    taken.append("create_incident_skipped_duplicate")
-                else:
-                    sent.create_incident(conf, email, source_name, emp.get("severity", "MEDIUM"), credential=credential)
-                    ledger.record(source_name, email, "create_incident", window_id)
+                # Counted as an action like the others; a failed PUT (403 without a
+                # Microsoft Sentinel role, say) is not ledgered, so it is retried on the next read.
+                if _apply_once(ledger, source_name, window_id, email, "create_incident",
+                               lambda: sent.create_incident(conf, email, source_name,
+                                                            emp.get("severity", "MEDIUM"),
+                                                            credential=credential), taken):
+                    actions += 1
 
             # Resolve SOCRadar alarm if user found in Entra ID
             alarm_id = emp.get("alarm_id")

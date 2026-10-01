@@ -13,7 +13,7 @@
 # prints its author's hypothesis blamed the wrong thing four times in a row on
 # the sister product (EXP-AZURE-0210).
 #
-# The App Registration is REUSED, never created (CLAUDE.md). A created one is
+# The App Registration is REUSED, never created (reuse rule). A created one is
 # not removed by `az group delete`, and it needs consent. The FIC and App Reg
 # counts are compared before and after so litter cannot go unnoticed.
 #

@@ -14,6 +14,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A tag that points at an old commit would rebuild the old code and overwrite
+      # the release asset with --clobber (30 Sep 2026: v1.0.0 re-pushed after a
+      # history rewrite shipped a package older than master). Refuse it.
+      - name: Tag must point at the tip of master
+        run: |
+          git fetch origin master
+          TIP=$(git rev-parse origin/master)
+          if [ "$GITHUB_SHA" != "$TIP" ]; then
+            echo "Tag ${GITHUB_REF_NAME} is at $GITHUB_SHA but master is at $TIP - refusing to publish an older build"
+            exit 1
+          fi
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5

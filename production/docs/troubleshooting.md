@@ -10,7 +10,7 @@ Scan the symptom first. If none match, the last section lists how to collect dia
 
 **Symptom**: App Insights shows the timer fires and the function exits in ~20s, but no `SOCRadar_*_CL` tables appear or remain empty.
 
-**Diagnosis (v1.5.0+ — DCR-based ingestion)**:
+**Diagnosis (DCR-based ingestion)**:
 - Custom tables in Log Analytics take 5–15 minutes to appear on first write.
 - Confirm the function actually called the Logs Ingestion API: App Insights → Traces → filter `[LAW]`. Look for `LogsIngestionClient initialized for https://<dcr-name>.<region>.ingest.monitor.azure.com`.
 - If 403/401 on DCR upload: UAMI is missing the **Monitoring Metrics Publisher** role on the DCR. Check via Azure Portal → Data Collection Rule → **Access control (IAM)** → look for the UAMI under role assignments.
@@ -21,7 +21,7 @@ Scan the symptom first. If none match, the last section lists how to collect dia
 - Verify app settings: `DCR_IMMUTABLE_ID` (looks like `dcr-xxxxxxxxxxxxxxxx`), `DCR_ENDPOINT` (looks like `https://socradar-ei-dcr-...ingest.monitor.azure.com`), `WORKSPACE_ID` (workspace customerId).
 - KQL sanity check: `SOCRadar_EntraID_Audit_CL | take 10` (audit table writes even when sources return 0 records).
 
-**Note on legacy `WORKSPACE_KEY`**: pre-v1.5.0 versions used HMAC-SHA256 with workspace primary key. Microsoft is deprecating that API on Sep 14, 2026. v1.5.0+ uses DCR-based OAuth authentication via UAMI — no shared key needed.
+**Note on legacy `WORKSPACE_KEY`**: earlier versions used HMAC-SHA256 with the workspace primary key. Microsoft is deprecating that API on Sep 14, 2026. This version uses DCR-based OAuth authentication via UAMI — no shared key needed.
 
 ---
 
@@ -59,7 +59,7 @@ SOCRadar_EntraID_Audit_CL
 
 **Fix**:
 - First occurrence: integration auto-retries with `Retry-After` up to 3 times, capped at 30s per sleep. Usually self-heals.
-- Sustained 429s mean the polling interval is too aggressive for the workload. Lower the SOCRadar polling frequency (`POLLING_INTERVAL_HOURS` parameter in ARM → 12 or 24h instead of 6).
+- Sustained 429s mean the polling interval is too aggressive for the workload. Lower the SOCRadar polling frequency (`PollingIntervalHours` parameter in ARM, which sets the `POLLING_SCHEDULE` app setting → 12 or 24h instead of 6).
 - If thousands of leaks per run, split by source (run Botnet on one schedule, PII on another) — future enhancement; open a ticket if you hit this.
 
 ---
@@ -88,14 +88,14 @@ SOCRadar_EntraID_Audit_CL
 | `EnablePasswordChange` | `User-PasswordProfile.ReadWrite.All` |
 | `EnableDisableAccount` / `EnableEnableAccount` | `User.EnableDisableAccount.All` |
 | `EnableConfirmRisky` | `IdentityRiskyUser.ReadWrite.All` + P1/P2 license |
-| `EnableForceMfaReregistration` | `UserAuthenticationMethod.ReadWrite.All` + Privileged Authentication Administrator role |
+| `EnableForceMfaReregistration` | `UserAuthenticationMethod.ReadWrite.All` |
 
 **Fix**:
 1. Entra admin center → App registrations → your app → API permissions
 2. Add the missing permission (Application type, not Delegated)
 3. **Grant admin consent** for the tenant
 4. For `ConfirmRisky`: verify the tenant has Entra ID P1 or P2 license
-5. For `ForceMfaReregistration`: also assign Privileged Authentication Administrator directory role to the service principal
+5. For `ForceMfaReregistration`: the application permission is what Microsoft Learn lists for the authentication-method delete APIs; the Entra-role requirement it states applies to delegated callers
 
 ---
 
@@ -103,18 +103,19 @@ SOCRadar_EntraID_Audit_CL
 
 **Symptom**: LAW records show `actions_taken` contains `force_mfa_rereg_no_permission` and `mfa_methods_deleted=0`.
 
-**Diagnosis**: `EnableForceMfaReregistration=true` is set, but `UserAuthenticationMethod.ReadWrite.All` is not granted OR the service principal lacks the Privileged Authentication Administrator role.
+**Diagnosis**: `EnableForceMfaReregistration=true` is set, but `UserAuthenticationMethod.ReadWrite.All` is not granted (a 403 on the method list or delete is the symptom).
 
 **Fix**:
 1. Grant `UserAuthenticationMethod.ReadWrite.All` application permission + admin consent.
-2. Assign the SP to Privileged Authentication Administrator role in Entra admin center → Roles & admins.
-3. Wait 5 minutes for propagation, re-trigger the function manually.
+2. Wait 5 minutes for propagation, re-trigger the function manually.
 
 ---
 
 ## 7. Checkpoint stuck / same leaks processed repeatedly
 
 **Symptom**: Same leaked identities appear in LAW every run. Checkpoint not advancing.
+
+A run that did not finish cleanly (errors, failed lookups, time budget, action ceiling) deliberately keeps the checkpoint and reads the same window again, up to 5 times (`consecutive_holds`; `import_window_abandoned` in the audit table says the window was given up). That is normal. Remediation actions are not repeated: the idempotency ledger skips them (`*_skipped_duplicate` in `actions_taken`). Only a window that is held for a long time with no `error_count` in the audit table points at the storage causes below.
 
 **Diagnosis**:
 - Function App's UAMI does not have Storage Table Data Contributor on the storage account.
@@ -146,18 +147,14 @@ No secret rotation needed — auth is fully secretless via Managed Identity.
 
 ## 9. Deploy-to-Azure button downloads old code
 
-**Symptom**: Customer deploys via ARM, but refactored features (EnableUserLookup, EnableForceMfaReregistration) are missing from their Function App.
+**Symptom**: Customer deploys via ARM, but features from a newer build (EnableUserLookup, EnableForceMfaReregistration, the action ledger) are missing from their Function App.
 
-**Diagnosis**: ARM template's `WEBSITE_RUN_FROM_PACKAGE` points to a stale GitHub release URL, OR the customer's deployment pinned an older version.
+**Diagnosis**: The deployment script stages the zip behind `PackageUri` into the storage account once, at install time, and points the app at that blob (`WEBSITE_RUN_FROM_PACKAGE` is `1`). An installation keeps the package it was installed with, and the release asset behind `PackageUri` may itself be older than master.
 
 **Fix**:
-- Verify ARM template:
-  ```
-  grep WEBSITE_RUN_FROM_PACKAGE production/azuredeploy.json
-  ```
-  Should show the latest release tag.
-- Customer can force re-pull by re-running ARM deployment (idempotent) or by running `func azure functionapp publish <FA_NAME> --python --remote-build` from a clone at master.
-- From 2026-04 onward, auto-release workflow builds zip on every tag push. **Always pin to the versioned URL** (`.../releases/download/vX.Y.Z/FunctionApp.zip`) — Azure does not follow the 302 redirect on `releases/latest/download/...`, so a `latest` URL will leave `WEBSITE_RUN_FROM_PACKAGE` broken at runtime (`Container 'FunctionApp.zip' not found`).
+- Compare the zip behind `PackageUri` with the source tree (download it, unzip, compare each `.py`).
+- Redeploy the template: it stages the current asset again and restarts the app.
+- Do not point `WEBSITE_RUN_FROM_PACKAGE` at a URL by hand: a GitHub release download URL redirects, and Azure does not follow the redirect on a Linux consumption plan.
 
 ---
 
@@ -247,7 +244,7 @@ succeeded but the error persists, verify the App Registration's
 `signInAudience` in the **primary** tenant is `AzureADMultipleOrgs`. A
 single-tenant app cannot be consented elsewhere.
 
-### `AADSTS70001` "Application disabled in tenant"
+### `AADSTS7000112` "Application disabled in tenant"
 
 A tenant admin disabled the service principal in their Enterprise
 applications. Ask them to re-enable it.

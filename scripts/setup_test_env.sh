@@ -14,8 +14,12 @@ if [[ -z "$TENANT_DOMAIN" ]]; then
     echo "ERROR: TENANT_DOMAIN env var required (e.g. yourtenant.onmicrosoft.com)"
     exit 1
 fi
-APP_ID="b0afca82-a991-4fea-ad87-94ec348b2e68"
-TEST_PASSWORD='SoCr@dar!Test2026#xQ'
+APP_ID="${APP_ID:-}"
+TEST_PASSWORD="${TEST_PASSWORD:-}"
+if [[ -z "$APP_ID" || -z "$TEST_PASSWORD" ]]; then
+    echo "ERROR: APP_ID (test App Registration) and TEST_PASSWORD (for the test users) env vars required"
+    exit 1
+fi
 GROUP_NAME="SOCRadar-Quarantine-Test"
 
 echo "============================================================"

@@ -26,6 +26,8 @@ _FORBIDDEN = [
     "Emma " "Taylor",                  # display name from a captured record
     "SOCRadarCyber" "IntelligenceIn",  # our own tenant name
     "test" "radar",                    # our test account naming
+    "b0afca" "82",                     # our test App Registration id (prefix)
+    "01a149" "09",                     # our tenant id (prefix)
     # Credential values that once sat in captured responses here. A schema
     # kept one alive as an "example" after the captures were scrubbed, which
     # the password-field rule cannot see -- so the values themselves are
@@ -49,6 +51,12 @@ _NON_ENGLISH = re.compile("[çğıöşü"
 # masked value or an ARM expression -- never a real-looking credential.
 _JSON_PASSWORD = re.compile(r'"password"\s*:\s*"(?!Example-Pass)'
                             r'(?![^"]*\*)(?!\[)[^"]+"')
+
+# A password assigned a quoted literal (shell/python), or given as the default of an
+# environment lookup. Test credentials come from the environment, never the repo.
+_LITERAL_PASSWORD = re.compile(
+    r"""^\s*[A-Z_]*(PASSWORD|PASSWD|_PW)\s*=\s*['"][^'"$]+['"]"""
+    r"""|(PASSWORD|_PW)['"]?\s*,\s*['"][^'"]+['"]\s*\)""", re.I)
 
 _SELF = Path(__file__).name
 
@@ -98,6 +106,11 @@ class RepoIsAnonymous(unittest.TestCase):
         hits = self._sweep(
             lambda ln: _NON_ENGLISH.search(ln) and _NON_ENGLISH.search(ln).group(0))
         self.assertEqual(hits, [], "non-English text in tracked file")
+
+    def test_no_literal_passwords_in_scripts(self):
+        hits = self._sweep(
+            lambda ln: _LITERAL_PASSWORD.search(ln) and "literal password")
+        self.assertEqual(hits, [], "password literal in a tracked file")
 
     def test_no_credential_values_in_json_captures(self):
         hits = []

@@ -5,8 +5,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.43.8.12551",
-      "templateHash": "4760764051019570101"
+      "version": "0.45.15.27210",
+      "templateHash": "6630321448129661706"
     },
     "title": "SOCRadar Entra ID Integration for Microsoft Sentinel",
     "description": "Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
@@ -79,7 +79,7 @@
       "type": "bool",
       "defaultValue": false,
       "metadata": {
-        "description": "Grant admin consent to the Microsoft Graph application permissions during deployment (default: false). Only applies when CreateAppRegistration=true (i.e. when ARM is creating a new App Registration). When the new App Registration is being created AND deployer holds Cloud Application Administrator role, set true for fully zero-touch deploy. When reusing an existing App Registration with consent already granted, this parameter has no effect."
+        "description": "Grant admin consent to the Microsoft Graph application permissions during deployment (default: false). Only applies when CreateAppRegistration=true (i.e. when ARM is creating a new App Registration). When the new App Registration is being created AND the deployer holds Global Administrator or Privileged Role Administrator (Application Administrator and Cloud Application Administrator cannot consent to Microsoft Graph application permissions), set true for fully zero-touch deploy. When reusing an existing App Registration with consent already granted, this parameter has no effect."
       }
     },
     "SkipFicCreation": {
@@ -528,7 +528,7 @@
           },
           {
             "name": "TENANT_ID",
-            "value": "[if(empty(parameters('EntraIdTenantId')), subscription().tenantId, parameters('EntraIdTenantId'))]"
+            "value": "[subscription().tenantId]"
           },
           {
             "name": "UAMI_PRINCIPAL",
@@ -1404,8 +1404,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "12271954942913283844"
+              "version": "0.45.15.27210",
+              "templateHash": "14846939889051146443"
             }
           },
           "parameters": {
@@ -1447,8 +1447,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "7258666042162147472"
+              "version": "0.45.15.27210",
+              "templateHash": "17513183058947751596"
             }
           },
           "parameters": {
@@ -1866,8 +1866,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "5156866910586276556"
+              "version": "0.45.15.27210",
+              "templateHash": "15158017872546837153"
             }
           },
           "parameters": {
@@ -1916,11 +1916,11 @@
     },
     "ficCommandToRun": {
       "type": "string",
-      "value": "[if(parameters('CreateAppRegistration'), 'No manual FIC step needed - App Registration and Federated Identity Credential created automatically by ARM.', if(not(parameters('SkipFicCreation')), format('No manual FIC step needed - the addFic deployment script added the federated credential. Verify: az ad app federated-credential list --id {0} --query \"[].name\" -o tsv', parameters('EntraIdClientId')), format('az ad app federated-credential create --id {0} --parameters ''{{\"name\":\"socradar-entraid-{1}-uami\",\"issuer\":\"https://login.microsoftonline.com/{2}/v2.0\",\"subject\":\"{3}\",\"audiences\":[\"api://AzureADTokenExchange\"]}}''', parameters('EntraIdClientId'), resourceGroup().name, if(empty(parameters('EntraIdTenantId')), subscription().tenantId, parameters('EntraIdTenantId')), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31', 'Full').properties.principalId)))]"
+      "value": "[if(parameters('CreateAppRegistration'), 'No manual FIC step needed - App Registration and Federated Identity Credential created automatically by ARM.', if(not(parameters('SkipFicCreation')), format('No manual FIC step needed - the addFic deployment script added the federated credential. Verify: az ad app federated-credential list --id {0} --query \"[].name\" -o tsv', parameters('EntraIdClientId')), format('az ad app federated-credential create --id {0} --parameters ''{{\"name\":\"socradar-entraid-{1}-uami\",\"issuer\":\"https://login.microsoftonline.com/{2}/v2.0\",\"subject\":\"{3}\",\"audiences\":[\"api://AzureADTokenExchange\"]}}''', parameters('EntraIdClientId'), resourceGroup().name, subscription().tenantId, reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31', 'Full').properties.principalId)))]"
     },
     "nextStep": {
       "type": "string",
-      "value": "[if(not(parameters('CreateAppRegistration')), if(parameters('SkipFicCreation'), 'Copy ficCommandToRun and run it in Azure CLI as an owner of the App Registration. Without the federated credential the Function App cannot get a Graph token. Then it starts working on the next timer cycle.', 'The deployment script added the federated credential. Confirm with the command in ficCommandToRun, then the Function App starts on the next timer cycle.'), if(parameters('GrantAdminConsent'), 'Zero-touch deployment complete. App Registration, Federated Identity Credential, and Graph admin consent all granted by ARM. Function App starts on next timer cycle.', 'Final manual step (1 portal click): Portal → Microsoft Entra ID → App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent. Then Function App starts on next timer cycle. (To skip this step on next deployment, set GrantAdminConsent=true and ensure deployer has Cloud Application Administrator role.)'))]"
+      "value": "[if(not(parameters('CreateAppRegistration')), if(parameters('SkipFicCreation'), 'Copy ficCommandToRun and run it in Azure CLI as an owner of the App Registration. Without the federated credential the Function App cannot get a Graph token. Then it starts working on the next timer cycle.', 'The deployment script added the federated credential. Confirm with the command in ficCommandToRun, then the Function App starts on the next timer cycle.'), if(parameters('GrantAdminConsent'), 'Zero-touch deployment complete. App Registration, Federated Identity Credential, and Graph admin consent all granted by ARM. Function App starts on next timer cycle.', 'Final manual step (1 portal click): Portal → Microsoft Entra ID → App registrations → SOCRadar Entra ID Integration → API permissions → Grant admin consent. Then Function App starts on next timer cycle. (To skip this step on next deployment, set GrantAdminConsent=true and ensure the deployer is a Global Administrator or Privileged Role Administrator.)'))]"
     }
   }
 }

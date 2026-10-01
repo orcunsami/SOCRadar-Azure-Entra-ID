@@ -126,7 +126,7 @@ def load() -> dict:
         "enable_user_lookup":       user_lookup,
         "enable_ropc":              _bool("ENABLE_ROPC", False),
         "enable_revoke_session":    _bool("ENABLE_REVOKE_SESSION", True),
-        "enable_add_to_group":      _bool("ENABLE_ADD_TO_GROUP", True),
+        "enable_add_to_group":      _bool("ENABLE_ADD_TO_GROUP", False),
         "enable_remove_from_group": _bool("ENABLE_REMOVE_FROM_GROUP", False),
         "enable_password_change":   _bool("ENABLE_PASSWORD_CHANGE", False),
         "enable_disable_account":   _bool("ENABLE_DISABLE_ACCOUNT", False),

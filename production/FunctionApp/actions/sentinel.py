@@ -23,12 +23,14 @@ def _get_mgmt_token(credential) -> str:
     return token.token
 
 
-def create_incident(conf: dict, email: str, source: str, severity: str, credential=None):
+def create_incident(conf: dict, email: str, source: str, severity: str, credential=None) -> bool:
     """
     Create a Microsoft Sentinel incident for a compromised employee credential.
 
     SECURITY: Only email, source name, and severity are included.
     Password/credential data NEVER appears in incident title, description, or comments.
+    Returns True only when Microsoft Sentinel accepted the incident (the identity needs a Microsoft Sentinel
+    role on the workspace, e.g. Microsoft Sentinel Responder; the template does not assign one).
     """
     workspace_name = conf.get("workspace_name", "")
     workspace_rg = conf.get("workspace_resource_group", "")
@@ -36,17 +38,17 @@ def create_incident(conf: dict, email: str, source: str, severity: str, credenti
 
     if not all([workspace_name, workspace_rg, subscription_id]):
         logger.warning("[SENTINEL] Incident creation skipped — workspace config incomplete")
-        return
+        return False
 
     if not credential:
         logger.warning("[SENTINEL] Incident creation skipped — no credential provided")
-        return
+        return False
 
     try:
         token = _get_mgmt_token(credential)
     except Exception as e:
         logger.error("[SENTINEL] Token error: %s", e)
-        return
+        return False
 
     incident_id = str(uuid.uuid4())
     url = INCIDENTS_URL.format(
@@ -89,7 +91,8 @@ def create_incident(conf: dict, email: str, source: str, severity: str, credenti
         resp = requests.put(url, json=body, headers=headers, timeout=20)
         if resp.status_code in (200, 201):
             logger.info("[SENTINEL] Incident created for %s (source=%s, severity=%s)", email, source, severity)
-        else:
-            logger.warning("[SENTINEL] Incident create failed: HTTP %d — %s", resp.status_code, resp.text[:200])
+            return True
+        logger.warning("[SENTINEL] Incident create failed: HTTP %d — %s", resp.status_code, resp.text[:200])
     except requests.RequestException as e:
         logger.error("[SENTINEL] Request error: %s", e)
+    return False

@@ -13,17 +13,17 @@
 #     Microsoft Graph permissions (this is the whole point of reuse path)
 #
 # Usage:
-#   ./socradar-entraid-fic.sh <RG_NAME> [APP_ID] [TENANT_ID]
+#   ./socradar-entraid-fic.sh <RG_NAME> <APP_ID> [TENANT_ID]
 #
-# Defaults (override via positional args or env vars):
-#   APP_ID=b0afca82-a991-4fea-ad87-94ec348b2e68  (SOCRadar test App Reg)
-#   TENANT_ID=01a14909-9a97-4ded-9af3-7ea42ea99b2f  (SOCRadar tenant)
+# TENANT_ID is the tenant that issues the managed identity's token, i.e. the
+# tenant of the subscription the identity lives in. Default: the signed-in
+# `az` subscription's tenant.
 
 set -e
 
-RG="${1:?Usage: $0 <RG_NAME> [APP_ID] [TENANT_ID]}"
-APP_ID="${2:-${APP_ID:-b0afca82-a991-4fea-ad87-94ec348b2e68}}"
-TENANT_ID="${3:-${TENANT_ID:-01a14909-9a97-4ded-9af3-7ea42ea99b2f}}"
+RG="${1:?Usage: $0 <RG_NAME> <APP_ID> [TENANT_ID]}"
+APP_ID="${2:-${APP_ID:?APP_ID required (the App Registration client ID)}}"
+TENANT_ID="${3:-${TENANT_ID:-$(az account show --query tenantId -o tsv)}}"
 
 echo "Resource group : $RG"
 echo "App Reg        : $APP_ID"
