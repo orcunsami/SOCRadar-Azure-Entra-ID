@@ -4,6 +4,7 @@
 # Deploys ARM template + Function App + Workbooks with 5-month lookback
 # =============================================================================
 set -euo pipefail
+{ set +x; } 2>/dev/null   # xtrace would print the API key
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PRODUCTION_DIR="$SCRIPT_DIR/../production"
@@ -142,15 +143,25 @@ echo "  Initial lookback: $INITIAL_LOOKBACK_MINUTES minutes (~$((INITIAL_LOOKBAC
 
 DEPLOYMENT_NAME="socradar-entraid-$(date +%Y%m%d-%H%M%S)"
 
+# API key goes in a 0600 file, not argv (visible in ps). Removed on any exit.
+PARAMS_FILE=$(umask 077; mktemp)
+trap 'rm -f "$PARAMS_FILE"' EXIT ERR
+trap 'exit 130' INT
+trap 'exit 143' TERM
+SOCRADAR_API_KEY="$SOCRADAR_API_KEY" python3 -c '
+import json, os
+print(json.dumps({"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {"SocradarApiKey": {"value": os.environ["SOCRADAR_API_KEY"]}}}))' > "$PARAMS_FILE"
+
 DEPLOY_OUTPUT=$(az deployment group create \
     --resource-group "$RESOURCE_GROUP" \
     --name "$DEPLOYMENT_NAME" \
     --template-file "$ARM_TEMPLATE" \
-    --parameters \
+    --parameters @"$PARAMS_FILE" \
         WorkspaceName="$WORKSPACE_NAME" \
         WorkspaceLocation="$WORKSPACE_LOCATION" \
         WorkspaceResourceGroup="$WORKSPACE_RESOURCE_GROUP" \
-        SocradarApiKey="$SOCRADAR_API_KEY" \
         SocradarCompanyId="$SOCRADAR_COMPANY_ID" \
         SocradarBaseUrl="$SOCRADAR_BASE_URL" \
         EntraIdTenantIds="$ENTRA_TENANT_IDS" \
