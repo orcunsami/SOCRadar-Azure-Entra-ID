@@ -40,7 +40,7 @@ ENV = {e["name"]: e for e in PROPS["environmentVariables"]}
 BLOCK = SCRIPT[SCRIPT.index("# key check"):SCRIPT.index("# end key check")]
 
 
-def run(code, key=KEY, company="132", base="https://platform.socradar.com"):
+def run(code, key=KEY, company="1001", base="https://platform.socradar.com"):
     with tempfile.TemporaryDirectory() as tmp:
         shim = os.path.join(tmp, "curl")
         Path(shim).write_text(SHIM)
@@ -80,7 +80,7 @@ class KeyCheck(unittest.TestCase):
         self.assertIn("REACHED_NEXT_STEP", r.stdout)
         self.assertNotIn(KEY, argv)
         self.assertIn(KEY, stdin)
-        self.assertIn("/api/company/132/dark-web-monitoring/botnet-data/v2", argv)
+        self.assertIn("/api/company/1001/dark-web-monitoring/botnet-data/v2", argv)
 
     def test_401_stops_on_stderr_without_the_key(self):
         r, _, _ = run("401")
