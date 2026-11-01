@@ -3,9 +3,8 @@
 # workspace's pricing tier, retention or access mode. Extracts the CURRENT
 # Workspace resource straight out of azuredeploy.json (never a hand-copied
 # snapshot, so it can't drift from the real template), deploys it with
-# CreateWorkspace left at its default (true — the real customer mistake:
-# pointing WorkspaceName at an existing workspace without setting this to
-# false) against a workspace pre-set to a non-default retention, and fails
+# CreateWorkspace=true (the customer mistake: pointing WorkspaceName at an
+# existing workspace while asking the template to create one) against a workspace pre-set to a non-default retention, and fails
 # if anything about that workspace changed.
 #
 # Run this before pushing any change that touches the Workspace resource.
@@ -85,7 +84,7 @@ BEFORE=$(az monitor log-analytics workspace show -g "$RG" -n "$WS" --subscriptio
     --query "{sku:sku.name, retention:retentionInDays, accessMode:features.enableLogAccessUsingOnlyResourcePermissions, lastSkuUpdate:sku.lastSkuUpdate}" -o json)
 echo "  before: $BEFORE"
 
-echo "[4/6] Deploying with CreateWorkspace left at its default (true) — the real customer mistake ..."
+echo "[4/6] Deploying with CreateWorkspace set to true by mistake ..."
 az deployment group create --subscription "$SUBSCRIPTION" -g "$RG" \
     --template-file "$WRAPPER" \
     --parameters WorkspaceName="$WS" \

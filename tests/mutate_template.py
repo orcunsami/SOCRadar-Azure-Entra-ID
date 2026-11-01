@@ -28,9 +28,44 @@ RELEASE = os.path.join(REPO, ".github", "workflows", "release.yml")
 GATE = "test_workspace_guard_unit.py"
 COUPLING = "test_template_coupling_unit.py"
 ISSUER = "test_lookup_and_actions_unit.py"
+KEYCHECK = "test_key_check_unit.py"
+MESSAGES = "test_script_messages_unit.py"
+WSDEFAULT = "test_create_workspace_default_unit.py"
 
 # (label, file, find, replace, test pattern)
 MUTATIONS = [
+    ("package URL failure back on stdout", BICEP,
+     'echo "package URL returned HTTP $code" >&2; exit 1',
+     'echo "package URL returned HTTP $code"; exit 1',
+     MESSAGES),
+    ("index timeout failure back on stdout", BICEP,
+     "no function was indexed in 10 minutes\\' >&2; exit 1",
+     "no function was indexed in 10 minutes\\'; exit 1",
+     MESSAGES),
+    ("401 message back on stdout", BICEP,
+     "check SocradarApiKey and deploy again\\' >&2; exit 1 ;;",
+     "check SocradarApiKey and deploy again\\'; exit 1 ;;",
+     KEYCHECK),
+    ("a 401 no longer stops the deploy", BICEP,
+     "and deploy again\\' >&2; exit 1 ;;",
+     "and deploy again\\' >&2 ;;",
+     KEYCHECK),
+    ("key on curl's command line", BICEP,
+     '-K - "$BASE_URL',
+     '-H "API-Key: $SOCRADAR_API_KEY" "$BASE_URL',
+     KEYCHECK),
+    ("key is a plain environment value", BICEP,
+     "secureValue: SocradarApiKey",
+     "value: SocradarApiKey",
+     KEYCHECK),
+    ("key check after the package download", BICEP,
+     "set -e\\n# key check",
+     'set -e\\ncode=$(curl -s -o /dev/null -L "$PACKAGE_URL")\\n# key check',
+     KEYCHECK),
+    ("CreateWorkspace defaults to true again", BICEP,
+     "param CreateWorkspace bool = false",
+     "param CreateWorkspace bool = true",
+     WSDEFAULT),
     ("guard removed entirely", BICEP,
      "module precheck_workspace_exists './nested_workspace_precheck.bicep' = if (!workspaceIsCreatedHere) {",
      "module precheck_workspace_exists './nested_workspace_precheck.bicep' = if (false) {",

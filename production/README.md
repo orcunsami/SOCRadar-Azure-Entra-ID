@@ -97,7 +97,7 @@ Azure side: **Contributor** (not Owner) on the target subscription / resource gr
 | `EntraIdVerifiedDomains` | (empty) | Optional comma-separated allowlist of verified domains attached to the tenant (e.g. `acme.com,acme.io,acme.onmicrosoft.com`). When set, only emails on these domains are looked up in Microsoft Graph; others land in LAW with `entra_status=skipped_domain_allowlist`. Leave empty to query every record (v1.0 behavior). Exact match, case-insensitive, no subdomain wildcards. |
 | `WorkspaceLocation` | (deployment region) | Region for the Log Analytics workspace |
 | `WorkspaceResourceGroup` | (current RG) | Resource group of the workspace (for cross-RG deployments) |
-| `CreateWorkspace` | `true` | Create a new Log Analytics workspace with `WorkspaceName`. Set `false` to attach to an existing workspace instead. Only applies when `WorkspaceResourceGroup` is empty. The workspace resource states no workspace-level settings, so leaving this `true` by mistake against an existing workspace never touches its pricing tier, retention or daily cap. |
+| `CreateWorkspace` | `false` | Set `true` to create a new Log Analytics workspace with `WorkspaceName`. At the default `false` the deployment attaches to an existing workspace and stops in its first step if `WorkspaceName` is not there, so a misspelled name never creates a second workspace. Only applies when `WorkspaceResourceGroup` is empty. The workspace resource states no workspace-level settings, so setting this `true` by mistake against an existing workspace never touches its pricing tier, retention or daily cap. |
 | `HostingPlanSku` | `Y1` | App Service Plan SKU. `Y1` = Consumption (best-effort timer). `B1` = Basic with Always-On (recommended for production reliability). `EP1` = Elastic Premium. |
 | `SkipFicCreation` | `true` | Reuse path only (`EntraIdClientId` set). `true`: the deployment leaves the App Registration alone and you add the federated credential afterwards with the `ficCommandToRun` output. That step is required, not optional - without the credential the Function App cannot get a Graph token. `false`: a deployment script adds it, which needs the deployment identity to hold `Application.ReadWrite.OwnedBy` on top of ownership. Ownership alone is not enough - measured 8 Sep 2026, three attempts, `Insufficient privileges`. |
 | `SocradarBaseUrl` | `https://platform.socradar.com` | SOCRadar Platform base URL |
@@ -137,8 +137,8 @@ az ad app federated-credential list --id <existing app id> --query "[].name" -o 
 
 ## The workspace has to exist before you deploy
 
-If you point the deployment at a workspace it does not create — `CreateWorkspace=false`,
-or any `WorkspaceResourceGroup` — that workspace has to be there first. A wrong
+If you point the deployment at a workspace it does not create — `CreateWorkspace` at its default `false`,
+or any `WorkspaceResourceGroup` — that workspace has to be there first. Set `CreateWorkspace=true` only for a greenfield install that should create its own. A wrong
 `WorkspaceName` fails the deployment in its first step, `precheck-workspace-exists`,
 and creates nothing. It used to create the storage account, the App Service Plan,
 Application Insights, the identity and the Function App before failing, and leave them
@@ -166,8 +166,8 @@ az monitor log-analytics workspace show -g <resource-group> -n <workspace> \
 If `lastSkuUpdate` lines up with when you deployed this integration and the tier isn't the
 one you picked, reset your commitment tier from **Log Analytics workspaces > Usage and
 estimated costs > Pricing tier**. The current template states no workspace-level settings at
-all, so redeploying or upgrading an existing install — even with `CreateWorkspace=true` left
-at its default by mistake — cannot change its pricing tier, retention or daily cap.
+all, so redeploying or upgrading an existing install — even with `CreateWorkspace=true` set
+by mistake — cannot change its pricing tier, retention or daily cap.
 
 ## What Gets Deployed
 

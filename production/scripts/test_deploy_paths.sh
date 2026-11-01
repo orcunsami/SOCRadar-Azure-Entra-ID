@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Five live deployment paths. Run from the repository root.
+# Six live deployment paths. Run from the repository root.
+#
+# TEST_SOCRADAR_API_KEY and TEST_COMPANY_ID are required: the first-run step checks the
+# key before it downloads the package (HTTP 401 fails the deployment), so a placeholder
+# key no longer deploys. The key goes to the deployment through a 0600 parameter file,
+# never through argv.
 #
 # A customer deployed this template with CreateWorkspace=false and a workspace
 # name that was not there. ARM treats a false condition as a SATISFIED
@@ -39,6 +44,19 @@ if [ -n "${TEST_SUBSCRIPTION:-}" ] && [ "$TEST_SUBSCRIPTION" != "$SUB" ]; then
     exit 1
 fi
 LOC=${TEST_LOCATION:-northeurope}
+if [ -z "${TEST_SOCRADAR_API_KEY:-}" ] || [ -z "${TEST_COMPANY_ID:-}" ]; then
+    echo "ERROR: set TEST_SOCRADAR_API_KEY and TEST_COMPANY_ID (a live key for that company)" >&2
+    exit 1
+fi
+KEY_FILE=""; DEAD_FILE=""
+trap 'rm -f "$KEY_FILE" "$DEAD_FILE"' EXIT
+mkparams() { # mkparams <key> -> path of a 0600 ARM parameter file
+    local f; f=$(mktemp); chmod 600 "$f"
+    KEY="$1" python3 -c "import json,os;print(json.dumps({'\$schema':'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#','contentVersion':'1.0.0.0','parameters':{'SocradarApiKey':{'value':os.environ['KEY']}}}))" > "$f"
+    echo "$f"
+}
+KEY_FILE=$(mkparams "$TEST_SOCRADAR_API_KEY")
+DEAD_FILE=$(mkparams "dead-key-not-valid")
 APP=${TEST_APP_ID:-00000000-0000-0000-0000-000000000000}
 TPL="$(cd "$(dirname "$0")/.." && pwd)/azuredeploy.json"
 T=$(python3 -c "import uuid;print(uuid.uuid4().hex[:4])")
@@ -48,6 +66,7 @@ RG_B=rg-eid-paths-b-$T
 RG_C=rg-eid-paths-c-$T
 RG_D=rg-eid-paths-d-$T
 RG_W=rg-eid-paths-w-$T
+RG_K=rg-eid-paths-k-$T
 WS_B=law-b-$T
 WS_W=law-w-$T
 
@@ -77,26 +96,28 @@ fn_count() { # fn_count <rg>
     az functionapp function list -g "$rg" -n "$app" --query "length(@)" -o tsv 2>/dev/null || echo ERR
 }
 
-deploy() { # deploy <rg> <name> <extra params...>
+deploy() { # deploy <rg> <name> <extra params...>   (PARAM_FILE overrides the key file)
     local rg=$1 name=$2; shift 2
     az deployment group create -g "$rg" -n "$name" --template-file "$TPL" --no-prompt \
-      --parameters SocradarApiKey=placeholder-not-a-real-key SocradarCompanyId=1 \
+      --parameters @"${PARAM_FILE:-$KEY_FILE}" SocradarCompanyId="$TEST_COMPANY_ID" \
                    WorkspaceLocation="$LOC" CreateAppRegistration=false \
                    EntraIdClientId="$APP" SkipFicCreation=true "$@" \
       -o none 2>"/tmp/eid-$name.err"
 }
 
-echo "[0/5] subscription: $SUB"
+echo "[0/6] subscription: $SUB"
 FIC0=$(az ad app federated-credential list --id "$APP" --query "length(@)" -o tsv 2>/dev/null)
 APP0=$(az ad app list --filter "startswith(displayName,'SOCRadar')" --query "length(@)" -o tsv 2>/dev/null)
 echo "      App Reg reused: $APP  FIC=$FIC0  SOCRadar App Regs=$APP0"
 
-for r in $RG_A $RG_B $RG_C $RG_D $RG_W; do az group create -n $r -l $LOC -o none; done
+for r in $RG_A $RG_B $RG_C $RG_D $RG_W $RG_K; do az group create -n $r -l $LOC -o none; done
 az monitor log-analytics workspace create -g $RG_B -n $WS_B -l $LOC -o none 2>/dev/null
 az monitor log-analytics workspace create -g $RG_W -n $WS_W -l $LOC -o none 2>/dev/null
+WS_K=law-k-$T
+az monitor log-analytics workspace create -g $RG_K -n $WS_K -l $LOC -o none 2>/dev/null
 
-echo "[1/5] Path A: the workspace does not exist"
-deploy $RG_A path-a WorkspaceName=law-absent-$T CreateWorkspace=false
+echo "[1/6] Path A: the workspace does not exist, every flag at its default"
+deploy $RG_A path-a WorkspaceName=law-absent-$T
 row "A fails" Failed "$(state $RG_A path-a)"
 row "A leaves nothing behind" 0 "$(count $RG_A)"
 case "$(blame_detail $RG_A path-a)" in
@@ -104,18 +125,18 @@ case "$(blame_detail $RG_A path-a)" in
   *) row "A is stopped by the guard" yes "no ($(blame_detail $RG_A path-a))";;
 esac
 
-echo "[2/5] Path B: an existing workspace in the same resource group"
-deploy $RG_B path-b WorkspaceName=$WS_B CreateWorkspace=false
+echo "[2/6] Path B: an existing workspace in the same resource group"
+deploy $RG_B path-b WorkspaceName=$WS_B
 row "B succeeds" Succeeded "$(state $RG_B path-b)"
 row "B ran the guard" Succeeded "$(guard_state $RG_B)"
 row "B indexed its function" 1 "$(fn_count $RG_B)"
 
-echo "[3/5] Path C: the default greenfield install"
-deploy $RG_C path-c WorkspaceName=law-c-$T
+echo "[3/6] Path C: greenfield install (CreateWorkspace=true)"
+deploy $RG_C path-c WorkspaceName=law-c-$T CreateWorkspace=true
 row "C succeeds" Succeeded "$(state $RG_C path-c)"
 row "C skips the guard (this deployment creates the workspace)" NOTFOUND "$(guard_state $RG_C)"
 
-echo "[4/5] Path D: cross-resource-group"
+echo "[4/6] Path D: cross-resource-group"
 deploy $RG_D path-d WorkspaceName=$WS_W WorkspaceResourceGroup=$RG_W
 row "D succeeds" Succeeded "$(state $RG_D path-d)"
 row "D ran the guard next to the workspace" Succeeded "$(guard_state $RG_W)"
@@ -125,9 +146,15 @@ row "D indexed its function" 1 "$(fn_count $RG_D)"
 row "D created no workspace in the deployment group" 0 \
     "$(az resource list -g $RG_D --resource-type Microsoft.OperationalInsights/workspaces --query "length(@)" -o tsv 2>/dev/null)"
 
-echo "[5/5] Path E: redeploy over path B"
-deploy $RG_B path-e WorkspaceName=$WS_B CreateWorkspace=false
+echo "[5/6] Path E: redeploy over path B"
+deploy $RG_B path-e WorkspaceName=$WS_B
 row "E succeeds" Succeeded "$(state $RG_B path-e)"
+
+echo "[6/6] Path K: an existing workspace and an API key the server rejects"
+PARAM_FILE=$DEAD_FILE deploy $RG_K path-k WorkspaceName=$WS_K
+row "K fails" Failed "$(state $RG_K path-k)"
+row "K failed in the first-run step" yes "$(case "$(blame_detail $RG_K path-k)" in *triggerFirstRun*) echo yes;; *) echo "no ($(blame_detail $RG_K path-k))";; esac)"
+row "K banner names the rejected key" yes "$(az deployment operation group list -g $RG_K -n path-k --query "[?properties.provisioningState=='Failed'].properties.statusMessage" -o json 2>/dev/null | grep -q 'rejected the API key' && echo yes || echo no)"
 
 FIC1=$(az ad app federated-credential list --id "$APP" --query "length(@)" -o tsv 2>/dev/null)
 APP1=$(az ad app list --filter "startswith(displayName,'SOCRadar')" --query "length(@)" -o tsv 2>/dev/null)
@@ -135,8 +162,8 @@ row "no federated credential was added to the tenant" "$FIC0" "$FIC1"
 row "no App Registration was created" "$APP0" "$APP1"
 
 echo
-echo "cleanup: delete queued for $RG_A $RG_B $RG_C $RG_D $RG_W"
-for r in $RG_A $RG_B $RG_C $RG_D $RG_W; do az group delete -n $r --yes --no-wait -o none; done
+echo "cleanup: delete queued for $RG_A $RG_B $RG_C $RG_D $RG_W $RG_K"
+for r in $RG_A $RG_B $RG_C $RG_D $RG_W $RG_K; do az group delete -n $r --yes --no-wait -o none; done
 
 echo "$pass passed, $fail failed, $skip skipped"
 if [ "$skip" -gt 0 ]; then
@@ -144,4 +171,4 @@ if [ "$skip" -gt 0 ]; then
     echo "      federated-credential counters; with the placeholder they read empty."
 fi
 [ "$fail" -eq 0 ] || exit 1
-echo "All five deployment paths behaved as asserted."
+echo "All six deployment paths behaved as asserted."

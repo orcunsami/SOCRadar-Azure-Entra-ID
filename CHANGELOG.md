@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `CreateWorkspace` defaults to `false`: a misspelled `WorkspaceName` now fails in
+  `precheck-workspace-exists` instead of creating a second, empty workspace. Pass
+  `CreateWorkspace=true` for a greenfield install.
+- The first-run step checks the SOCRadar API key before the package download. A key
+  the server rejects (HTTP 401) fails the deployment with a message naming the key.
+  Every failure message of the deployment scripts now goes to stderr, the only stream
+  the portal shows in its error banner.
 - `SkipFicCreation` defaults to `true`: reusing an App Registration finishes
   clean and the federated credential is added afterwards with the
   `ficCommandToRun` output. `false` (a script adds it) needs
