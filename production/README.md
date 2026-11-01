@@ -7,7 +7,7 @@ Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Prote
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Forcunsami%2FSOCRadar-Azure-Entra-ID%2Fmaster%2Fproduction%2Fazuredeploy.json)
 
 1. Click **Deploy to Azure** above
-2. Fill the form (see [Parameters](#parameters))
+2. Fill the form (see [Parameters](#parameters)). For a first install without an existing workspace, set `CreateWorkspace` to `true`
 3. Click **Review + create** → **Create**
 4. When deployment completes, grant admin consent for the App Registration:
    - Open the Azure portal → **Microsoft Entra ID** → **App registrations**
@@ -43,7 +43,7 @@ Azure side: **Contributor** (not Owner) on the target subscription / resource gr
 
 | Parameter | Description |
 |-----------|-------------|
-| `WorkspaceName` | Name of the Log Analytics workspace to create (or reuse) |
+| `WorkspaceName` | Name of the Log Analytics workspace. It has to exist already, unless you set `CreateWorkspace` to `true` |
 | `SocradarApiKey` | Your SOCRadar Platform API key |
 | `SocradarCompanyId` | Your SOCRadar Company ID |
 

@@ -49,6 +49,16 @@ class ScriptMessagesToStderr(unittest.TestCase):
     def test_bicep(self):
         self._check(_script_from_bicep(), "azuredeploy.bicep")
 
+    def test_bicep_and_json_carry_the_same_key_check(self):
+        """The bicep is the source and the JSON is what the Deploy button serves. A hand edit of
+        one without the other ships a key check nobody wrote; the build must reproduce it."""
+        def block(script):
+            script = re.sub(r"\\(.)", lambda m: {"n": "\n", "'": "'", "\\": "\\"}.get(m.group(1), m.group(0)), script) if "\\'" in script else script
+            return re.sub(r"\s+", " ", script[script.index("# key check"):script.index("# end key check")]).strip()
+        self.assertEqual(block(_script_from_bicep()), block(_script_from_json()),
+                         "production/azuredeploy.bicep and azuredeploy.json carry different key checks")
+
 
 if __name__ == "__main__":
     unittest.main()
+
