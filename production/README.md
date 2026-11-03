@@ -212,7 +212,7 @@ Four workbooks are deployed automatically:
 - **VIP Protection Dashboard** — VIP user exposures
 - **Combined Dashboard** — single pane covering all three sources, with tenant-level breakdown
 
-Open them in **Microsoft Sentinel** → **Workbooks** → tab "My Workbooks".
+Open them in **Microsoft Sentinel** → **Workbooks** → tab "My Workbooks". In the Microsoft Defender portal they are under **Microsoft Sentinel** > **Threat management** > **Workbooks**. Microsoft Sentinel in the Azure portal is supported until 31 March 2027; after that it is available only in the Microsoft Defender portal.
 
 ## Verification
 
