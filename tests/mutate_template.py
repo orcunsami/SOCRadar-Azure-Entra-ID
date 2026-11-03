@@ -23,6 +23,7 @@ BICEP = os.path.join(REPO, "production", "azuredeploy.bicep")
 JSON = os.path.join(REPO, "production", "azuredeploy.json")
 MODULE = os.path.join(REPO, "production", "nested_workspace_precheck.bicep")
 TABLES = os.path.join(REPO, "production", "nested_law_tables.bicep")
+RULES = os.path.join(REPO, "production", "nested_alert_rules.bicep")
 RELEASE = os.path.join(REPO, ".github", "workflows", "release.yml")
 
 GATE = "test_workspace_guard_unit.py"
@@ -31,6 +32,7 @@ ISSUER = "test_lookup_and_actions_unit.py"
 KEYCHECK = "test_key_check_unit.py"
 MESSAGES = "test_script_messages_unit.py"
 WSDEFAULT = "test_create_workspace_default_unit.py"
+INCIDENTS = "test_alert_backed_unit.py"
 
 # (label, file, find, replace, test pattern)
 MUTATIONS = [
@@ -112,6 +114,31 @@ MUTATIONS = [
      '[ "$GITHUB_SHA" != "$TIP" ]', '[ "$GITHUB_SHA" = "$TIP" ]', ISSUER),
     ("release gate: compares against HEAD (always the tag in CI)", RELEASE,
      "TIP=$(git rev-parse origin/master)", "TIP=$(git rev-parse HEAD)", ISSUER),
+    ("one rule stays on whatever the mode is", RULES,
+     "    enabled: Enabled\n", "    enabled: true\n", INCIDENTS),
+    ("rules enabled for Direct instead of AlertBacked", BICEP,
+     "Enabled: effectiveIncidentMode == 'AlertBacked'",
+     "Enabled: effectiveIncidentMode == 'Direct'",
+     INCIDENTS),
+    ("rules only exist in AlertBacked, so a mode switch leaves them on", BICEP,
+     "module alertRules './nested_alert_rules.bicep' = {",
+     "module alertRules './nested_alert_rules.bicep' = if (effectiveIncidentMode == 'AlertBacked') {",
+     INCIDENTS),
+    ("AlertBacked still lets the function create incidents", BICEP,
+     "value: string(effectiveIncidentMode == 'Direct')",
+     "value: string(EnableCreateIncident || effectiveIncidentMode != 'None')",
+     INCIDENTS),
+    ("the legacy flag no longer means Direct", BICEP,
+     "(IncidentMode == 'None' && EnableCreateIncident) ? 'Direct' : IncidentMode",
+     "IncidentMode",
+     INCIDENTS),
+    ("a credential column reaches the alert", RULES,
+     "| project TimeGenerated, email, source, alarm_id, severity, entra_status, actions_taken, device_ip",
+     "| project TimeGenerated, email, source, alarm_id, severity, entra_status, actions_taken, device_ip, password_masked",
+     INCIDENTS),
+    ("the dedup join looks at the wrong key", RULES,
+     "join kind=leftanti Alerted on $left.DedupKey == $right.AlertedKey",
+     "join kind=leftanti Alerted on $left.AlarmIdText == $right.AlertedKey", INCIDENTS),
 ]
 
 
@@ -132,7 +159,7 @@ def run_gate(pattern):
 
 
 def main():
-    backups = {p: p + ".mutbak" for p in (BICEP, JSON, MODULE, TABLES, RELEASE)}
+    backups = {p: p + ".mutbak" for p in (BICEP, JSON, MODULE, TABLES, RULES, RELEASE)}
     for src, dst in backups.items():
         shutil.copy2(src, dst)
 

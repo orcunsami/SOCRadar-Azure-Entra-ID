@@ -5,8 +5,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.45.15.27210",
-      "templateHash": "15653075829350883971"
+      "version": "0.47.16.16243",
+      "templateHash": "3119547698778972601"
     },
     "title": "SOCRadar Entra ID Integration for Microsoft Sentinel",
     "description": "Pulls leaked employee credentials from SOCRadar (Botnet, PII Exposure, VIP Protection) and takes automated remediation actions in Microsoft Entra ID. Logs to Microsoft Sentinel custom tables.",
@@ -208,11 +208,23 @@
         "description": "Validate leaked credentials via ROPC (Resource Owner Password Credentials). Only possible with plaintext passwords. Requires Allow public client flows on the App Registration. Microsoft discourages ROPC in production."
       }
     },
+    "IncidentMode": {
+      "type": "string",
+      "defaultValue": "None",
+      "allowedValues": [
+        "None",
+        "AlertBacked",
+        "Direct"
+      ],
+      "metadata": {
+        "description": "How leaked-credential findings become Microsoft Sentinel incidents. None (default): no incident. AlertBacked: three scheduled analytics rules raise an alert and an incident per finding; the incidents show in the Microsoft Defender portal and the Function App needs no Microsoft Sentinel role. Direct: the Function App creates each incident through the Microsoft Sentinel incidents API; those incidents are NOT visible in the Microsoft Defender portal and need a Microsoft Sentinel role for the App Registration or identity."
+      }
+    },
     "EnableCreateIncident": {
       "type": "bool",
       "defaultValue": false,
       "metadata": {
-        "description": "Create Microsoft Sentinel incidents for compromised accounts"
+        "description": "Deprecated, use IncidentMode. true counts as IncidentMode=Direct when IncidentMode is None; an explicit AlertBacked or Direct wins."
       }
     },
     "EnableResolveAlarm": {
@@ -311,6 +323,7 @@
     "MonitoringMetricsPublisherRoleId": "3913510d-42f4-4e42-8a64-420c390055eb",
     "workspaceResourceId": "[if(empty(parameters('WorkspaceResourceGroup')), resourceId('Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')), resourceId(parameters('WorkspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('WorkspaceName')))]",
     "workspaceIsCreatedHere": "[and(parameters('CreateWorkspace'), empty(parameters('WorkspaceResourceGroup')))]",
+    "effectiveIncidentMode": "[if(and(equals(parameters('IncidentMode'), 'None'), parameters('EnableCreateIncident')), 'Direct', parameters('IncidentMode'))]",
     "pollingSchedule": "[format('0 0 */{0} * * *', string(parameters('PollingIntervalHours')))]",
     "dcrName": "[format('socradar-ei-dcr-{0}', uniqueString(resourceGroup().id))]",
     "graphUniqueAppName": "[format('socradar-entraid-{0}', uniqueString(resourceGroup().id))]",
@@ -722,7 +735,7 @@
             },
             {
               "name": "ENABLE_CREATE_INCIDENT",
-              "value": "[string(parameters('EnableCreateIncident'))]"
+              "value": "[string(equals(variables('effectiveIncidentMode'), 'Direct'))]"
             },
             {
               "name": "ENABLE_RESOLVE_ALARM",
@@ -1416,8 +1429,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.45.15.27210",
-              "templateHash": "14846939889051146443"
+              "version": "0.47.16.16243",
+              "templateHash": "12216380569704554120"
             }
           },
           "parameters": {
@@ -1459,8 +1472,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.45.15.27210",
-              "templateHash": "17513183058947751596"
+              "version": "0.47.16.16243",
+              "templateHash": "1809492878407011746"
             }
           },
           "parameters": {
@@ -1856,6 +1869,264 @@
         "Workspace"
       ]
     },
+    "alertRules": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "socradar-alert-rules",
+      "resourceGroup": "[if(empty(parameters('WorkspaceResourceGroup')), resourceGroup().name, parameters('WorkspaceResourceGroup'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "WorkspaceName": {
+            "value": "[parameters('WorkspaceName')]"
+          },
+          "Enabled": {
+            "value": "[equals(variables('effectiveIncidentMode'), 'AlertBacked')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.47.16.16243",
+              "templateHash": "1905269234620241655"
+            }
+          },
+          "parameters": {
+            "WorkspaceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Microsoft Sentinel Log Analytics Workspace Name"
+              }
+            },
+            "Enabled": {
+              "type": "bool",
+              "metadata": {
+                "description": "true when IncidentMode is AlertBacked"
+              }
+            }
+          },
+          "variables": {
+            "botnetRuleId": "[guid(parameters('WorkspaceName'), 'socradar-entraid-botnet-rule')]",
+            "piiRuleId": "[guid(parameters('WorkspaceName'), 'socradar-entraid-pii-rule')]",
+            "vipRuleId": "[guid(parameters('WorkspaceName'), 'socradar-entraid-vip-rule')]",
+            "labelerId": "[guid(parameters('WorkspaceName'), 'socradar-entraid-labeler')]",
+            "accountMapping": {
+              "entityType": "Account",
+              "fieldMappings": [
+                {
+                  "identifier": "Name",
+                  "columnName": "AccountName"
+                },
+                {
+                  "identifier": "UPNSuffix",
+                  "columnName": "UPNSuffix"
+                }
+              ]
+            },
+            "customDetails": {
+              "AlarmId": "AlarmIdText",
+              "Source": "SourceName",
+              "EntraStatus": "EntraStatus",
+              "ActionsTaken": "ActionsTaken",
+              "SocradarSeverity": "SocradarSeverity",
+              "DedupKey": "DedupKey"
+            },
+            "alertDetails": {
+              "alertDisplayNameFormat": "SOCRadar: Leaked credential detected ({{SourceName}})",
+              "alertDescriptionFormat": "SOCRadar detected a leaked credential for {{AccountDisplay}}. Source: {{SourceName}}. Recommended actions: revoke sessions, force a credential reset, review sign-in activity.",
+              "alertSeverityColumnName": "SentinelSeverity"
+            },
+            "incidentConfiguration": {
+              "createIncident": true,
+              "groupingConfiguration": {
+                "enabled": false,
+                "reopenClosedIncident": false,
+                "lookbackDuration": "PT5H",
+                "matchingMethod": "AllEntities",
+                "groupByEntities": [],
+                "groupByAlertDetails": [],
+                "groupByCustomDetails": []
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('botnetRuleId'))]",
+              "kind": "Scheduled",
+              "properties": {
+                "displayName": "SOCRadar Entra ID - Leaked credential (Botnet)",
+                "description": "Raises one alert, and one incident, for every leaked employee credential in SOCRadar_Botnet_CL. The Function App needs no Microsoft Sentinel role for this: the rule only reads the table.",
+                "severity": "Medium",
+                "enabled": "[parameters('Enabled')]",
+                "queryFrequency": "PT10M",
+                "queryPeriod": "P1D",
+                "triggerOperator": "GreaterThan",
+                "triggerThreshold": 0,
+                "suppressionDuration": "PT5H",
+                "suppressionEnabled": false,
+                "tactics": [
+                  "InitialAccess"
+                ],
+                "techniques": [
+                  "T1078"
+                ],
+                "eventGroupingSettings": {
+                  "aggregationKind": "AlertPerResult"
+                },
+                "alertDetailsOverride": "[variables('alertDetails')]",
+                "customDetails": "[variables('customDetails')]",
+                "entityMappings": [
+                  "[variables('accountMapping')]",
+                  {
+                    "entityType": "IP",
+                    "fieldMappings": [
+                      {
+                        "identifier": "Address",
+                        "columnName": "DeviceIp"
+                      }
+                    ]
+                  }
+                ],
+                "incidentConfiguration": "[variables('incidentConfiguration')]",
+                "query": "// One alert per leaked account and alarm. The platform runs a rule about 6 minutes behind the clock,\n// so an alert is invisible to the very next run unless runs are far enough apart: runs are 10 minutes\n// apart and a row is held back until it is 12 minutes old, which lets the previous alert show up here\n// first. Keys that already have an alert are dropped, so a late run cannot alert twice and an incident\n// closed by an analyst is not followed by a second one. Custom Details is a second, still-encoded JSON\n// string with 1-element arrays. isfuzzy keeps the rule alive where SecurityAlert does not exist yet.\nlet Alerted = union isfuzzy=true (datatable(ExtendedProperties:string)[]), SecurityAlert\n| extend AlertedKey = tostring(parse_json(tostring(parse_json(tostring(ExtendedProperties))['Custom Details'])).DedupKey[0])\n| where isnotempty(AlertedKey)\n| distinct AlertedKey;\nSOCRadar_Botnet_CL\n| where ingestion_time() > ago(1d)\n| where ingestion_time() < ago(12m)\n| where isnotempty(email)\n| project TimeGenerated, email, source, alarm_id, severity, entra_status, actions_taken, device_ip\n| extend DedupKey = strcat(source, \"|\", tostring(alarm_id), \"|\", tolower(email))\n| join kind=leftanti Alerted on $left.DedupKey == $right.AlertedKey\n| summarize arg_max(TimeGenerated, *) by DedupKey\n| extend AccountName = tostring(split(email, \"@\")[0]), UPNSuffix = tostring(split(email, \"@\")[1])\n| extend AccountDisplay = iff(isnotempty(UPNSuffix), strcat(AccountName, \"@\", UPNSuffix), AccountName)\n| extend SourceName = toupper(source), AlarmIdText = tostring(alarm_id), EntraStatus = coalesce(entra_status, \"unknown\")\n| extend ActionsTaken = tostring(actions_taken), SocradarSeverity = toupper(severity)\n| extend SentinelSeverity = case(SocradarSeverity in (\"CRITICAL\", \"HIGH\"), \"High\", SocradarSeverity == \"LOW\", \"Low\", \"Medium\")\n| extend DeviceIp = iff(device_ip matches regex @\"^\\d{1,3}(\\.\\d{1,3}){3}$\", device_ip, \"\")\n| project TimeGenerated, DedupKey, AccountName, UPNSuffix, AccountDisplay, SourceName, AlarmIdText, EntraStatus, ActionsTaken, SocradarSeverity, SentinelSeverity, DeviceIp\n| order by TimeGenerated asc\n| take 149\n"
+              }
+            },
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('piiRuleId'))]",
+              "kind": "Scheduled",
+              "properties": {
+                "displayName": "SOCRadar Entra ID - Leaked credential (PII exposure)",
+                "description": "Raises one alert, and one incident, for every leaked employee credential in SOCRadar_PII_CL. The Function App needs no Microsoft Sentinel role for this: the rule only reads the table.",
+                "severity": "Medium",
+                "enabled": "[parameters('Enabled')]",
+                "queryFrequency": "PT10M",
+                "queryPeriod": "P1D",
+                "triggerOperator": "GreaterThan",
+                "triggerThreshold": 0,
+                "suppressionDuration": "PT5H",
+                "suppressionEnabled": false,
+                "tactics": [
+                  "InitialAccess"
+                ],
+                "techniques": [
+                  "T1078"
+                ],
+                "eventGroupingSettings": {
+                  "aggregationKind": "AlertPerResult"
+                },
+                "alertDetailsOverride": "[variables('alertDetails')]",
+                "customDetails": "[variables('customDetails')]",
+                "entityMappings": [
+                  "[variables('accountMapping')]"
+                ],
+                "incidentConfiguration": "[variables('incidentConfiguration')]",
+                "query": "// One alert per leaked account and alarm. The platform runs a rule about 6 minutes behind the clock,\n// so an alert is invisible to the very next run unless runs are far enough apart: runs are 10 minutes\n// apart and a row is held back until it is 12 minutes old, which lets the previous alert show up here\n// first. Keys that already have an alert are dropped, so a late run cannot alert twice and an incident\n// closed by an analyst is not followed by a second one. Custom Details is a second, still-encoded JSON\n// string with 1-element arrays. isfuzzy keeps the rule alive where SecurityAlert does not exist yet.\nlet Alerted = union isfuzzy=true (datatable(ExtendedProperties:string)[]), SecurityAlert\n| extend AlertedKey = tostring(parse_json(tostring(parse_json(tostring(ExtendedProperties))['Custom Details'])).DedupKey[0])\n| where isnotempty(AlertedKey)\n| distinct AlertedKey;\nSOCRadar_PII_CL\n| where ingestion_time() > ago(1d)\n| where ingestion_time() < ago(12m)\n| where isnotempty(email)\n| project TimeGenerated, email, source, alarm_id, severity, entra_status, actions_taken\n| extend DedupKey = strcat(source, \"|\", tostring(alarm_id), \"|\", tolower(email))\n| join kind=leftanti Alerted on $left.DedupKey == $right.AlertedKey\n| summarize arg_max(TimeGenerated, *) by DedupKey\n| extend AccountName = tostring(split(email, \"@\")[0]), UPNSuffix = tostring(split(email, \"@\")[1])\n| extend AccountDisplay = iff(isnotempty(UPNSuffix), strcat(AccountName, \"@\", UPNSuffix), AccountName)\n| extend SourceName = toupper(source), AlarmIdText = tostring(alarm_id), EntraStatus = coalesce(entra_status, \"unknown\")\n| extend ActionsTaken = tostring(actions_taken), SocradarSeverity = toupper(severity)\n| extend SentinelSeverity = case(SocradarSeverity in (\"CRITICAL\", \"HIGH\"), \"High\", SocradarSeverity == \"LOW\", \"Low\", \"Medium\")\n| project TimeGenerated, DedupKey, AccountName, UPNSuffix, AccountDisplay, SourceName, AlarmIdText, EntraStatus, ActionsTaken, SocradarSeverity, SentinelSeverity\n| order by TimeGenerated asc\n| take 149\n"
+              }
+            },
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('vipRuleId'))]",
+              "kind": "Scheduled",
+              "properties": {
+                "displayName": "SOCRadar Entra ID - Leaked credential (VIP protection)",
+                "description": "Raises one alert, and one incident, for every leaked employee credential in SOCRadar_VIP_CL. The Function App needs no Microsoft Sentinel role for this: the rule only reads the table.",
+                "severity": "Medium",
+                "enabled": "[parameters('Enabled')]",
+                "queryFrequency": "PT10M",
+                "queryPeriod": "P1D",
+                "triggerOperator": "GreaterThan",
+                "triggerThreshold": 0,
+                "suppressionDuration": "PT5H",
+                "suppressionEnabled": false,
+                "tactics": [
+                  "InitialAccess"
+                ],
+                "techniques": [
+                  "T1078"
+                ],
+                "eventGroupingSettings": {
+                  "aggregationKind": "AlertPerResult"
+                },
+                "alertDetailsOverride": "[variables('alertDetails')]",
+                "customDetails": "[variables('customDetails')]",
+                "entityMappings": [
+                  "[variables('accountMapping')]"
+                ],
+                "incidentConfiguration": "[variables('incidentConfiguration')]",
+                "query": "// One alert per leaked account and alarm. The platform runs a rule about 6 minutes behind the clock,\n// so an alert is invisible to the very next run unless runs are far enough apart: runs are 10 minutes\n// apart and a row is held back until it is 12 minutes old, which lets the previous alert show up here\n// first. Keys that already have an alert are dropped, so a late run cannot alert twice and an incident\n// closed by an analyst is not followed by a second one. Custom Details is a second, still-encoded JSON\n// string with 1-element arrays. isfuzzy keeps the rule alive where SecurityAlert does not exist yet.\nlet Alerted = union isfuzzy=true (datatable(ExtendedProperties:string)[]), SecurityAlert\n| extend AlertedKey = tostring(parse_json(tostring(parse_json(tostring(ExtendedProperties))['Custom Details'])).DedupKey[0])\n| where isnotempty(AlertedKey)\n| distinct AlertedKey;\nSOCRadar_VIP_CL\n| where ingestion_time() > ago(1d)\n| where ingestion_time() < ago(12m)\n| where isnotempty(email)\n| project TimeGenerated, email, source, alarm_id, severity, entra_status, actions_taken\n| extend DedupKey = strcat(source, \"|\", tostring(alarm_id), \"|\", tolower(email))\n| join kind=leftanti Alerted on $left.DedupKey == $right.AlertedKey\n| summarize arg_max(TimeGenerated, *) by DedupKey\n| extend AccountName = tostring(split(email, \"@\")[0]), UPNSuffix = tostring(split(email, \"@\")[1])\n| extend AccountDisplay = iff(isnotempty(UPNSuffix), strcat(AccountName, \"@\", UPNSuffix), AccountName)\n| extend SourceName = toupper(source), AlarmIdText = tostring(alarm_id), EntraStatus = coalesce(entra_status, \"unknown\")\n| extend ActionsTaken = tostring(actions_taken), SocradarSeverity = toupper(severity)\n| extend SentinelSeverity = case(SocradarSeverity in (\"CRITICAL\", \"HIGH\"), \"High\", SocradarSeverity == \"LOW\", \"Low\", \"Medium\")\n| project TimeGenerated, DedupKey, AccountName, UPNSuffix, AccountDisplay, SourceName, AlarmIdText, EntraStatus, ActionsTaken, SocradarSeverity, SentinelSeverity\n| order by TimeGenerated asc\n| take 149\n"
+              }
+            },
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/providers/automationRules",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('labelerId'))]",
+              "properties": {
+                "displayName": "SOCRadar Entra ID - label incidents created by the alert-backed rules",
+                "order": 1,
+                "triggeringLogic": {
+                  "isEnabled": "[parameters('Enabled')]",
+                  "triggersOn": "Incidents",
+                  "triggersWhen": "Created",
+                  "conditions": [
+                    {
+                      "conditionType": "Property",
+                      "conditionProperties": {
+                        "propertyName": "IncidentRelatedAnalyticRuleIds",
+                        "operator": "Contains",
+                        "propertyValues": [
+                          "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('WorkspaceName'), 'Microsoft.SecurityInsights', variables('botnetRuleId'))]",
+                          "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('WorkspaceName'), 'Microsoft.SecurityInsights', variables('piiRuleId'))]",
+                          "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('WorkspaceName'), 'Microsoft.SecurityInsights', variables('vipRuleId'))]"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "order": 1,
+                    "actionType": "ModifyProperties",
+                    "actionConfiguration": {
+                      "labels": [
+                        {
+                          "labelName": "SOCRadar"
+                        },
+                        {
+                          "labelName": "LeakedCredential"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', split(format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('botnetRuleId')), '/')[0], split(format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('botnetRuleId')), '/')[1], split(format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('botnetRuleId')), '/')[2])]",
+                "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', split(format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('piiRuleId')), '/')[0], split(format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('piiRuleId')), '/')[1], split(format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('piiRuleId')), '/')[2])]",
+                "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', split(format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('vipRuleId')), '/')[0], split(format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('vipRuleId')), '/')[1], split(format('{0}/Microsoft.SecurityInsights/{1}', parameters('WorkspaceName'), variables('vipRuleId')), '/')[2])]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "lawTables",
+        "precheck_workspace_exists",
+        "sentinel_onboard_id",
+        "Workspace",
+        "WorkspaceName_Microsoft_SecurityInsights_default"
+      ]
+    },
     "sentinel_onboard_id": {
       "condition": "[not(empty(parameters('WorkspaceResourceGroup')))]",
       "type": "Microsoft.Resources/deployments",
@@ -1878,8 +2149,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.45.15.27210",
-              "templateHash": "15158017872546837153"
+              "version": "0.47.16.16243",
+              "templateHash": "9776441578459728123"
             }
           },
           "parameters": {

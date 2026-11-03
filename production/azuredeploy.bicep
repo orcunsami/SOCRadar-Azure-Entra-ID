@@ -91,7 +91,11 @@ param EnableConfirmRisky bool = false
 @description('Validate leaked credentials via ROPC (Resource Owner Password Credentials). Only possible with plaintext passwords. Requires Allow public client flows on the App Registration. Microsoft discourages ROPC in production.')
 param EnableROPC bool = false
 
-@description('Create Microsoft Sentinel incidents for compromised accounts')
+@description('How leaked-credential findings become Microsoft Sentinel incidents. None (default): no incident. AlertBacked: three scheduled analytics rules raise an alert and an incident per finding; the incidents show in the Microsoft Defender portal and the Function App needs no Microsoft Sentinel role. Direct: the Function App creates each incident through the Microsoft Sentinel incidents API; those incidents are NOT visible in the Microsoft Defender portal and need a Microsoft Sentinel role for the App Registration or identity.')
+@allowed(['None', 'AlertBacked', 'Direct'])
+param IncidentMode string = 'None'
+
+@description('Deprecated, use IncidentMode. true counts as IncidentMode=Direct when IncidentMode is None; an explicit AlertBacked or Direct wins.')
 param EnableCreateIncident bool = false
 
 @description('Automatically resolve SOCRadar alarms when compromised user is found in Entra ID')
@@ -148,6 +152,10 @@ var workspaceResourceId = (empty(WorkspaceResourceGroup)
 // this expression negated, and two copies of the same condition drift
 // (EXP-AZURE-0178).
 var workspaceIsCreatedHere = CreateWorkspace && empty(WorkspaceResourceGroup)
+
+// One name for the mode the deployment acts on: an explicit IncidentMode wins,
+// the deprecated EnableCreateIncident only upgrades None to Direct.
+var effectiveIncidentMode = (IncidentMode == 'None' && EnableCreateIncident) ? 'Direct' : IncidentMode
 
 var pollingSchedule = '0 0 */${string(PollingIntervalHours)} * * *'
 var dcrName = 'socradar-ei-dcr-${uniqueString(resourceGroup().id)}'
@@ -545,7 +553,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'ENABLE_CREATE_INCIDENT'
-          value: string(EnableCreateIncident)
+          value: string(effectiveIncidentMode == 'Direct')
         }
         {
           name: 'ENABLE_RESOLVE_ALARM'
@@ -670,6 +678,26 @@ module lawTables './nested_law_tables.bicep' = {
 
 
 
+
+// The rules are deployed in every mode and enabled only for AlertBacked, so a
+// redeploy with another mode switches them off and never leaves them running
+// beside the direct path. They need the tables and the Microsoft Sentinel
+// onboarding, in the workspace's own resource group.
+module alertRules './nested_alert_rules.bicep' = {
+  name: 'socradar-alert-rules'
+  scope: resourceGroup(empty(WorkspaceResourceGroup) ? resourceGroup().name : WorkspaceResourceGroup)
+  params: {
+    WorkspaceName: WorkspaceName
+    Enabled: effectiveIncidentMode == 'AlertBacked'
+  }
+  dependsOn: [
+    precheck_workspace_exists
+    Workspace
+    lawTables
+    WorkspaceName_Microsoft_SecurityInsights_default
+    sentinel_onboard_id
+  ]
+}
 
 resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
   name: dcrName
