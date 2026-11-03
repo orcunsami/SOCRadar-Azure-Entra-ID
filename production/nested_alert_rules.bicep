@@ -64,8 +64,8 @@ resource botnetRule 'Microsoft.OperationalInsights/workspaces/providers/alertRul
     description: 'Raises one alert, and one incident, for every leaked employee credential in SOCRadar_Botnet_CL. The Function App needs no Microsoft Sentinel role for this: the rule only reads the table.'
     severity: 'Medium'
     enabled: Enabled
-    queryFrequency: 'PT10M'
-    queryPeriod: 'P1D'
+    queryFrequency: 'PT1H'
+    queryPeriod: 'P7D'
     triggerOperator: 'GreaterThan'
     triggerThreshold: 0
     suppressionDuration: 'PT5H'
@@ -87,17 +87,18 @@ resource botnetRule 'Microsoft.OperationalInsights/workspaces/providers/alertRul
     incidentConfiguration: incidentConfiguration
     query: '''
 // One alert per leaked account and alarm. The platform runs a rule about 6 minutes behind the clock,
-// so an alert is invisible to the very next run unless runs are far enough apart: runs are 10 minutes
-// apart and a row is held back until it is 12 minutes old, which lets the previous alert show up here
+// so a row is held back until it is 12 minutes old, which lets the previous run's alerts show up here
 // first. Keys that already have an alert are dropped, so a late run cannot alert twice and an incident
-// closed by an analyst is not followed by a second one. Custom Details is a second, still-encoded JSON
+// closed by an analyst is not followed by a second one. The look-back is the rule's queryPeriod (7 days):
+// the rule engine does not read SecurityAlert further back than that (measured). A period of two days or
+// more needs a run frequency of at least one hour. Custom Details is a second, still-encoded JSON
 // string with 1-element arrays. isfuzzy keeps the rule alive where SecurityAlert does not exist yet.
 let Alerted = union isfuzzy=true (datatable(ExtendedProperties:string)[]), SecurityAlert
 | extend AlertedKey = tostring(parse_json(tostring(parse_json(tostring(ExtendedProperties))['Custom Details'])).DedupKey[0])
 | where isnotempty(AlertedKey)
 | distinct AlertedKey;
 SOCRadar_Botnet_CL
-| where ingestion_time() > ago(1d)
+| where ingestion_time() > ago(7d)
 | where ingestion_time() < ago(12m)
 | where isnotempty(email)
 | project TimeGenerated, email, source, alarm_id, severity, entra_status, actions_taken, device_ip
@@ -125,8 +126,8 @@ resource piiRule 'Microsoft.OperationalInsights/workspaces/providers/alertRules@
     description: 'Raises one alert, and one incident, for every leaked employee credential in SOCRadar_PII_CL. The Function App needs no Microsoft Sentinel role for this: the rule only reads the table.'
     severity: 'Medium'
     enabled: Enabled
-    queryFrequency: 'PT10M'
-    queryPeriod: 'P1D'
+    queryFrequency: 'PT1H'
+    queryPeriod: 'P7D'
     triggerOperator: 'GreaterThan'
     triggerThreshold: 0
     suppressionDuration: 'PT5H'
@@ -142,17 +143,18 @@ resource piiRule 'Microsoft.OperationalInsights/workspaces/providers/alertRules@
     incidentConfiguration: incidentConfiguration
     query: '''
 // One alert per leaked account and alarm. The platform runs a rule about 6 minutes behind the clock,
-// so an alert is invisible to the very next run unless runs are far enough apart: runs are 10 minutes
-// apart and a row is held back until it is 12 minutes old, which lets the previous alert show up here
+// so a row is held back until it is 12 minutes old, which lets the previous run's alerts show up here
 // first. Keys that already have an alert are dropped, so a late run cannot alert twice and an incident
-// closed by an analyst is not followed by a second one. Custom Details is a second, still-encoded JSON
+// closed by an analyst is not followed by a second one. The look-back is the rule's queryPeriod (7 days):
+// the rule engine does not read SecurityAlert further back than that (measured). A period of two days or
+// more needs a run frequency of at least one hour. Custom Details is a second, still-encoded JSON
 // string with 1-element arrays. isfuzzy keeps the rule alive where SecurityAlert does not exist yet.
 let Alerted = union isfuzzy=true (datatable(ExtendedProperties:string)[]), SecurityAlert
 | extend AlertedKey = tostring(parse_json(tostring(parse_json(tostring(ExtendedProperties))['Custom Details'])).DedupKey[0])
 | where isnotempty(AlertedKey)
 | distinct AlertedKey;
 SOCRadar_PII_CL
-| where ingestion_time() > ago(1d)
+| where ingestion_time() > ago(7d)
 | where ingestion_time() < ago(12m)
 | where isnotempty(email)
 | project TimeGenerated, email, source, alarm_id, severity, entra_status, actions_taken
@@ -179,8 +181,8 @@ resource vipRule 'Microsoft.OperationalInsights/workspaces/providers/alertRules@
     description: 'Raises one alert, and one incident, for every leaked employee credential in SOCRadar_VIP_CL. The Function App needs no Microsoft Sentinel role for this: the rule only reads the table.'
     severity: 'Medium'
     enabled: Enabled
-    queryFrequency: 'PT10M'
-    queryPeriod: 'P1D'
+    queryFrequency: 'PT1H'
+    queryPeriod: 'P7D'
     triggerOperator: 'GreaterThan'
     triggerThreshold: 0
     suppressionDuration: 'PT5H'
@@ -196,17 +198,18 @@ resource vipRule 'Microsoft.OperationalInsights/workspaces/providers/alertRules@
     incidentConfiguration: incidentConfiguration
     query: '''
 // One alert per leaked account and alarm. The platform runs a rule about 6 minutes behind the clock,
-// so an alert is invisible to the very next run unless runs are far enough apart: runs are 10 minutes
-// apart and a row is held back until it is 12 minutes old, which lets the previous alert show up here
+// so a row is held back until it is 12 minutes old, which lets the previous run's alerts show up here
 // first. Keys that already have an alert are dropped, so a late run cannot alert twice and an incident
-// closed by an analyst is not followed by a second one. Custom Details is a second, still-encoded JSON
+// closed by an analyst is not followed by a second one. The look-back is the rule's queryPeriod (7 days):
+// the rule engine does not read SecurityAlert further back than that (measured). A period of two days or
+// more needs a run frequency of at least one hour. Custom Details is a second, still-encoded JSON
 // string with 1-element arrays. isfuzzy keeps the rule alive where SecurityAlert does not exist yet.
 let Alerted = union isfuzzy=true (datatable(ExtendedProperties:string)[]), SecurityAlert
 | extend AlertedKey = tostring(parse_json(tostring(parse_json(tostring(ExtendedProperties))['Custom Details'])).DedupKey[0])
 | where isnotempty(AlertedKey)
 | distinct AlertedKey;
 SOCRadar_VIP_CL
-| where ingestion_time() > ago(1d)
+| where ingestion_time() > ago(7d)
 | where ingestion_time() < ago(12m)
 | where isnotempty(email)
 | project TimeGenerated, email, source, alarm_id, severity, entra_status, actions_taken

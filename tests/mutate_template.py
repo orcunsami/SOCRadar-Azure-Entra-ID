@@ -139,6 +139,12 @@ MUTATIONS = [
     ("the dedup join looks at the wrong key", RULES,
      "join kind=leftanti Alerted on $left.DedupKey == $right.AlertedKey",
      "join kind=leftanti Alerted on $left.AlarmIdText == $right.AlertedKey", INCIDENTS),
+    ("the query period shrinks back to one day", RULES,
+     "queryPeriod: 'P7D'", "queryPeriod: 'P1D'", INCIDENTS),
+    ("the rule runs every 10 minutes again, which Sentinel refuses with a 7-day period", RULES,
+     "queryFrequency: 'PT1H'", "queryFrequency: 'PT10M'", INCIDENTS),
+    ("the rows are read over one day while the alerts are remembered for seven", RULES,
+     "ingestion_time() > ago(7d)", "ingestion_time() > ago(1d)", INCIDENTS),
 ]
 
 

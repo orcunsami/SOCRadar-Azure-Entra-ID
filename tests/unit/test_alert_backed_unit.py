@@ -180,11 +180,23 @@ class RuleLifecycleTests(unittest.TestCase):
         for r in rules:
             self.assertEqual(r["kind"], "Scheduled")
             self.assertEqual(r["properties"]["enabled"], "[parameters('Enabled')]", r["properties"]["displayName"])
-            self.assertEqual(r["properties"]["queryFrequency"], "PT10M")
-            self.assertEqual(r["properties"]["queryPeriod"], "P1D")
+            self.assertEqual(r["properties"]["queryFrequency"], "PT1H")   # a period of 2 days or more needs a frequency of at least 1 hour
+            self.assertEqual(r["properties"]["queryPeriod"], "P7D")   # the dedup look-back: the engine reads SecurityAlert no further back than this
             self.assertIs(r["properties"]["incidentConfiguration"]["createIncident"], True)
             self.assertEqual(r["properties"]["eventGroupingSettings"]["aggregationKind"], "AlertPerResult")
             self.assertIs(r["properties"]["suppressionEnabled"], False)
+
+    def test_a_period_of_two_days_or_more_runs_at_most_hourly(self):
+        # measured: "When 'queryPeriod' greater than or equal to 2 days, the 'queryFrequency' should be
+        # greater than or equal to 1 hour" - Sentinel refuses the rule and the whole deployment fails
+        def minutes(iso):
+            m = re.fullmatch(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?", iso)
+            d, h, mi = (int(x or 0) for x in m.groups())
+            return d * 1440 + h * 60 + mi
+        for r in _alert_rules():
+            p = r["properties"]
+            if minutes(p["queryPeriod"]) >= 2 * 1440:
+                self.assertGreaterEqual(minutes(p["queryFrequency"]), 60, p["displayName"])
 
     def test_the_labeler_follows_the_same_switch(self):
         (auto,) = _automation_rules()
@@ -287,7 +299,9 @@ class RuleContentTests(unittest.TestCase):
         for r in _alert_rules():
             q = r["properties"]["query"]
             self.assertIn("ingestion_time() < ago(12m)", q)
-            self.assertIn("ingestion_time() > ago(1d)", q)
+            self.assertIn("ingestion_time() > ago(7d)", q)   # rows are read over the same window
+            # no explicit look-back on SecurityAlert: the rule engine clamps it to queryPeriod (measured)
+            self.assertNotIn("SecurityAlert | where", q)
             self.assertIn("take 149", q)                # a rule raises at most 150 alerts per run
 
     def test_the_severity_column_emits_only_values_the_platform_accepts(self):
