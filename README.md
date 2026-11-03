@@ -145,7 +145,7 @@ When a leaked identity is found in Entra ID, any combination can run automatical
 | **Add to quarantine group** + restricted Conditional Access policy | off | Medium |
 | **Remove from group** | off | — |
 | **Mark as Confirmed Compromised** — feeds Identity Protection (Entra ID P1/P2) | off | Low |
-| **Create Microsoft Sentinel incident** | off | — (the template does not give the identity a Sentinel role: assign **Microsoft Sentinel Responder** on the workspace to the `SOCRadar-EntraID-MI` identity, otherwise the call fails with 403 and is logged as `create_incident_failed`) |
+| **Create Microsoft Sentinel incident** (`IncidentMode`) | off | `AlertBacked`: analytics rules raise the incidents, visible in the Microsoft Defender portal, no Sentinel role for the identity. `Direct`: the Function App calls the incidents API, **not visible in the Defender portal**, needs **Microsoft Sentinel Responder** for the `SOCRadar-EntraID-MI` identity (otherwise 403, logged as `create_incident_failed`). See [production/README.md](production/README.md#incidents-and-the-microsoft-defender-portal) |
 | **Resolve SOCRadar alarm** on successful remediation | off | — |
 | **ROPC password validation** (advanced) | off | — (signs in with the leaked password for real: it can lock the account and shows up in sign-in logs; needs **Allow public client flows** turned on by hand on the App Registration) |
 

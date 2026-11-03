@@ -56,7 +56,8 @@ ENABLE_ENABLE_ACCOUNT=false
 ENABLE_CONFIRM_RISKY=false         # requires P1/P2
 ENABLE_FORCE_MFA_REREGISTRATION=false   # HIGH IMPACT — deletes all non-password auth methods
 ENABLE_ROPC=false                  # Microsoft discourages this
-ENABLE_CREATE_INCIDENT=false
+ENABLE_CREATE_INCIDENT=false       # deprecated, use INCIDENT_MODE
+INCIDENT_MODE=None                 # None | AlertBacked (shows in Defender) | Direct (not in Defender)
 ENABLE_RESOLVE_ALARM=false
 
 # Password logging (false = only masked/present fields stored)

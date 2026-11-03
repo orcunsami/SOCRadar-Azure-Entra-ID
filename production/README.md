@@ -70,7 +70,8 @@ Azure side: **Contributor** (not Owner) on the target subscription / resource gr
 | `EnableForceMfaReregistration` | `false` | Delete all non-password MFA methods to force re-registration (high impact) |
 | `EnableConfirmRisky` | `false` | Mark user as confirmed compromised in Identity Protection (requires Entra ID P1/P2) |
 | `EnableResolveAlarm` | `false` | Mark the SOCRadar alarm as RESOLVED when remediation succeeds |
-| `EnableCreateIncident` | `false` | Create a Microsoft Sentinel incident per match. The template assigns the identity no Microsoft Sentinel role: give `SOCRadar-EntraID-MI` **Microsoft Sentinel Responder** on the workspace, otherwise the PUT fails with 403 (recorded as `create_incident_failed`, retried on the next read). While the role is missing, each retry counts as an attempted action against the per-run action ceiling, so every re-read spends one slot per record on it |
+| `IncidentMode` | `None` | `None`: no incident. `AlertBacked`: three scheduled analytics rules raise an alert and an incident per finding; the incidents show in the Microsoft Defender portal and the Function App needs no Microsoft Sentinel role. `Direct`: the Function App creates each incident through the Microsoft Sentinel incidents API; those incidents are **not visible in the Microsoft Defender portal**. See [Incidents and the Microsoft Defender portal](#incidents-and-the-microsoft-defender-portal) |
+| `EnableCreateIncident` | `false` | Deprecated, use `IncidentMode`. `true` counts as `IncidentMode=Direct` when `IncidentMode` is `None`; an explicit `AlertBacked` or `Direct` wins |
 | `EnableROPC` | `false` | Check the leaked password with a real sign-in (ROPC). It can lock the account and appears in sign-in logs. Turn on **Allow public client flows** on the App Registration by hand; the template does not |
 | `EnableLogPlaintextPassword` | `false` | Write plaintext passwords to the LAW tables (not recommended) |
 
@@ -181,6 +182,7 @@ by mistake — cannot change its pricing tier, retention or daily cap.
 | App Registration (Entra ID) | Microsoft Graph permissions (created automatically) |
 | Federated Identity Credential | Binds the UAMI to the App Registration (no client secret) |
 | Log Analytics workspace + Sentinel onboarding | Destination for findings |
+| 3 scheduled analytics rules + 1 automation rule | Alert-backed incidents; enabled only with `IncidentMode=AlertBacked`, present but disabled otherwise |
 | 4 custom LAW tables | `SOCRadar_Botnet_CL`, `SOCRadar_PII_CL`, `SOCRadar_VIP_CL`, `SOCRadar_EntraID_Audit_CL` |
 | Data Collection Rule (DCR) | DCR-based Logs Ingestion API |
 | 4 Sentinel workbooks | Dashboards for Botnet, PII, VIP, Combined |
@@ -202,6 +204,26 @@ The App Registration is created with all seven Graph Application permissions bel
 | `UserAuthenticationMethod.ReadWrite.All` | `EnableForceMfaReregistration` |
 
 If an action is disabled, its permission is still requested on the App Registration but is unused at runtime. To minimize the permission set, you can manually remove unused permissions from the App Registration after deployment.
+
+## Incidents and the Microsoft Defender portal
+
+Pick how a leaked credential becomes an incident with `IncidentMode`:
+
+| Mode | What creates the incident | Visible in the Microsoft Defender portal | Needs a Microsoft Sentinel role for the Function App |
+|------|---------------------------|------------------------------------------|------------------------------------------------------|
+| `None` (default) | nothing | - | no |
+| `AlertBacked` | three scheduled analytics rules, one per table, read the findings and raise an alert and an incident each | yes, like any analytics-rule incident (per Microsoft documentation; not measured on this product in the Defender portal) | no: the rules run in Microsoft Sentinel |
+| `Direct` | the Function App, with a `PUT` to the Microsoft Sentinel incidents API | **no**: per [Microsoft documentation](https://learn.microsoft.com/en-us/azure/sentinel/microsoft-sentinel-defender-portal), incidents created through that API are not synchronized to the Defender portal | yes: **Microsoft Sentinel Responder** on the workspace for the identity, otherwise the call fails with 403 and is logged as `create_incident_failed` (retried on the next read; each retry counts against the per-run action ceiling) |
+
+`AlertBacked` details:
+
+- The rules are `SOCRadar Entra ID - Leaked credential (Botnet | PII exposure | VIP protection)`, every 10 minutes, looking back one day. One alert, and one incident, per leaked account and alarm; an alert that already exists is not raised again, so a re-read window or an incident closed by an analyst does not produce a second one.
+- Expect the incident about 20 to 25 minutes after the Function App writes the finding (measured once: 22 minutes, of which about 3 for ingestion). The rule holds a row back 12 minutes so the previous run's alerts are visible to it, and the platform runs a rule a few minutes behind the clock; a new table can take up to 15 minutes for its first ingestion.
+- Every finding raises an alert, whatever the Microsoft Entra ID lookup said (`entra_status`). Filter on the `EntraStatus` custom detail in an automation rule if you only want matches.
+- The alert carries the account (`Name` + `UPNSuffix`) and, for botnet findings, the device address as entities, and the custom details `AlarmId`, `Source`, `EntraStatus`, `ActionsTaken`, `SocradarSeverity`, `DedupKey`. Severity follows the finding (`CRITICAL` and `HIGH` become High). The leaked credential itself is never selected by a rule.
+- An automation rule adds the labels `SOCRadar` and `LeakedCredential`, the same labels `Direct` puts on its incidents.
+- The rules are deployed in every mode and enabled only in `AlertBacked`: redeploying with another mode turns them off, redeploying with `AlertBacked` keeps them on. In `None` and `Direct` they are present but disabled.
+- A first run that imports a large backlog raises one incident per finding. A rule raises at most 149 alerts per run; the rest follow on the next runs.
 
 ## Sentinel Workbooks
 

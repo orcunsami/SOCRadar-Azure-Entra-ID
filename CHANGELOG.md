@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`IncidentMode` (`None` | `AlertBacked` | `Direct`).** `AlertBacked` creates three
+  scheduled analytics rules (Botnet, PII, VIP) and a labeling automation rule, so the
+  incidents have an alert behind them and show in the Microsoft Defender portal; the
+  Function App needs no Microsoft Sentinel role. `Direct` is the previous incident `PUT`,
+  which Microsoft documents as not synchronized to Defender. `None` is the default and
+  changes nothing. `EnableCreateIncident` is deprecated: `true` means `Direct` when
+  `IncidentMode` is `None`. The rules are deployed in every mode and enabled only for
+  `AlertBacked`, so a redeploy with another mode turns them off.
+
 ### Fixed
 
 - **A deployment pointed at a workspace that does not exist no longer leaves a

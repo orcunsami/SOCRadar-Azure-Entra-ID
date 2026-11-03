@@ -67,7 +67,8 @@ ENABLE_ENABLE_ACCOUNT="${ENABLE_ENABLE_ACCOUNT:-false}"
 ENABLE_CONFIRM_RISKY="${ENABLE_CONFIRM_RISKY:-false}"
 ENABLE_FORCE_MFA_REREGISTRATION="${ENABLE_FORCE_MFA_REREGISTRATION:-false}"
 ENABLE_ROPC="${ENABLE_ROPC:-false}"
-ENABLE_CREATE_INCIDENT="${ENABLE_CREATE_INCIDENT:-false}"
+ENABLE_CREATE_INCIDENT="${ENABLE_CREATE_INCIDENT:-false}"   # deprecated, use INCIDENT_MODE
+INCIDENT_MODE="${INCIDENT_MODE:-None}"                      # None | AlertBacked | Direct
 ENABLE_RESOLVE_ALARM="${ENABLE_RESOLVE_ALARM:-false}"
 ENABLE_LOG_PLAINTEXT="${ENABLE_LOG_PLAINTEXT:-false}"
 
@@ -93,7 +94,7 @@ echo "  Actions:  Revoke=$ENABLE_REVOKE_SESSION  Group=$ENABLE_ADD_TO_GROUP"
 echo "            RemoveGroup=$ENABLE_REMOVE_FROM_GROUP  PwChange=$ENABLE_PASSWORD_CHANGE"
 echo "            Disable=$ENABLE_DISABLE_ACCOUNT  Enable=$ENABLE_ENABLE_ACCOUNT"
 echo "            Risky=$ENABLE_CONFIRM_RISKY  ROPC=$ENABLE_ROPC"
-echo "            Incident=$ENABLE_CREATE_INCIDENT  ResolveAlarm=$ENABLE_RESOLVE_ALARM"
+echo "            IncidentMode=$INCIDENT_MODE  ResolveAlarm=$ENABLE_RESOLVE_ALARM"
 echo ""
 
 # ---- Pre-flight checks ----
@@ -183,6 +184,7 @@ DEPLOY_OUTPUT=$(az deployment group create \
         EnableForceMfaReregistration="$ENABLE_FORCE_MFA_REREGISTRATION" \
         EnableROPC="$ENABLE_ROPC" \
         EnableCreateIncident="$ENABLE_CREATE_INCIDENT" \
+        IncidentMode="$INCIDENT_MODE" \
         EnableResolveAlarm="$ENABLE_RESOLVE_ALARM" \
         EnableLogPlaintextPassword="$ENABLE_LOG_PLAINTEXT" \
         PollingIntervalHours="$POLLING_INTERVAL_HOURS" \
@@ -385,14 +387,14 @@ fi
 # ---- Sentinel Onboarding ----
 echo ""
 echo "[8/8] Sentinel Onboarding..."
-if [[ "$ENABLE_CREATE_INCIDENT" == "true" ]]; then
+if [[ "$ENABLE_CREATE_INCIDENT" == "true" || "$INCIDENT_MODE" != "None" ]]; then
     echo "  Onboarding workspace to Sentinel..."
     az rest --method PUT \
         --url "https://management.azure.com/subscriptions/$SUBSCRIPTION/resourceGroups/$WS_RG/providers/Microsoft.OperationalInsights/workspaces/$WORKSPACE_NAME/providers/Microsoft.SecurityInsights/onboardingStates/default?api-version=2024-03-01" \
         --body '{"properties":{"customerManagedKey":false}}' \
         -o none 2>/dev/null && echo "  Sentinel onboarded successfully" || echo "  WARN: Sentinel onboarding failed (may already be onboarded)"
 else
-    echo "  ENABLE_CREATE_INCIDENT=false — skipping Sentinel onboarding"
+    echo "  IncidentMode=None — skipping Sentinel onboarding"
 fi
 
 # ---- Update deploy.config with DCR identifiers (for tests + observability) ----
